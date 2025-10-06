@@ -1,8 +1,10 @@
-
+// Updated scripts.js — uses text/plain POST to avoid CORS preflight.
+// ENDPOINT_URL must match your deployed Apps Script web app (already set).
 const ENDPOINT_URL = 'https://script.google.com/macros/s/AKfycbzzaLPajAc80qO35Qq1kYXdmb9l8LY2D9VCRNdu-J6wwGSAoANnPgWNTbUi6ATUelMe/exec';
-const CSV_FILENAME = 'data.csv';
+const CSV_FILENAME = 'data.csv'; // data.csv must be in the repo root
 const SCALE = ['Terrible','Poor','Average','Good','Excellent'];
-document.addEventListener('DOMContentLoaded', ()=>{
+
+document.addEventListener('DOMContentLoaded', () => {
   const emailInput = document.getElementById('email');
   const nameInput = document.getElementById('fullName');
   const projectSelect = document.getElementById('project');
@@ -13,17 +15,181 @@ document.addEventListener('DOMContentLoaded', ()=>{
   const status = document.getElementById('form-status');
   const submitBtn = document.getElementById('submitBtn');
   const skipBtn = document.getElementById('skipBtn');
-  let sponsorData = {}, sponsorProjects = {};
-  function setStatus(msg,color){ status.textContent = msg||''; status.style.color = color||'inherit'; }
-  function parseCSV(text){ const rows = text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean); if(!rows.length) return []; const headers = rows[0].split(',').map(h=>h.trim()); return rows.slice(1).map(line=>{ const parts=line.split(',').map(p=>p.trim()); const obj={}; headers.forEach((h,i)=>obj[h]=parts[i]||''); return obj; }); }
-  function buildSponsorMap(rows){ const map={}; rows.forEach(r=>{ const email=(r.sponsorEmail||r.email||'').toLowerCase(); const project=(r.project||'').trim(); const student=(r.student||'').trim(); if(!email||!project||!student) return; if(!map[email]) map[email]={projects:{}}; if(!map[email].projects[project]) map[email].projects[project]=[]; if(!map[email].projects[project].includes(student)) map[email].projects[project].push(student); }); return map; }
-  async function tryFetchCSV(){ try{ const resp = await fetch(CSV_FILENAME,{cache:'no-store'}); if(!resp.ok) throw new Error('not found'); const txt = await resp.text(); const rows = parseCSV(txt); sponsorData = buildSponsorMap(rows); setStatus('Project data loaded. Enter your email to see projects.','green'); }catch(err){ console.debug('CSV fetch failed', err); setStatus('Project data not found. Make sure data.csv is present.'); } }
-  function populateProjectDropdown(email){ projectSelect.innerHTML = '<option value="">— Select a project —</option>'; sponsorProjects = {}; const entry = sponsorData[email]; if(!entry||!entry.projects) return; Object.keys(entry.projects).forEach(p=>{ const opt=document.createElement('option'); opt.value=p; opt.textContent=p; projectSelect.appendChild(opt); sponsorProjects[p]=entry.projects[p].slice(); }); projectSelect.disabled=false; setStatus('Projects loaded. Select and click Load Project.'); }
-  function renderMatrix(project){ matrixContainer.innerHTML=''; questionHeading.style.display='block'; matrixQuestion.textContent='Please evaluate the students on Communication'; const students = sponsorProjects[project]||[]; if(!students.length){ matrixContainer.textContent='No students found'; return; } const table=document.createElement('table'); table.className='matrix-table'; const thead=document.createElement('thead'); const headRow=document.createElement('tr'); const thStudent=document.createElement('th'); thStudent.textContent=''; headRow.appendChild(thStudent); SCALE.forEach(label=>{ const th=document.createElement('th'); th.textContent=label; headRow.appendChild(th); }); thead.appendChild(headRow); table.appendChild(thead); const tbody=document.createElement('tbody'); students.forEach((student,sIdx)=>{ const tr=document.createElement('tr'); const tdName=document.createElement('td'); tdName.textContent=student; tr.appendChild(tdName); SCALE.forEach((_,colIdx)=>{ const td=document.createElement('td'); const div=document.createElement('div'); div.className='rating-row'; const id=`rating-${sIdx}-${colIdx}`; const input=document.createElement('input'); input.type='radio'; input.name=`rating-${sIdx}`; input.value=String(colIdx+1); input.id=id; const label=document.createElement('label'); label.htmlFor=id; label.textContent=''; div.appendChild(input); div.appendChild(label); td.appendChild(div); tr.appendChild(td); }); tbody.appendChild(tr); }); table.appendChild(tbody); matrixContainer.appendChild(table); }
-  function collectResponses(project){ const students=sponsorProjects[project]||[]; return students.map((student,sIdx)=>{ const sel=document.querySelector(`input[name="rating-${sIdx}"]:checked`); return { student, rating: sel? parseInt(sel.value,10): null, comment: '' }; }); }
-  emailInput.addEventListener('input', ()=>{ const v=(emailInput.value||'').toLowerCase().trim(); if(!v) return; if(sponsorData[v]) populateProjectDropdown(v); });
-  loadProjectBtn.addEventListener('click', ()=>{ const sel=projectSelect.value; if(!sel){ setStatus('Please select a project to load.','red'); return; } renderMatrix(sel); });
-  skipBtn.addEventListener('click', ()=>{ const sel=projectSelect.value; if(!sel){ setStatus('Please select a project to skip.','red'); return; } delete sponsorProjects[sel]; const opt=projectSelect.querySelector(`option[value="${sel}"]`); if(opt) opt.remove(); matrixContainer.innerHTML=''; questionHeading.style.display='none'; setStatus(`Removed project "${sel}"`); });
-  document.getElementById('judge-form').addEventListener('submit', async (evt)=>{ evt.preventDefault(); const name=(nameInput.value||'').trim(); const email=(emailInput.value||'').trim(); const project=projectSelect.value; if(!name){ setStatus('Please enter your name.','red'); return; } if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ setStatus('Please enter a valid email.','red'); return; } if(!project){ setStatus('Please select a project.','red'); return; } const responses=collectResponses(project); if(!responses.some(r=>r.rating!==null)){ setStatus('Please rate at least one student.','red'); return; } const payload={ sponsorName:name, sponsorEmail:email, project, responses, timestamp:new Date().toISOString() }; try{ setStatus('Submitting...'); const resp = await fetch(ENDPOINT_URL, { method:'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify(payload) }); if(!resp.ok) throw new Error('Network response not ok'); const data = await resp.json(); console.log('Server response', data); setStatus('Submission saved. Thank you!', 'green'); delete sponsorProjects[project]; const opt = projectSelect.querySelector(`option[value="${project}"]`); if(opt) opt.remove(); matrixContainer.innerHTML=''; questionHeading.style.display='none'; }catch(err){ console.error('Submission error', err); setStatus('Submission failed. See console.','red'); } finally{ submitBtn.disabled=false; } });
+
+  let sponsorData = {};
+  let sponsorProjects = {};
+
+  function setStatus(msg, color) {
+    status.textContent = msg || '';
+    status.style.color = color || 'inherit';
+  }
+
+  function parseCSV(text) {
+    const rows = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    if (!rows.length) return [];
+    const headers = rows[0].split(',').map(h => h.trim());
+    return rows.slice(1).map(line => {
+      const parts = line.split(',').map(p => p.trim());
+      const obj = {};
+      headers.forEach((h, i) => obj[h] = parts[i] || '');
+      return obj;
+    });
+  }
+
+  function buildSponsorMap(rows) {
+    const map = {};
+    rows.forEach(r => {
+      const email = (r.sponsorEmail || r.email || '').toLowerCase();
+      const project = (r.project || '').trim();
+      const student = (r.student || '').trim();
+      if (!email || !project || !student) return;
+      if (!map[email]) map[email] = { projects: {} };
+      if (!map[email].projects[project]) map[email].projects[project] = [];
+      if (!map[email].projects[project].includes(student)) map[email].projects[project].push(student);
+    });
+    return map;
+  }
+
+  async function tryFetchCSV() {
+    try {
+      const resp = await fetch(CSV_FILENAME, { cache: 'no-store' });
+      if (!resp.ok) throw new Error('not found');
+      const txt = await resp.text();
+      const rows = parseCSV(txt);
+      sponsorData = buildSponsorMap(rows);
+      setStatus('Project data loaded. Enter your email to see projects.', 'green');
+    } catch (err) {
+      console.debug('CSV fetch failed', err);
+      setStatus('Project data not found. Make sure data.csv is present.');
+    }
+  }
+
+  function populateProjectDropdown(email) {
+    projectSelect.innerHTML = '<option value="">— Select a project —</option>';
+    sponsorProjects = {};
+    const entry = sponsorData[email];
+    if (!entry || !entry.projects) return;
+    Object.keys(entry.projects).forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p;
+      opt.textContent = p;
+      projectSelect.appendChild(opt);
+      sponsorProjects[p] = entry.projects[p].slice();
+    });
+    projectSelect.disabled = false;
+    setStatus('Projects loaded. Select and click Load Project.');
+  }
+
+  function renderMatrix(project) {
+    matrixContainer.innerHTML = '';
+    questionHeading.style.display = 'block';
+    matrixQuestion.textContent = 'Please evaluate the students on Communication';
+    const students = sponsorProjects[project] || [];
+    if (!students.length) { matrixContainer.textContent = 'No students found'; return; }
+
+    const table = document.createElement('table');
+    table.className = 'matrix-table';
+
+    const thead = document.createElement('thead');
+    const headRow = document.createElement('tr');
+    const thStudent = document.createElement('th'); thStudent.textContent = ''; headRow.appendChild(thStudent);
+    SCALE.forEach(label => { const th = document.createElement('th'); th.textContent = label; headRow.appendChild(th); });
+    thead.appendChild(headRow); table.appendChild(thead);
+
+    const tbody = document.createElement('tbody');
+    students.forEach((student, sIdx) => {
+      const tr = document.createElement('tr');
+      const tdName = document.createElement('td'); tdName.textContent = student; tr.appendChild(tdName);
+      SCALE.forEach((_, colIdx) => {
+        const td = document.createElement('td');
+        const div = document.createElement('div'); div.className = 'rating-row';
+        const id = `rating-${sIdx}-${colIdx}`;
+        const input = document.createElement('input'); input.type = 'radio'; input.name = `rating-${sIdx}`; input.value = String(colIdx + 1); input.id = id;
+        const label = document.createElement('label'); label.htmlFor = id; label.textContent = '';
+        div.appendChild(input); div.appendChild(label); td.appendChild(div); tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+
+    table.appendChild(tbody);
+    matrixContainer.appendChild(table);
+  }
+
+  function collectResponses(project) {
+    const students = sponsorProjects[project] || [];
+    return students.map((student, sIdx) => {
+      const sel = document.querySelector(`input[name="rating-${sIdx}"]:checked`);
+      return { student, rating: sel ? parseInt(sel.value, 10) : null, comment: '' };
+    });
+  }
+
+  emailInput.addEventListener('input', () => {
+    const v = (emailInput.value || '').toLowerCase().trim();
+    if (!v) return;
+    if (sponsorData[v]) populateProjectDropdown(v);
+  });
+
+  loadProjectBtn.addEventListener('click', () => {
+    const sel = projectSelect.value;
+    if (!sel) { setStatus('Please select a project to load.', 'red'); return; }
+    renderMatrix(sel);
+  });
+
+  skipBtn.addEventListener('click', () => {
+    const sel = projectSelect.value;
+    if (!sel) { setStatus('Please select a project to skip.', 'red'); return; }
+    delete sponsorProjects[sel];
+    const opt = projectSelect.querySelector(`option[value="${sel}"]`);
+    if (opt) opt.remove();
+    matrixContainer.innerHTML = ''; questionHeading.style.display = 'none';
+    setStatus(`Removed project "${sel}"`);
+  });
+
+  document.getElementById('judge-form').addEventListener('submit', async (evt) => {
+    evt.preventDefault();
+    const name = (nameInput.value || '').trim();
+    const email = (emailInput.value || '').trim();
+    const project = projectSelect.value;
+    if (!name) { setStatus('Please enter your name.', 'red'); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setStatus('Please enter a valid email.', 'red'); return; }
+    if (!project) { setStatus('Please select a project.', 'red'); return; }
+
+    const responses = collectResponses(project);
+    if (!responses.some(r => r.rating !== null)) { setStatus('Please rate at least one student.', 'red'); return; }
+
+    const payload = { sponsorName: name, sponsorEmail: email, project, responses, timestamp: new Date().toISOString() };
+
+    try {
+      setStatus('Submitting...');
+      submitBtn.disabled = true;
+
+      // ---- key change: use text/plain to avoid preflight OPTIONS ----
+      const resp = await fetch(ENDPOINT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!resp.ok) throw new Error('Network response not ok: ' + resp.status);
+      const data = await resp.json();
+      console.log('Server response', data);
+      setStatus('Submission saved. Thank you!', 'green');
+
+      // remove project from list and clear matrix
+      delete sponsorProjects[project];
+      const opt = projectSelect.querySelector(`option[value="${project}"]`);
+      if (opt) opt.remove();
+      matrixContainer.innerHTML = '';
+      questionHeading.style.display = 'none';
+    } catch (err) {
+      console.error('Submission error', err);
+      setStatus('Submission failed. See console.', 'red');
+    } finally {
+      submitBtn.disabled = false;
+    }
+  });
+
+  // initial CSV load from the repo (data.csv)
   tryFetchCSV();
 });
+
