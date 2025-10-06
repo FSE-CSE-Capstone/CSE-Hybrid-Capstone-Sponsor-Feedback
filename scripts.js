@@ -1,5 +1,5 @@
 // scripts.js — sends FormData payload to avoid preflight OPTIONS
-const ENDPOINT_URL = 'https://script.google.com/macros/s/AKfycbzzaLPajAc80qO35Qq1kYXdmb9l8LY2D9VCRNdu-J6wwGSAoANnPgWNTbUi6ATUelMe/exec';
+const ENDPOINT_URL = 'https://csesponsors.sbecerr7.workers.dev/';
 const CSV_FILENAME = 'data.csv';
 const SCALE = ['Terrible','Poor','Average','Good','Excellent'];
 
