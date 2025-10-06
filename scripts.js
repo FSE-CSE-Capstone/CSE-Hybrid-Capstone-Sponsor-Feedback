@@ -1,5 +1,5 @@
 
-const ENDPOINT_URL = 'https://script.google.com/macros/s/AKfycbw1jIZM59nQTQKXb1b9bmF7HEkOCU1dc68aeBy1oQLX7_8NRXQcNigygROcsBv0WPwg/exec';
+const ENDPOINT_URL = 'https://script.google.com/macros/s/AKfycbzzaLPajAc80qO35Qq1kYXdmb9l8LY2D9VCRNdu-J6wwGSAoANnPgWNTbUi6ATUelMe/exec';
 const CSV_FILENAME = 'data.csv';
 const SCALE = ['Terrible','Poor','Average','Good','Excellent'];
 document.addEventListener('DOMContentLoaded', ()=>{
