@@ -1,7 +1,6 @@
-// Updated scripts.js — uses text/plain POST to avoid CORS preflight.
-// ENDPOINT_URL must match your deployed Apps Script web app (already set).
+// scripts.js — sends FormData payload to avoid preflight OPTIONS
 const ENDPOINT_URL = 'https://script.google.com/macros/s/AKfycbzzaLPajAc80qO35Qq1kYXdmb9l8LY2D9VCRNdu-J6wwGSAoANnPgWNTbUi6ATUelMe/exec';
-const CSV_FILENAME = 'data.csv'; // data.csv must be in the repo root
+const CSV_FILENAME = 'data.csv';
 const SCALE = ['Terrible','Poor','Average','Good','Excellent'];
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -163,11 +162,13 @@ document.addEventListener('DOMContentLoaded', () => {
       setStatus('Submitting...');
       submitBtn.disabled = true;
 
-      // ---- key change: use text/plain to avoid preflight OPTIONS ----
+      // Use FormData to avoid CORS preflight
+      const form = new FormData();
+      form.append('payload', JSON.stringify(payload));
+
       const resp = await fetch(ENDPOINT_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify(payload)
+        body: form
       });
 
       if (!resp.ok) throw new Error('Network response not ok: ' + resp.status);
@@ -192,4 +193,5 @@ document.addEventListener('DOMContentLoaded', () => {
   // initial CSV load from the repo (data.csv)
   tryFetchCSV();
 });
+
 
