@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Sponsor Judging</title>
+  <link href="styles.css" rel="stylesheet">
+</head>
+<body>
+  <main class="container">
+    <header>
+      <h1>Sponsor Judging</h1>
+      <p class="lead">Enter your name and email to load projects assigned to you.</p>
+    </header>
+
+    <form id="judge-form" novalidate>
+      <div class="form-row">
+        <label for="fullName">Full name</label>
+        <input id="fullName" name="fullName" type="text" required autocomplete="name">
+      </div>
+      <div class="form-row">
+        <label for="email">Email</label>
+        <input id="email" name="email" type="email" required autocomplete="email">
+      </div>
+
+      <div class="form-row" id="project-field">
+        <label for="project">Project</label>
+        <select id="project" disabled><option value="">— Select a project —</option></select>
+        <button type="button" id="loadProjectBtn" class="secondary">Load Project</button>
+      </div>
+
+      <section id="question-heading" style="display:none"><h3 id="matrix-question">Please evaluate the students on Communication</h3></section>
+      <div id="matrix-container"></div>
+
+      <div class="actions">
+        <button type="submit" id="submitBtn">Submit ratings for this project</button>
+        <button type="button" id="skipBtn" class="secondary">Skip (remove)</button>
+      </div>
+
+      <div id="form-status" role="status" aria-live="polite"></div>
+    </form>
+
+    <footer class="site-footer">
+      <small>© Sponsor Judging</small>
+    </footer>
+  </main>
+
+  <script src="scripts.js" defer></script>
+</body>
+</html>
