@@ -4,7 +4,7 @@
   --panel-right-start: #5b10d8;
   --panel-right-mid: #b03ff2;
   --panel-right-end: #ff6bd6;
-  --accent: #ff2db4; /* pink accent */
+  --accent: #ff2db4;
   --accent-2: #7c2bff;
   --muted: #6b7280;
   --text: #07122a;
@@ -43,11 +43,10 @@ input:focus, select:focus, textarea:focus{box-shadow:0 8px 20px rgba(11,39,94,0.
 /* buttons */
 .btn{border:0;border-radius:10px;cursor:pointer;font-weight:700}
 .btn-primary{background:linear-gradient(90deg,var(--accent-2),var(--accent));color:#fff;padding:12px 18px;box-shadow:0 8px 20px rgba(124,43,255,0.12)}
-.btn-outline{background:transparent;border:2px solid rgba(124,43,255,0.12);color:var(--accent-2);padding:10px 12px}
+.btn-outline{background:transparent;border:1px solid rgba(124,43,255,0.12);color:var(--accent-2);padding:8px 12px;border-radius:10px}
 .btn-ghost{background:transparent;color:var(--muted);padding:10px 12px;border-radius:10px}
 
 /* matrix */
-.matrix-question{margin-top:8px;color:#2b3b51;font-weight:600}
 .matrix-container{margin-top:10px}
 .matrix-table{width:100%;border-collapse:collapse;margin-top:10px}
 .matrix-table th{padding:12px;border-bottom:1px solid #eef2f7;text-align:center;font-weight:700;color:#475569}
@@ -65,52 +64,48 @@ input:focus, select:focus, textarea:focus{box-shadow:0 8px 20px rgba(11,39,94,0.
 /* Right panel artwork */
 .right{background:linear-gradient(135deg,var(--panel-right-start),var(--panel-right-mid) 50%,var(--panel-right-end))}
 .graphic{position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center;pointer-events:none}
-.shape.circle.large{position:absolute;right:6%;top:10%;width:420px;height:420px;border-radius:50%;
-  background:radial-gradient(circle at 30% 30%, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.06) 30%, transparent 60%);
-  transform:rotate(10deg);filter:blur(10px);box-shadow:0 20px 60px rgba(0,0,0,0.08)}
-.shape.circle.mid{position:absolute;left:6%;bottom:6%;width:260px;height:260px;border-radius:50%;
-  background:linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0.02));
-  transform:rotate(-10deg);opacity:0.9}
-.shape.triangle{position:absolute;right:18%;bottom:26%;width:320px;height:320px;clip-path:polygon(0 0,100% 0,0 100%);
-  background:linear-gradient(135deg, rgba(255,255,255,0.12), rgba(255,255,255,0.02));
-  transform:skewX(-8deg);opacity:0.85}
-.shape.gradient-blob{position:absolute;right:8%;top:36%;width:220px;height:220px;border-radius:40%;
-  background:linear-gradient(45deg, rgba(255,107,214,0.22), rgba(124,43,255,0.28));
-  mix-blend-mode:screen;filter:blur(6px)}
+.shape.circle.large{position:absolute;right:6%;top:10%;width:420px;height:420px;border-radius:50%;background:radial-gradient(circle at 30% 30%, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.06) 30%, transparent 60%);transform:rotate(10deg);filter:blur(10px);box-shadow:0 20px 60px rgba(0,0,0,0.08)}
+.shape.circle.mid{position:absolute;left:6%;bottom:6%;width:260px;height:260px;border-radius:50%;background:linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0.02));transform:rotate(-10deg);opacity:0.9}
+.shape.triangle{position:absolute;right:18%;bottom:26%;width:320px;height:320px;clip-path:polygon(0 0,100% 0,0 100%);background:linear-gradient(135deg, rgba(255,255,255,0.12), rgba(255,255,255,0.02));transform:skewX(-8deg);opacity:0.85}
+.shape.gradient-blob{position:absolute;right:8%;top:36%;width:220px;height:220px;border-radius:40%;background:linear-gradient(45deg, rgba(255,107,214,0.22), rgba(124,43,255,0.28));mix-blend-mode:screen;filter:blur(6px)}
 
-/* project comment styles */
+/* project comment styles (kept subtle for white card) */
 .project-comment-wrap textarea#project-comment{
-  font-size:0.95rem;resize:vertical;min-height:66px;padding:8px;border-radius:8px;
-  border:1px solid rgba(255,255,255,0.12);width:100%;font-family:inherit;
-  background:rgba(255,255,255,0.06);color:#fff
+  font-size:0.95rem;resize:vertical;min-height:66px;padding:8px;border-radius:8px;border:1px solid #e6edf8;width:100%;font-family:inherit;background:#fff;color:#0b2540
 }
-.project-comment-wrap label{display:block;margin-bottom:6px;color:rgba(255,255,255,0.9)}
+.project-comment-wrap label{display:block;margin-bottom:6px;color:#475569}
 
-/* completed project select option indicator */
+/* select option indicator (if used) */
 select option[data-completed="true"]{color:#9ca3af}
 
 /* === New additions for multi-stage + project list === */
 
 /* Stage container animations */
-.stage{animation:fadeIn .4s ease}
-@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.stage{animation:fadeIn .28s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+/* projects heading that sits above the white card */
+.projects-heading{font-size:1.25rem;margin:0 0 12px;font-weight:700;color:#222}
 
 /* project list styling */
-.project-list{list-style:none;padding:0;margin:14px 0 10px;display:flex;flex-direction:column;gap:10px;}
-.project-item{background:#fff;border:1px solid #e6e9ef;padding:12px 14px;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;transition:all .2s ease}
-.project-item:hover{transform:translateY(-2px);box-shadow:0 8px 16px rgba(12,18,30,0.06)}
-.project-item.completed{opacity:0.55;background:#f8f8f8;cursor:default}
+.project-list{list-style:none;padding:0;margin:6px 0 14px;display:flex;flex-direction:column;gap:10px;}
+.project-item{background:#fff;border:1px solid #e6e9ef;padding:12px 14px;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;transition:all .16s ease}
+.project-item:hover{transform:translateY(-4px);box-shadow:0 12px 30px rgba(12,18,30,0.06);background:linear-gradient(90deg, rgba(124,43,255,0.06), rgba(255,107,214,0.03))}
+.project-item.active{background:linear-gradient(90deg, rgba(124,43,255,0.12), rgba(255,107,214,0.06));box-shadow:0 14px 36px rgba(124,43,255,0.10);transform:translateY(-2px);border-color:rgba(124,43,255,0.18)}
+.project-item.completed{opacity:0.6;background:#f5f6f8;transform:none;box-shadow:none;cursor:default}
 .project-item .meta{color:var(--muted);font-weight:600;margin-left:8px;font-size:0.9rem}
 
-/* heading for project list */
-.projects-heading{font-size:1.25rem;margin:0 0 10px;font-weight:700;color:#222}
+/* current project header inside the card (above the matrix) */
+.current-project-header{font-weight:700;margin:10px 0 8px;color:#223;font-size:1.05rem}
 
-/* responsive tweak */
+/* actions: Back left, Submit right */
+.actions-space-between{display:flex;align-items:center;justify-content:space-between;gap:12px}
+
+/* responsive rules */
 @media (max-width:980px){
   .split{flex-direction:column}
-  .right{height:220px;order:2}
+  .right{height:200px;order:2}
   .left{order:1;padding:28px 20px}
   .left-inner{max-width:700px}
   .welcome h1{font-size:1.6rem}
 }
-
