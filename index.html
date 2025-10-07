@@ -3,90 +3,75 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Sponsor Ratings</title>
+  <title>Sponsor Judging</title>
 
   <link rel="stylesheet" href="styles.css">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-  <div class="split">
+  <main class="page-wrap" id="main" role="main">
+    <section class="card" aria-labelledby="page-title">
+      <header class="card-header">
+        <h1 id="page-title">Sponsor Judging</h1>
+        <p class="lead">Enter your name and email to load projects assigned to you.</p>
+      </header>
 
-    <!-- LEFT: form area -->
-    <div class="left">
-      <div class="left-inner">
-        <!-- HEADING sits above the card -->
-        <h2 id="projects-heading-outside" class="projects-heading" style="display:none;">
-          Please select the project you would like to evaluate
-        </h2>
+      <form id="judge-form" class="card-body" novalidate>
+        <!-- Project selector section -->
+        <div class="section" id="section-projects" aria-labelledby="projects-heading">
+          <h2 id="projects-heading" class="section-title">Projects</h2>
+          <div class="field">
+            <label for="fullName">Full name</label>
+            <input id="fullName" name="fullName" type="text" autocomplete="name" required>
+          </div>
 
-        <section class="card">
+          <div class="field">
+            <label for="email">Email</label>
+            <input id="email" name="email" type="email" autocomplete="email" required>
+          </div>
 
-          <!-- STAGE 1: Identity -->
-          <div id="stage-identity" class="stage">
-            <h1 class="welcome-title">Hello, <span class="accent">welcome!</span></h1>
-            <p class="lead">Enter your name and email to continue.</p>
-
-            <div class="form-row">
-              <label for="fullName">Your name</label>
-              <input id="fullName" name="fullName" type="text" placeholder="Jane Doe" />
-            </div>
-
-            <div class="form-row">
-              <label for="email">Your email</label>
-              <input id="email" name="email" type="email" placeholder="you@example.com" />
-            </div>
-
-            <div class="actions">
-              <button id="identitySubmit" class="btn btn-primary" type="button">Continue</button>
+          <div class="field">
+            <label for="project">Select a project</label>
+            <select id="project" name="project" disabled aria-disabled="true">
+              <option value="">— Select a project —</option>
+            </select>
+            <div class="project-actions">
+              <button type="button" id="loadProjectBtn" class="btn btn-secondary">Load Project</button>
+              <button type="button" id="skipBtn" class="btn btn-ghost">Skip (remove)</button>
             </div>
           </div>
 
-          <!-- STAGE 2: Projects + Matrix -->
-          <div id="stage-projects" class="stage" style="display:none;">
-            <!-- project list -->
-            <ul id="project-list" class="project-list" aria-live="polite"></ul>
+          <div class="hint" id="csv-hint">Project data loaded from <code>data.csv</code>.</div>
+        </div>
 
-            <div id="matrix-container" class="matrix-container" aria-live="polite"></div>
+        <!-- Matrix section -->
+        <div class="section" id="section-matrix" aria-labelledby="matrix-heading">
+          <h2 id="matrix-heading" class="section-title">Please evaluate the students on Communication</h2>
 
-            <div class="form-status" id="form-status" aria-live="polite"></div>
+          <div id="matrix-question" class="project-title" aria-live="polite"></div>
+          <div id="matrix-container" class="matrix-container" role="region" aria-label="Student rating matrix"></div>
+        </div>
 
-            <div class="actions actions-space-between">
-              <div>
-                <button id="backToIdentity" class="btn btn-outline" type="button">Back</button>
-              </div>
-              <div>
-                <button id="submitProject" class="btn btn-primary" type="button">Submit ratings for project</button>
-              </div>
-            </div>
-          </div>
+        <!-- Comments section -->
+        <div class="section" id="section-comments" aria-labelledby="comments-heading">
+          <h2 id="comments-heading" class="section-title">Comments about this project (optional)</h2>
+          <textarea id="comments" name="comments" rows="5" placeholder="Add any comments about the project..."></textarea>
+        </div>
 
-          <!-- STAGE 3: Thank you -->
-          <div id="stage-thankyou" class="stage" style="display:none;text-align:center;padding:36px;">
-            <h2>Thank you — your evaluations have been submitted.</h2>
-            <p class="lead">We appreciate your time and feedback.</p>
-            <div style="margin-top:20px;display:flex;justify-content:center;gap:12px;">
-              <button id="finishClose" class="btn btn-primary" type="button">Close</button>
-              <button id="finishStartOver" class="btn btn-outline" type="button">Start Over</button>
-            </div>
-          </div>
+        <!-- Actions -->
+        <div class="form-actions">
+          <button id="submitBtn" type="submit" class="btn btn-primary">Submit ratings for project</button>
+        </div>
 
-        </section>
+        <div id="form-status" class="form-status" role="status" aria-live="polite"></div>
+      </form>
 
-        <footer class="footer"><small>Built for your course. Data saved to Google Sheets.</small></footer>
-      </div>
-    </div>
+      <footer class="card-footer">
+        <small>© Sponsor Judging</small>
+      </footer>
+    </section>
+  </main>
 
-    <!-- RIGHT: artwork -->
-    <div class="right" aria-hidden="true">
-      <div class="graphic">
-        <div class="shape circle large"></div>
-        <div class="shape circle mid"></div>
-        <div class="shape triangle"></div>
-        <div class="shape gradient-blob"></div>
-      </div>
-    </div>
-  </div>
-
-  <script src="scripts.js"></script>
+  <script src="scripts.js" defer></script>
 </body>
 </html>
+
