@@ -1,4 +1,4 @@
-// scripts.js — Full replacement with matrix-info hide-on-submit (fixed)
+// scripts.js — Full replacement with matrix-info hide-on-submit and removeEmptySections
 (function () {
   'use strict';
 
@@ -173,6 +173,36 @@
     });
   }
 
+  // New helper: remove truly-empty .section placeholders that cause visible empty boxes
+  function removeEmptySections() {
+    try {
+      var sections = document.querySelectorAll('.section');
+      for (var i = 0; i < sections.length; i++) {
+        var s = sections[i];
+        var text = (s.textContent || '').trim();
+        var children = s.querySelectorAll('*');
+        var hasMeaningfulChild = false;
+        for (var j = 0; j < children.length; j++) {
+          var ch = children[j];
+          if (!ch.tagName) continue;
+          var tag = ch.tagName.toUpperCase();
+          // treat interactive/form elements and container elements as meaningful
+          if (['INPUT','TEXTAREA','SELECT','BUTTON','TABLE','UL','OL','LI','IMG','CANVAS','SVG'].indexOf(tag) !== -1) {
+            hasMeaningfulChild = true;
+            break;
+          }
+          if ((ch.textContent || '').trim().length > 0) { hasMeaningfulChild = true; break; }
+        }
+        if (!text && !hasMeaningfulChild) {
+          // hide placeholder section to avoid blank bubble being rendered
+          s.style.display = 'none';
+        }
+      }
+    } catch (e) {
+      console.warn('removeEmptySections failed', e);
+    }
+  }
+
   /* -------------------------
      CSV fetch + init
      ------------------------- */
@@ -190,10 +220,12 @@
         populateProjectListFor(currentEmail);
       }
       updateSectionVisibility();
+      removeEmptySections(); // ensure no empty placeholders remain
     }).catch(function (err) {
       console.debug('CSV fetch failed', err);
       setStatus('Project data not found. Ensure data.csv is present.');
       updateSectionVisibility();
+      removeEmptySections();
     });
   }
 
@@ -207,6 +239,7 @@
     if (projectHeadingOutside) projectHeadingOutside.style.display = 'none';
     setStatus('');
     updateSectionVisibility();
+    removeEmptySections();
   }
 
   function showProjectsStage() {
@@ -215,6 +248,7 @@
     if (stageThankyou) stageThankyou.style.display = 'none';
     if (projectHeadingOutside) projectHeadingOutside.style.display = '';
     updateSectionVisibility();
+    removeEmptySections();
   }
 
   function showThankyouStage() {
@@ -223,6 +257,7 @@
     if (stageThankyou) stageThankyou.style.display = '';
     if (projectHeadingOutside) projectHeadingOutside.style.display = 'none';
     updateSectionVisibility();
+    removeEmptySections();
   }
 
   /* -------------------------
@@ -236,6 +271,7 @@
     if (!entry || !entry.projects) {
       setStatus('No projects found for that email.', 'red');
       updateSectionVisibility();
+      removeEmptySections();
       return;
     }
     var allProjects = Object.keys(entry.projects).slice();
@@ -278,6 +314,7 @@
 
     setStatus('');
     updateSectionVisibility();
+    removeEmptySections();
   }
 
   /* -------------------------
@@ -313,6 +350,7 @@
     if (!students || !students.length) {
       matrixContainer.textContent = 'No students found for this project.';
       updateSectionVisibility();
+      removeEmptySections();
       return;
     }
 
@@ -422,6 +460,7 @@
     commentSection.addEventListener('input', saveDraftHandler);
 
     updateSectionVisibility();
+    removeEmptySections();
   }
 
   /* -------------------------
@@ -496,7 +535,7 @@
       var headerEl = document.querySelector('.current-project-header');
       if (headerEl) headerEl.parentNode.removeChild(headerEl);
 
-      // === NEW: hide/clear the #matrix-info block so description disappears ===
+      // hide/clear the #matrix-info block so description disappears
       var matrixInfoBlock = document.getElementById('matrix-info');
       if (matrixInfoBlock) {
         var hdr = matrixInfoBlock.querySelector('.current-project-header');
@@ -505,10 +544,10 @@
         if (desc) desc.textContent = '';
         matrixInfoBlock.style.display = 'none';
       }
-      // === end new code ===
 
       currentProject = '';
       updateSectionVisibility();
+      removeEmptySections();
 
       if (hasCompletedAllProjects()) {
         showThankyouStage();
@@ -587,7 +626,8 @@
     stagedRatings: stagedRatings,
     completedProjects: completedProjects,
     reloadCSV: tryFetchCSV,
-    updateSectionVisibility: updateSectionVisibility
+    updateSectionVisibility: updateSectionVisibility,
+    removeEmptySections: removeEmptySections
   };
 })();
 
