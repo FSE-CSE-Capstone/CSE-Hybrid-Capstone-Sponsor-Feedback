@@ -1,77 +1,43 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Sponsor Ratings</title>
-  <link rel="stylesheet" href="styles.css">
-</head>
-<body>
-  <div class="split">
-    <!-- LEFT: form area -->
-    <div class="left">
-      <div class="left-inner">
-        <header class="welcome">
-          <h1>Hello, <span class="accent">welcome!</span></h1>
-          <p class="lead">Please identify yourself and select a project to evaluate.</p>
-        </header>
+<!-- Stage wrappers inside left card .card -->
+<!-- STAGE 1: Identity -->
+<div id="stage-identity" class="stage">
+  <h1 class="welcome-title">Hello, <span class="accent">welcome!</span></h1>
+  <p class="lead">Enter your name and email to continue.</p>
 
-        <section class="card">
-          <form id="judge-form" class="form" autocomplete="off">
-            <div class="form-row">
-              <label for="fullName">Your name</label>
-              <input id="fullName" name="fullName" type="text" placeholder="Jane Doe" />
-            </div>
-
-            <div class="form-row">
-              <label for="email">Your email</label>
-              <input id="email" name="email" type="email" placeholder="you@example.com" />
-            </div>
-
-            <div class="form-row inline">
-              <div style="flex:1">
-                <label for="project">Project</label>
-                <select id="project" name="project" disabled>
-                  <option value="">— Select a project —</option>
-                </select>
-              </div>
-              <div class="project-actions">
-                <button type="button" id="loadProjectBtn" class="btn btn-outline">Load Project</button>
-                <button type="button" id="skipBtn" class="btn btn-ghost">Skip</button>
-              </div>
-            </div>
-
-            <h3 id="question-heading" class="question-heading" style="display:none;">Evaluate students</h3>
-
-            <div id="matrix-question" class="matrix-question">Please evaluate the students on Communication</div>
-            <div id="matrix-container" class="matrix-container" aria-live="polite"></div>
-
-            <div class="form-status" id="form-status" aria-live="polite"></div>
-
-            <div class="actions">
-              <button id="submitBtn" class="btn btn-primary" type="submit">Submit ratings</button>
-            </div>
-          </form>
-        </section>
-
-        <footer class="footer">
-          <small>Built for your course. Data saved to Google Sheets.</small>
-        </footer>
-      </div>
-    </div>
-
-    <!-- RIGHT: graphic panel -->
-    <div class="right" aria-hidden="true">
-      <div class="graphic">
-        <!-- Decorative shapes (pure CSS + SVG-like circles) -->
-        <div class="shape circle large"></div>
-        <div class="shape circle mid"></div>
-        <div class="shape triangle"></div>
-        <div class="shape gradient-blob"></div>
-      </div>
-    </div>
+  <div class="form-row">
+    <label for="fullName">Your name</label>
+    <input id="fullName" name="fullName" type="text" placeholder="Jane Doe" />
   </div>
 
-  <script src="scripts.js"></script>
-</body>
-</html>
+  <div class="form-row">
+    <label for="email">Your email</label>
+    <input id="email" name="email" type="email" placeholder="you@example.com" />
+  </div>
+
+  <div class="actions">
+    <button id="identitySubmit" class="btn btn-primary" type="button">Continue</button>
+  </div>
+</div>
+
+<!-- STAGE 2: Projects + Matrix -->
+<div id="stage-projects" class="stage" style="display:none;">
+  <h2 class="projects-heading">Please select the project you would like to evaluate</h2>
+
+  <!-- Project list (click a project to load its matrix) -->
+  <ul id="project-list" class="project-list" aria-live="polite"></ul>
+
+  <!-- When a project is clicked, matrix and comment appear here -->
+  <div id="project-top"></div> <!-- used to move clicked project to top if we need a DOM anchor -->
+
+  <div id="question-heading" class="question-heading" style="display:none;">Evaluate students</div>
+  <div id="matrix-question" class="matrix-question">Please evaluate the students on Communication</div>
+  <div id="matrix-container" class="matrix-container" aria-live="polite"></div>
+
+  <div class="form-status" id="form-status" aria-live="polite"></div>
+
+  <div class="actions">
+    <button id="backToIdentity" class="btn btn-outline" type="button">Back</button>
+    <button id="submitProject" class="btn btn-primary" type="button">Submit ratings for project</button>
+  </div>
+</div>
+
