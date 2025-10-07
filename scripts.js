@@ -1,4 +1,5 @@
 // scripts.js — Multi-stage UI, project list, per-project comments, local save/resume
+// Keep ENDPOINT_URL set to your Worker URL
 const ENDPOINT_URL = 'https://csesponsors.sbecerr7.workers.dev/';
 const CSV_FILENAME = 'data.csv';
 const SCALE = ['Terrible','Poor','Average','Good','Excellent'];
@@ -18,11 +19,13 @@ document.addEventListener('DOMContentLoaded', () => {
   // projects + matrix
   const projectListEl = document.getElementById('project-list');
   const projectTop = document.getElementById('project-top');
-  const questionHeading = document.getElementById('question-heading');
-  const matrixQuestion = document.getElementById('matrix-question');
+  const projectHeadingOutside = document.getElementById('projects-heading-outside');
   const matrixContainer = document.getElementById('matrix-container');
   const formStatus = document.getElementById('form-status');
   const submitProjectBtn = document.getElementById('submitProject');
+
+  // placeholder for a per-project header inside the card
+  const projectHeaderPlaceholder = document.getElementById('project-header-placeholder');
 
   // in-memory data
   let sponsorData = {};      // built from CSV: email -> { projects: { projectName: [students] } }
@@ -31,7 +34,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let currentName = '';
   let currentProject = '';
   let completedProjects = {}; // { projectName: true }
-  let stagedRatings = {};     // saved drafts: stagedRatings[projectName] = { ratings: [{student, rating}], comment: "" }
+  let stagedRatings = {};     // saved drafts: stagedRatings[projectName] = { ratings: {student: rating}, comment: "" }
 
   // UI helpers
   function setStatus(msg, color) {
@@ -107,10 +110,10 @@ document.addEventListener('DOMContentLoaded', () => {
       const rows = parseCSV(txt);
       sponsorData = buildSponsorMap(rows);
       setStatus('Project data loaded. Enter your email to continue.', 'green');
-      // if local progress exists and email matches, go to projects stage
+      // load progress from localStorage
       loadProgress();
       if (currentEmail && sponsorData[currentEmail]) {
-        // go to project list automatically
+        // automatically show projects stage
         showProjectsStage();
         populateProjectListFor(currentEmail);
       }
@@ -124,12 +127,14 @@ document.addEventListener('DOMContentLoaded', () => {
   function showIdentityStage() {
     stageIdentity.style.display = '';
     stageProjects.style.display = 'none';
+    projectHeadingOutside.style.display = 'none';
     setStatus('');
   }
 
   function showProjectsStage() {
     stageIdentity.style.display = 'none';
     stageProjects.style.display = '';
+    projectHeadingOutside.style.display = '';
   }
 
   // Build the project list UI for the signed-in sponsor
@@ -141,9 +146,9 @@ document.addEventListener('DOMContentLoaded', () => {
       setStatus('No projects found for that email.', 'red');
       return;
     }
-    // Build an array sorted: completed projects first (so they appear on top)
+
     const allProjects = Object.keys(entry.projects).slice();
-    // Put projects with completedProjects true at top (maintain their relative order)
+    // Put completed projects first (they will be shown at top)
     allProjects.sort((a,b) => {
       const ca = completedProjects[a] ? -1 : 1;
       const cb = completedProjects[b] ? -1 : 1;
@@ -154,7 +159,6 @@ document.addEventListener('DOMContentLoaded', () => {
       const li = document.createElement('li');
       li.className = 'project-item';
       li.tabIndex = 0;
-      // visually mark completed/skipped
       if (completedProjects[p]) {
         li.classList.add('completed');
         li.innerHTML = `<strong>${escapeHtml(p)}</strong> <span class="meta">(completed)</span>`;
@@ -162,19 +166,32 @@ document.addEventListener('DOMContentLoaded', () => {
         li.innerHTML = `<strong>${escapeHtml(p)}</strong>`;
       }
       li.dataset.project = p;
+
       li.addEventListener('click', () => {
         if (completedProjects[p]) {
           setStatus('This project is already completed.', 'red');
           return;
         }
+        // remove active from any other items
+        projectListEl.querySelectorAll('.project-item.active').forEach(el => el.classList.remove('active'));
+        // mark this item active
+        li.classList.add('active');
+
         // move selected project to top of list visually
         projectListEl.prepend(li);
+        // load matrix
         loadProjectIntoMatrix(p, entry.projects[p]);
+
+        // clear helper status
+        setStatus('');
       });
+
       projectListEl.appendChild(li);
       sponsorProjects[p] = entry.projects[p].slice();
     });
-    setStatus('Select a project from the list.');
+
+    // no helper text here (we intentionally keep the card clean)
+    setStatus('');
   }
 
   // escape helper to avoid injection
@@ -186,8 +203,16 @@ document.addEventListener('DOMContentLoaded', () => {
   function loadProjectIntoMatrix(projectName, students) {
     currentProject = projectName;
     matrixContainer.innerHTML = '';
-    questionHeading.style.display = 'block';
-    matrixQuestion.textContent = `Please evaluate the students on Communication — ${projectName}`;
+
+    // show small header inside the card
+    let headerEl = document.querySelector('.current-project-header');
+    if (!headerEl) {
+      headerEl = document.createElement('div');
+      headerEl.className = 'current-project-header';
+      // insert before the matrix container
+      matrixContainer.parentNode.insertBefore(headerEl, matrixContainer);
+    }
+    headerEl.textContent = projectName;
 
     if (!students || !students.length) {
       matrixContainer.textContent = 'No students found for this project.';
@@ -244,6 +269,9 @@ document.addEventListener('DOMContentLoaded', () => {
     matrixContainer.appendChild(commentWrap);
 
     // Save draft when user changes any rating or comment
+    // Use delegated listeners on matrixContainer
+    matrixContainer.removeEventListener('change', saveDraftHandler);
+    matrixContainer.removeEventListener('input', saveDraftHandler);
     matrixContainer.addEventListener('change', saveDraftHandler);
     matrixContainer.addEventListener('input', saveDraftHandler);
 
@@ -260,7 +288,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Gather matrix responses + project comment and send to server (one POST where Worker writes one row per student)
+  // Gather matrix responses + project comment and send to server
   async function submitCurrentProject() {
     if (!currentProject) { setStatus('No project is loaded.', 'red'); return; }
     const students = sponsorProjects[currentProject] || [];
@@ -308,13 +336,15 @@ document.addEventListener('DOMContentLoaded', () => {
       const item = projectListEl.querySelector(`li[data-project="${CSS.escape(currentProject)}"]`);
       if (item) {
         item.classList.add('completed');
+        item.classList.remove('active');
         item.innerHTML = `<strong>${escapeHtml(currentProject)}</strong> <span class="meta">(completed)</span>`;
         projectListEl.prepend(item);
       }
 
-      // clear matrix
+      // clear matrix and header
       matrixContainer.innerHTML = '';
-      questionHeading.style.display = 'none';
+      const headerEl = document.querySelector('.current-project-header');
+      if (headerEl) headerEl.remove();
       currentProject = '';
 
     } catch (err) {
@@ -353,11 +383,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   submitProjectBtn.addEventListener('click', () => {
     submitCurrentProject();
-  });
-
-  // When email input changes, optionally preload if known
-  emailInput.addEventListener('input', () => {
-    setStatus('');
   });
 
   // Initialize
