@@ -107,33 +107,83 @@
     }
   }
 
-  // Robustly hide empty .section cards
-  function updateSectionVisibility() {
-    var sections = document.querySelectorAll('.section');
-    function hasMeaningfulContent(node) {
-      if (!node) return false;
-      if (node.nodeType === Node.TEXT_NODE) {
-        var t = node.textContent || '';
-        return t.trim().length > 0;
-      }
-      if (node.nodeType === Node.ELEMENT_NODE) {
-        var tag = node.tagName ? node.tagName.toUpperCase() : '';
-        var immediate = ['TABLE','UL','OL','LI','INPUT','TEXTAREA','SELECT','BUTTON','LABEL','P','H1','H2','H3','H4','STRONG','EM','SPAN','A','IMG'];
-        if (immediate.indexOf(tag) !== -1) {
+ // Replace existing updateSectionVisibility() with this improved version
+function updateSectionVisibility() {
+  var sections = document.querySelectorAll('.section');
+
+  function hasMeaningfulContent(node) {
+    if (!node) return false;
+    if (node.nodeType === Node.TEXT_NODE) {
+      return (node.textContent || '').trim().length > 0;
+    }
+    if (node.nodeType === Node.ELEMENT_NODE) {
+      var tag = node.tagName ? node.tagName.toUpperCase() : '';
+      var meaningfulTags = ['TABLE','UL','OL','LI','INPUT','TEXTAREA','SELECT','BUTTON','LABEL','P','H1','H2','H3','H4','IMG','SVG','CANVAS','A','STRONG','EM','SPAN'];
+      if (meaningfulTags.indexOf(tag) !== -1) {
+        // if visible -> meaningful
+        try {
           if (node.offsetParent !== null) return true;
+        } catch (e) {
+          // ignore
+          return true;
         }
-        if (node.getAttribute) {
-          if (node.getAttribute('role') || node.getAttribute('aria-label') || node.getAttribute('alt')) {
-            if (node.offsetParent !== null) return true;
+      }
+      // attributes like aria-label/role/alt count as content
+      if (node.getAttribute && (node.getAttribute('aria-label') || node.getAttribute('role') || node.getAttribute('alt'))) {
+        try {
+          if (node.offsetParent !== null) return true;
+        } catch (e) { return true; }
+      }
+      // recursively check children
+      var children = node.childNodes || [];
+      for (var i = 0; i < children.length; i++) {
+        if (hasMeaningfulContent(children[i])) return true;
+      }
+    }
+    return false;
+  }
+
+  sections.forEach(function (s) {
+    try {
+      var meaningful = hasMeaningfulContent(s);
+
+      // extra guard: if element has no visible meaningful content but still has height (Chrome), hide it
+      if (!meaningful) {
+        var rect = s.getBoundingClientRect();
+        // consider "tiny" or zero height as empty — adjust threshold if needed
+        if (rect.height < 8 || (rect.width === 0 && rect.height === 0)) {
+          s.style.display = 'none';
+          return;
+        }
+
+        // if element has padding/border making it show as an empty box but no content
+        // check computed style: if only padding/border but no real child content, hide it
+        var cs = window.getComputedStyle(s);
+        var innerText = (s.innerText || '').trim();
+        if (!innerText && (cs.paddingTop === cs.paddingBottom && cs.paddingLeft === cs.paddingRight)) {
+          // final check: any non-empty descendants?
+          var hasDescendants = false;
+          var ch = s.querySelectorAll('*');
+          for (var k = 0; k < ch.length; k++) {
+            if (hasMeaningfulContent(ch[k])) { hasDescendants = true; break; }
+          }
+          if (!hasDescendants) {
+            s.style.display = 'none';
+            return;
           }
         }
-        var i, children = node.childNodes || [];
-        for (i = 0; i < children.length; i++) {
-          if (hasMeaningfulContent(children[i])) return true;
-        }
       }
-      return false;
+
+      // otherwise show element
+      s.style.display = meaningful ? '' : '';
+    } catch (err) {
+      // if anything goes wrong, show the section (safe fallback)
+      s.style.display = '';
+      console.warn('updateSectionVisibility error', err);
     }
+  });
+}
+
 
     for (var si = 0; si < sections.length; si++) {
       var s = sections[si];
