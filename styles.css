@@ -41,9 +41,12 @@ input:focus, select:focus, textarea:focus{box-shadow:0 8px 20px rgba(11,39,94,0.
 .project-actions .btn{padding:10px 12px;min-width:110px}
 
 /* buttons */
-.btn{border:0;border-radius:10px;cursor:pointer;font-weight:700}
+.btn{border:0;border-radius:10px;cursor:pointer;font-weight:700;transition:all .14s ease}
 .btn-primary{background:linear-gradient(90deg,var(--accent-2),var(--accent));color:#fff;padding:12px 18px;box-shadow:0 8px 20px rgba(124,43,255,0.12)}
+.btn-primary:hover{filter:brightness(1.03);transform:translateY(-3px)}
+.btn-primary:active{filter:brightness(0.95);transform:translateY(-1px)}
 .btn-outline{background:transparent;border:1px solid rgba(124,43,255,0.12);color:var(--accent-2);padding:8px 12px;border-radius:10px}
+.btn-outline:hover{background:rgba(124,43,255,0.04);transform:translateY(-2px)}
 .btn-ghost{background:transparent;color:var(--muted);padding:10px 12px;border-radius:10px}
 
 /* matrix */
