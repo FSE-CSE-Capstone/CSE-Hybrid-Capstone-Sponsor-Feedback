@@ -31,6 +31,77 @@
             </div>
 
             <div class="form-row">
-              <label for=
+              <label for="email">Your email</label>
+              <input id="email" name="email" type="email" placeholder="you@example.com" />
+            </div>
+
+            <div class="actions">
+              <button id="identitySubmit" class="btn btn-primary" type="button">Continue</button>
+            </div>
+          </div>
+
+          <!-- STAGE 2: Projects + Matrix (hidden initially) -->
+          <div id="stage-projects" class="stage" style="display:none;">
+            <!-- PROJECT LIST SECTION -->
+            <div class="section section-projects" aria-labelledby="projects-heading">
+              <h3 id="projects-heading" class="section-title">Projects</h3>
+              <ul id="project-list" class="project-list" aria-live="polite"></ul>
+            </div>
+
+            <!-- MATRIX SECTION -->
+            <div class="section section-matrix" aria-live="polite">
+              <div id="matrix-info" class="matrix-info" style="display:none;">
+                <div class="matrix-description">Please evaluate the students on Communication</div>
+                <div class="current-project-header" id="current-project-header"></div>
+              </div>
+              <div id="matrix-container" class="matrix-container"></div>
+            </div>
+
+            <!-- COMMENT SECTION -->
+            <div class="section section-comment">
+              <!-- comment UI will be injected below matrix; kept as a section for spacing -->
+            </div>
+
+            <div class="form-status" id="form-status" aria-live="polite"></div>
+
+            <div class="actions actions-space-between">
+              <div>
+                <button id="backToIdentity" class="btn btn-outline" type="button">Back</button>
+              </div>
+              <div>
+                <button id="submitProject" class="btn btn-primary" type="button">Submit ratings for project</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- STAGE 3: Thank you -->
+          <div id="stage-thankyou" class="stage" style="display:none;text-align:center;padding:36px;">
+            <h2>Thank you — your evaluations have been submitted.</h2>
+            <p class="lead">We appreciate your time and feedback.</p>
+            <div style="margin-top:20px;display:flex;justify-content:center;gap:12px;">
+              <button id="finishStartOver" class="btn btn-outline" type="button">Start Over</button>
+            </div>
+          </div>
+        </section>
+
+        <footer class="footer"><small>Built for your course. Data saved to Google Sheets.</small></footer>
+      </div>
+    </div>
+
+    <!-- RIGHT: artwork -->
+    <div class="right" aria-hidden="true">
+      <div class="graphic">
+        <div class="shape circle large"></div>
+        <div class="shape circle mid"></div>
+        <div class="shape triangle"></div>
+        <div class="shape gradient-blob"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="scripts.js"></script>
+</body>
+</html>
+
 
 
