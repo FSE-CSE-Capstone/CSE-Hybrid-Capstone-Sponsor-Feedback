@@ -326,7 +326,6 @@ if (descEl) descEl.textContent = 'Please evaluate the students on Communication'
     if (commentSection) {
   commentSection.innerHTML = ''; // clear
   const commentWrap = document.createElement('div');
-  ...
   commentSection.appendChild(commentWrap);
   // explicitly show the comment section (override CSS default)
   commentSection.style.display = '';
