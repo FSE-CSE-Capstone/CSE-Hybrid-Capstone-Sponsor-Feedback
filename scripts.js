@@ -196,7 +196,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // escape helper to avoid injection
   function escapeHtml(s) {
-    return String(s).replace(/[&<>"']/g, (m) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+    return String(s).replace(/[&<>\"']/g, (m) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[m]));
   }
 
   // Render the rating matrix for a given project
