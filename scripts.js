@@ -242,15 +242,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // show matrix info area and set description
     const matrixInfoBlock = document.getElementById('matrix-info');
-    if (matrixInfoBlock) matrixInfoBlock.style.display = '';
-    const descEl = matrixInfoBlock ? matrixInfoBlock.querySelector('.matrix-description') : null;
-    if (descEl) descEl.textContent = 'Please evaluate the students on Communication';
+if (matrixInfoBlock) matrixInfoBlock.style.display = '';
 
-    if (!students || !students.length) {
-      matrixContainer.textContent = 'No students found for this project.';
-      updateSectionVisibility();
-      return;
-    }
+const projectHeader = matrixInfoBlock.querySelector('.current-project-header');
+const descEl = matrixInfoBlock.querySelector('.matrix-description');
+
+if (projectHeader) projectHeader.textContent = projectName;
+if (descEl) descEl.textContent = 'Please evaluate the students on Communication';
 
     // Table
     const table = document.createElement('table');
