@@ -1,5 +1,4 @@
-// scripts.js — Full replacement
-// Multi-stage UI, project list, per-project comments, local save/resume
+// scripts.js — Full replacement with matrix-info hide-on-submit
 (function () {
   'use strict';
 
@@ -9,7 +8,7 @@
   var SCALE = ['Terrible', 'Poor', 'Average', 'Good', 'Excellent'];
   var STORAGE_KEY = 'sponsor_progress_v1';
 
-  // DOM nodes (some may be missing depending on HTML; guard against null)
+  // DOM nodes (guarded)
   var stageIdentity = document.getElementById('stage-identity');
   var stageProjects = document.getElementById('stage-projects');
   var stageThankyou = document.getElementById('stage-thankyou'); // optional
@@ -22,7 +21,7 @@
   var matrixContainer = document.getElementById('matrix-container');
   var formStatus = document.getElementById('form-status');
   var submitProjectBtn = document.getElementById('submitProject');
-  var matrixInfo = document.getElementById('matrix-info'); // optional block that may contain header + description
+  var matrixInfo = document.getElementById('matrix-info'); // may be created later
   var finishStartOverBtn = document.getElementById('finishStartOver');
 
   // State
@@ -35,20 +34,12 @@
   var stagedRatings = {};
 
   /* -------------------------
-     Helper utilities
+     Helpers
      ------------------------- */
-  function logDebug() {
-    try { /* no-op */ } catch (e) {}
-  }
-
   function setStatus(msg, color) {
-    if (!formStatus) { return; }
+    if (!formStatus) return;
     formStatus.textContent = msg || '';
-    if (color) {
-      formStatus.style.color = color;
-    } else {
-      formStatus.style.color = '';
-    }
+    formStatus.style.color = color || '';
   }
 
   function escapeHtml(s) {
@@ -58,7 +49,7 @@
 
   function parseCSV(text) {
     var rows = text.split(/\r?\n/).map(function (l) { return l.trim(); }).filter(Boolean);
-    if (!rows.length) { return []; }
+    if (!rows.length) return [];
     var headers = rows[0].split(',').map(function (h) { return h.trim(); });
     return rows.slice(1).map(function (line) {
       var parts = line.split(',').map(function (p) { return p.trim(); });
@@ -74,9 +65,9 @@
       var email = (r.sponsorEmail || r.email || '').toLowerCase();
       var project = (r.project || '').trim();
       var student = (r.student || '').trim();
-      if (!email || !project || !student) { return; }
-      if (!map[email]) { map[email] = { projects: {} }; }
-      if (!map[email].projects[project]) { map[email].projects[project] = []; }
+      if (!email || !project || !student) return;
+      if (!map[email]) map[email] = { projects: {} };
+      if (!map[email].projects[project]) map[email].projects[project] = [];
       if (map[email].projects[project].indexOf(student) === -1) {
         map[email].projects[project].push(student);
       }
@@ -84,7 +75,6 @@
     return map;
   }
 
-  // persist/restore progress
   function saveProgress() {
     var payload = {
       name: currentName,
@@ -95,7 +85,6 @@
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
     } catch (e) {
-      // ignore storage failures
       console.warn('Could not save progress', e);
     }
   }
@@ -103,47 +92,44 @@
   function loadProgress() {
     try {
       var raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) { return; }
+      if (!raw) return;
       var obj = JSON.parse(raw);
       if (obj && obj.email) {
         currentName = obj.name || '';
         currentEmail = obj.email || '';
         completedProjects = obj.completedProjects || {};
         stagedRatings = obj.stagedRatings || {};
-        if (nameInput) { nameInput.value = currentName; }
-        if (emailInput) { emailInput.value = currentEmail; }
+        if (nameInput) nameInput.value = currentName;
+        if (emailInput) emailInput.value = currentEmail;
       }
     } catch (e) {
       console.warn('Could not load progress', e);
     }
   }
 
-  // Robustly hide empty .section cards (walks DOM and checks for meaningful nodes)
+  // Robustly hide empty .section cards
   function updateSectionVisibility() {
     var sections = document.querySelectorAll('.section');
     function hasMeaningfulContent(node) {
-      if (!node) { return false; }
+      if (!node) return false;
       if (node.nodeType === Node.TEXT_NODE) {
         var t = node.textContent || '';
         return t.trim().length > 0;
       }
       if (node.nodeType === Node.ELEMENT_NODE) {
         var tag = node.tagName ? node.tagName.toUpperCase() : '';
-        var immediateMeaningful = ['TABLE','UL','OL','LI','INPUT','TEXTAREA','SELECT','BUTTON','LABEL','P','H1','H2','H3','H4','STRONG','EM','SPAN','A','IMG'];
-        if (immediateMeaningful.indexOf(tag) !== -1) {
-          // if element is visible
-          if (node.offsetParent !== null) { return true; }
+        var immediate = ['TABLE','UL','OL','LI','INPUT','TEXTAREA','SELECT','BUTTON','LABEL','P','H1','H2','H3','H4','STRONG','EM','SPAN','A','IMG'];
+        if (immediate.indexOf(tag) !== -1) {
+          if (node.offsetParent !== null) return true;
         }
-        // meaningful attributes
         if (node.getAttribute) {
           if (node.getAttribute('role') || node.getAttribute('aria-label') || node.getAttribute('alt')) {
-            if (node.offsetParent !== null) { return true; }
+            if (node.offsetParent !== null) return true;
           }
         }
-        // check children
         var i, children = node.childNodes || [];
         for (i = 0; i < children.length; i++) {
-          if (hasMeaningfulContent(children[i])) { return true; }
+          if (hasMeaningfulContent(children[i])) return true;
         }
       }
       return false;
@@ -161,13 +147,11 @@
   }
 
   /* -------------------------
-     CSV load and init
+     CSV fetch + init
      ------------------------- */
   function tryFetchCSV() {
     fetch(CSV_FILENAME, { cache: 'no-store' }).then(function (resp) {
-      if (!resp.ok) {
-        throw new Error('CSV fetch failed: ' + resp.status);
-      }
+      if (!resp.ok) throw new Error('CSV fetch failed: ' + resp.status);
       return resp.text();
     }).then(function (txt) {
       var rows = parseCSV(txt);
@@ -190,27 +174,27 @@
      Stage switching
      ------------------------- */
   function showIdentityStage() {
-    if (stageIdentity) { stageIdentity.style.display = ''; }
-    if (stageProjects) { stageProjects.style.display = 'none'; }
-    if (stageThankyou) { stageThankyou.style.display = 'none'; }
-    if (projectHeadingOutside) { projectHeadingOutside.style.display = 'none'; }
+    if (stageIdentity) stageIdentity.style.display = '';
+    if (stageProjects) stageProjects.style.display = 'none';
+    if (stageThankyou) stageThankyou.style.display = 'none';
+    if (projectHeadingOutside) projectHeadingOutside.style.display = 'none';
     setStatus('');
     updateSectionVisibility();
   }
 
   function showProjectsStage() {
-    if (stageIdentity) { stageIdentity.style.display = 'none'; }
-    if (stageProjects) { stageProjects.style.display = ''; }
-    if (stageThankyou) { stageThankyou.style.display = 'none'; }
-    if (projectHeadingOutside) { projectHeadingOutside.style.display = ''; }
+    if (stageIdentity) stageIdentity.style.display = 'none';
+    if (stageProjects) stageProjects.style.display = '';
+    if (stageThankyou) stageThankyou.style.display = 'none';
+    if (projectHeadingOutside) projectHeadingOutside.style.display = '';
     updateSectionVisibility();
   }
 
   function showThankyouStage() {
-    if (stageIdentity) { stageIdentity.style.display = 'none'; }
-    if (stageProjects) { stageProjects.style.display = 'none'; }
-    if (stageThankyou) { stageThankyou.style.display = ''; }
-    if (projectHeadingOutside) { projectHeadingOutside.style.display = 'none'; }
+    if (stageIdentity) stageIdentity.style.display = 'none';
+    if (stageProjects) stageProjects.style.display = 'none';
+    if (stageThankyou) stageThankyou.style.display = '';
+    if (projectHeadingOutside) projectHeadingOutside.style.display = 'none';
     updateSectionVisibility();
   }
 
@@ -218,7 +202,7 @@
      Project list builder
      ------------------------- */
   function populateProjectListFor(email) {
-    if (!projectListEl) { return; }
+    if (!projectListEl) return;
     projectListEl.innerHTML = '';
     sponsorProjects = {};
     var entry = sponsorData[email];
@@ -228,8 +212,6 @@
       return;
     }
     var allProjects = Object.keys(entry.projects).slice();
-
-    // sort optionally so completed appear after/before as desired (here keep stable)
     allProjects.sort(function (a, b) {
       var ca = completedProjects[a] ? -1 : 1;
       var cb = completedProjects[b] ? -1 : 1;
@@ -244,7 +226,7 @@
         li.setAttribute('data-project', p);
 
         if (completedProjects[p]) {
-          li.className = li.className + ' completed';
+          li.className += ' completed';
           li.innerHTML = '<strong>' + escapeHtml(p) + '</strong> <span class="meta">(completed)</span>';
         } else {
           li.innerHTML = '<strong>' + escapeHtml(p) + '</strong>';
@@ -255,14 +237,9 @@
             setStatus('This project is already completed.', 'red');
             return;
           }
-          // mark active visually
-          var active = projectListEl.querySelectorAll('.project-item.active');
-          for (var ai = 0; ai < active.length; ai++) {
-            active[ai].classList.remove('active');
-          }
+          var act = projectListEl.querySelectorAll('.project-item.active');
+          for (var ai = 0; ai < act.length; ai++) act[ai].classList.remove('active');
           li.classList.add('active');
-
-          // Load matrix (do NOT reorder the list)
           loadProjectIntoMatrix(p, entry.projects[p]);
           setStatus('');
         });
@@ -281,13 +258,12 @@
      ------------------------- */
   function loadProjectIntoMatrix(projectName, students) {
     currentProject = projectName;
-    if (!matrixContainer) { return; }
+    if (!matrixContainer) return;
     matrixContainer.innerHTML = '';
 
-    // Ensure we have a project info block (matrix-info) that holds header and description.
+    // ensure matrix info block exists above matrix
     var info = matrixInfo;
     if (!info) {
-      // create a lightweight info block above the matrix
       info = document.createElement('div');
       info.id = 'matrix-info';
       var hdr = document.createElement('div');
@@ -300,11 +276,12 @@
       matrixInfo = info;
     }
 
-    // project name first, then description
+    // project name above description
     var headerEl = info.querySelector('.current-project-header');
     var descEl = info.querySelector('.matrix-description');
-    if (headerEl) { headerEl.textContent = projectName; }
-    if (descEl) { descEl.textContent = 'Please evaluate the students on Communication'; }
+    if (headerEl) headerEl.textContent = projectName;
+    if (descEl) descEl.textContent = 'Please evaluate the students on Communication';
+    info.style.display = ''; // ensure visible
 
     if (!students || !students.length) {
       matrixContainer.textContent = 'No students found for this project.';
@@ -312,7 +289,6 @@
       return;
     }
 
-    // create table
     var table = document.createElement('table');
     table.className = 'matrix-table';
     var thead = document.createElement('thead');
@@ -349,7 +325,6 @@
         input.name = 'rating-' + sIdx;
         input.value = String(colIdx + 1);
         input.id = id;
-        // restore draft if present
         if (draft.ratings && draft.ratings[student] && String(draft.ratings[student]) === String(colIdx + 1)) {
           input.checked = true;
         }
@@ -367,15 +342,14 @@
     table.appendChild(tbody);
     matrixContainer.appendChild(table);
 
-    // Insert comment area into a dedicated .section.section-comment (create if missing)
+    // comment section (dedicated .section.section-comment)
     var commentSection = document.querySelector('.section.section-comment');
     if (!commentSection) {
       commentSection = document.createElement('div');
       commentSection.className = 'section section-comment';
-      // insert after the matrixContainer
       matrixContainer.parentNode.insertBefore(commentSection, matrixContainer.nextSibling);
     }
-    commentSection.innerHTML = ''; // clear previous content safely
+    commentSection.innerHTML = '';
 
     var commentWrap = document.createElement('div');
     commentWrap.className = 'project-comment-wrap';
@@ -391,12 +365,12 @@
     commentWrap.appendChild(ta);
     commentSection.appendChild(commentWrap);
 
-    // explicitly make the comment section visible (override any display:none in CSS)
+    // explicitly show comment section (override any CSS that hid it)
     commentSection.style.display = '';
     commentSection.style.visibility = 'visible';
 
-    // Save draft when user changes ratings or comment
-    var saveDraftHandler = function () {
+    // Save draft handler
+    function saveDraftHandler() {
       var rows = [];
       for (var ii = 0; ii < students.length; ii++) {
         var sel = document.querySelector('input[name="rating-' + ii + '"]:checked');
@@ -404,15 +378,14 @@
       }
       var commentVal = '';
       var taEl = document.getElementById('project-comment');
-      if (taEl) { commentVal = taEl.value || ''; }
+      if (taEl) commentVal = taEl.value || '';
       var draftObj = { ratings: {}, comment: commentVal };
-      rows.forEach(function (r) { if (r.rating != null) { draftObj.ratings[r.student] = r.rating; } });
+      rows.forEach(function (r) { if (r.rating != null) draftObj.ratings[r.student] = r.rating; });
       stagedRatings[projectName] = draftObj;
       saveProgress();
-    };
+    }
 
-    // Remove previous listeners safely by cloning node (simple approach)
-    // (This avoids duplicate handlers)
+    // replace matrixContainer node to clear old listeners, then reattach
     var newMatrix = matrixContainer.cloneNode(true);
     matrixContainer.parentNode.replaceChild(newMatrix, matrixContainer);
     matrixContainer = newMatrix;
@@ -425,7 +398,7 @@
   }
 
   /* -------------------------
-     Submit current project to server
+     Submit current project
      ------------------------- */
   function submitCurrentProject() {
     if (!currentProject) { setStatus('No project is loaded.', 'red'); return; }
@@ -437,7 +410,7 @@
       var sel = document.querySelector('input[name="rating-' + i + '"]:checked');
       var commentVal = '';
       var taEl = document.getElementById('project-comment');
-      if (taEl) { commentVal = taEl.value || ''; }
+      if (taEl) commentVal = taEl.value || '';
       rows.push({ student: students[i], rating: sel ? parseInt(sel.value, 10) : null, comment: commentVal });
     }
 
@@ -453,7 +426,7 @@
     };
 
     setStatus('Submitting...', 'black');
-    if (submitProjectBtn) { submitProjectBtn.disabled = true; }
+    if (submitProjectBtn) submitProjectBtn.disabled = true;
 
     var form = new FormData();
     form.append('payload', JSON.stringify(payload));
@@ -469,14 +442,12 @@
       console.log('Saved', data);
       setStatus('Submission saved. Thank you!', 'green');
 
-      // mark completed and persist
+      // mark completed and save
       completedProjects[currentProject] = true;
-      if (stagedRatings && stagedRatings[currentProject]) {
-        delete stagedRatings[currentProject];
-      }
+      if (stagedRatings && stagedRatings[currentProject]) delete stagedRatings[currentProject];
       saveProgress();
 
-      // update list item UI
+      // update project list entry to completed
       if (projectListEl) {
         var li = projectListEl.querySelector('li[data-project="' + CSS.escape(currentProject) + '"]');
         if (li) {
@@ -487,17 +458,31 @@
       }
 
       // clear matrix and comment DOM
-      if (matrixContainer) { matrixContainer.innerHTML = ''; }
+      if (matrixContainer) matrixContainer.innerHTML = '';
       var commentSection = document.querySelector('.section.section-comment');
-      if (commentSection) { commentSection.innerHTML = ''; commentSection.style.display = 'none'; }
+      if (commentSection) {
+        commentSection.innerHTML = '';
+        commentSection.style.display = 'none';
+      }
 
+      // remove the small header if present
       var headerEl = document.querySelector('.current-project-header');
-      if (headerEl) { headerEl.parentNode.removeChild(headerEl); }
+      if (headerEl) headerEl.parentNode.removeChild(headerEl);
+
+      // === NEW: hide/clear the #matrix-info block so description disappears ===
+      var matrixInfoBlock = document.getElementById('matrix-info');
+      if (matrixInfoBlock) {
+        var hdr = matrixInfoBlock.querySelector('.current-project-header');
+        var desc = matrixInfoBlock.querySelector('.matrix-description');
+        if (hdr) hdr.textContent = '';
+        if (desc) desc.textContent = '';
+        matrixInfoBlock.style.display = 'none';
+      }
+      // === end new code ===
 
       currentProject = '';
       updateSectionVisibility();
 
-      // if all done, show thank-you
       if (hasCompletedAllProjects()) {
         showThankyouStage();
       }
@@ -505,22 +490,22 @@
       console.error('Submission failed', err);
       setStatus('Submission failed. See console.', 'red');
     }).finally(function () {
-      if (submitProjectBtn) { submitProjectBtn.disabled = false; }
+      if (submitProjectBtn) submitProjectBtn.disabled = false;
     });
   }
 
   function hasCompletedAllProjects() {
     var entry = sponsorData[currentEmail] || {};
     var all = Object.keys(entry.projects || {});
-    if (!all || all.length === 0) { return false; }
+    if (!all || all.length === 0) return false;
     for (var i = 0; i < all.length; i++) {
-      if (!completedProjects[all[i]]) { return false; }
+      if (!completedProjects[all[i]]) return false;
     }
     return true;
   }
 
   /* -------------------------
-     Event wiring
+     Events
      ------------------------- */
   if (identitySubmit) {
     identitySubmit.addEventListener('click', function () {
@@ -556,7 +541,7 @@
       stagedRatings = {};
       saveProgress();
       currentProject = '';
-      if (matrixContainer) { matrixContainer.innerHTML = ''; }
+      if (matrixContainer) matrixContainer.innerHTML = '';
       var commentSection = document.querySelector('.section.section-comment');
       if (commentSection) { commentSection.innerHTML = ''; commentSection.style.display = 'none'; }
       showIdentityStage();
@@ -569,7 +554,7 @@
   showIdentityStage();
   tryFetchCSV();
 
-  // Expose small helpers for debugging in console if needed
+  // expose small debug helpers
   window.__sponsorDebug = {
     sponsorData: sponsorData,
     stagedRatings: stagedRatings,
