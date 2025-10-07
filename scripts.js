@@ -23,7 +23,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const formStatus = document.getElementById('form-status');
   const submitProjectBtn = document.getElementById('submitProject');
   const commentSection = document.querySelector('.section.section-comment');
-  const projectHeaderPlaceholder = document.getElementById('project-header-placeholder');
 
   // State
   let sponsorData = {};
@@ -95,17 +94,23 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (e) { console.warn('Could not load progress', e); }
   }
 
-  // Hide any empty .section to prevent blank "bubbles"
+  // Hide any truly-empty .section cards to avoid displaying empty "bubbles"
   function updateSectionVisibility() {
     document.querySelectorAll('.section').forEach(s => {
-      // treat as non-empty if it has an element child with visible content
-      const hasVisibleChild = Array.from(s.children).some(child => {
-        if (child.offsetParent === null) return false; // hidden by CSS
-        if (child.textContent && child.textContent.trim().length > 0) return true;
-        if (child.querySelector && child.querySelector('*')) return true;
-        return false;
-      });
-      s.style.display = hasVisibleChild ? '' : 'none';
+      // Detect meaningful content:
+      // - tables (matrix)
+      // - project items (.project-item)
+      // - form controls (input, textarea, select, button)
+      // - visible text
+      const hasTable = !!s.querySelector('table');
+      const hasProjectItems = !!s.querySelector('.project-item');
+      const hasFormControls = !!s.querySelector('input, textarea, select, button');
+      // innerText returns only visible text (not markup)
+      const visibleText = (s.innerText || '').trim();
+      const hasText = visibleText.length > 0;
+
+      const shouldShow = hasTable || hasProjectItems || hasFormControls || hasText;
+      s.style.display = shouldShow ? '' : 'none';
     });
   }
 
@@ -119,7 +124,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const txt = await resp.text();
       const rows = parseCSV(txt);
       sponsorData = buildSponsorMap(rows);
-      window._sponsorData = sponsorData; // debug inspect
+      window._sponsorData = sponsorData; // debug inspect if needed
       setStatus('Project data loaded. Enter your email to continue.', 'green');
       loadProgress();
 
@@ -130,6 +135,7 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (err) {
       console.debug('CSV fetch failed', err);
       setStatus('Project data not found. Ensure data.csv is present.');
+      updateSectionVisibility();
     }
   }
 
@@ -175,7 +181,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const allProjects = Object.keys(entry.projects).slice();
-    // keep completed projects first if you prefer; currently sort keeps completed first
+    // Put completed projects first (optional)
     allProjects.sort((a,b) => {
       const ca = completedProjects[a] ? -1 : 1;
       const cb = completedProjects[b] ? -1 : 1;
@@ -225,7 +231,7 @@ document.addEventListener('DOMContentLoaded', () => {
     currentProject = projectName;
     matrixContainer.innerHTML = '';
 
-    // show small header inside the card
+    // small header inside the card (project name)
     let headerEl = document.querySelector('.current-project-header');
     if (!headerEl) {
       headerEl = document.createElement('div');
@@ -234,7 +240,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     headerEl.textContent = projectName;
 
-    // ensure the matrix info area is visible and set description
+    // show matrix info area and set description
     const matrixInfoBlock = document.getElementById('matrix-info');
     if (matrixInfoBlock) matrixInfoBlock.style.display = '';
     const descEl = matrixInfoBlock ? matrixInfoBlock.querySelector('.matrix-description') : null;
@@ -246,10 +252,9 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    // build table
+    // Table
     const table = document.createElement('table');
     table.className = 'matrix-table';
-
     const thead = document.createElement('thead');
     const headRow = document.createElement('tr');
     const thStudent = document.createElement('th'); thStudent.textContent = ''; headRow.appendChild(thStudent);
@@ -283,9 +288,9 @@ document.addEventListener('DOMContentLoaded', () => {
     table.appendChild(tbody);
     matrixContainer.appendChild(table);
 
-    // move comment into dedicated section (so empty sections don't appear)
+    // put comment UI into the dedicated comment section (avoid empty card bubbles)
     if (commentSection) {
-      commentSection.innerHTML = ''; // clear previous comment
+      commentSection.innerHTML = ''; // clear
       const commentWrap = document.createElement('div');
       commentWrap.className = 'project-comment-wrap';
       const lbl = document.createElement('label'); lbl.htmlFor = 'project-comment'; lbl.textContent = 'Comments about this project (optional)';
@@ -295,7 +300,7 @@ document.addEventListener('DOMContentLoaded', () => {
       commentSection.appendChild(commentWrap);
     }
 
-    // attach draft saver
+    // Save draft when user changes ratings or comment
     matrixContainer.removeEventListener('change', saveDraftHandler);
     matrixContainer.removeEventListener('input', saveDraftHandler);
     matrixContainer.addEventListener('change', saveDraftHandler);
@@ -359,14 +364,14 @@ document.addEventListener('DOMContentLoaded', () => {
       delete stagedRatings[currentProject];
       saveProgress();
 
-      // update project list UI
+      // update project list entry to completed
       const item = projectListEl.querySelector('li[data-project="' + CSS.escape(currentProject) + '"]');
       if (item) {
         item.classList.add('completed'); item.classList.remove('active');
         item.innerHTML = '<strong>' + escapeHtml(currentProject) + '</strong> <span class="meta">(completed)</span>';
       }
 
-      // clear matrix and comment
+      // clear matrix and comment DOM
       matrixContainer.innerHTML = '';
       if (commentSection) commentSection.innerHTML = '';
       const headerEl = document.querySelector('.current-project-header'); if (headerEl) headerEl.remove();
