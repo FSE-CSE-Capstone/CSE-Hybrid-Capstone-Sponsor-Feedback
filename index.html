@@ -5,10 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Sponsor Ratings</title>
 
-  <!-- styles -->
   <link rel="stylesheet" href="styles.css">
-
-  <!-- optional font -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -17,12 +14,13 @@
     <!-- LEFT: form area -->
     <div class="left">
       <div class="left-inner">
-        <!-- HEADING sits outside the card -->
+        <!-- HEADING sits above the card -->
         <h2 id="projects-heading-outside" class="projects-heading" style="display:none;">
           Please select the project you would like to evaluate
         </h2>
 
         <section class="card">
+
           <!-- STAGE 1: Identity -->
           <div id="stage-identity" class="stage">
             <h1 class="welcome-title">Hello, <span class="accent">welcome!</span></h1>
@@ -43,16 +41,10 @@
             </div>
           </div>
 
-          <!-- STAGE 2: Projects + Matrix (hidden initially) -->
+          <!-- STAGE 2: Projects + Matrix -->
           <div id="stage-projects" class="stage" style="display:none;">
             <!-- project list -->
             <ul id="project-list" class="project-list" aria-live="polite"></ul>
-
-            <!-- anchor for moving selected project to top if needed -->
-            <div id="project-top" aria-hidden="true"></div>
-
-            <!-- small header used when a project is loaded (created dynamically) -->
-            <div id="project-header-placeholder"></div>
 
             <div id="matrix-container" class="matrix-container" aria-live="polite"></div>
 
@@ -67,11 +59,20 @@
               </div>
             </div>
           </div>
+
+          <!-- STAGE 3: Thank you -->
+          <div id="stage-thankyou" class="stage" style="display:none;text-align:center;padding:36px;">
+            <h2>Thank you — your evaluations have been submitted.</h2>
+            <p class="lead">We appreciate your time and feedback.</p>
+            <div style="margin-top:20px;display:flex;justify-content:center;gap:12px;">
+              <button id="finishClose" class="btn btn-primary" type="button">Close</button>
+              <button id="finishStartOver" class="btn btn-outline" type="button">Start Over</button>
+            </div>
+          </div>
+
         </section>
 
-        <footer class="footer">
-          <small>Built for your course. Data saved to Google Sheets.</small>
-        </footer>
+        <footer class="footer"><small>Built for your course. Data saved to Google Sheets.</small></footer>
       </div>
     </div>
 
@@ -86,7 +87,6 @@
     </div>
   </div>
 
-  <!-- JS (replace scripts.js with the code below) -->
   <script src="scripts.js"></script>
 </body>
 </html>
