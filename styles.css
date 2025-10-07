@@ -31,8 +31,7 @@ body{background:linear-gradient(180deg,#fafafa,#f3f6ff);}
 .section + .section{margin-top:6px}
 .section-title{margin:0 0 8px;font-weight:700;color:var(--asu-maroon)}
 
-/* hide comment section until it gets real content (safer) */
-.section.section-comment{display:none}
+
 
 /* form */
 .form-row{margin-bottom:14px;display:flex;flex-direction:column}
