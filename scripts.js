@@ -1,31 +1,42 @@
-// scripts.js — staged flow + project comments + greying out completed projects
+// scripts.js — Multi-stage UI, project list, per-project comments, local save/resume
 const ENDPOINT_URL = 'https://csesponsors.sbecerr7.workers.dev/';
 const CSV_FILENAME = 'data.csv';
 const SCALE = ['Terrible','Poor','Average','Good','Excellent'];
+const STORAGE_KEY = 'sponsor_progress_v1';
 
 document.addEventListener('DOMContentLoaded', () => {
-  // DOM refs
-  const emailInput = document.getElementById('email');
+  // Stage DOM nodes
+  const stageIdentity = document.getElementById('stage-identity');
+  const stageProjects = document.getElementById('stage-projects');
+  const identitySubmit = document.getElementById('identitySubmit');
+  const backToIdentity = document.getElementById('backToIdentity');
+
+  // identity fields
   const nameInput = document.getElementById('fullName');
-  const projectSelect = document.getElementById('project');
-  const loadProjectBtn = document.getElementById('loadProjectBtn');
-  const matrixContainer = document.getElementById('matrix-container');
-  const matrixQuestion = document.getElementById('matrix-question');
+  const emailInput = document.getElementById('email');
+
+  // projects + matrix
+  const projectListEl = document.getElementById('project-list');
+  const projectTop = document.getElementById('project-top');
   const questionHeading = document.getElementById('question-heading');
-  const status = document.getElementById('form-status');
-  const submitBtn = document.getElementById('submitBtn');
-  const skipBtn = document.getElementById('skipBtn');
+  const matrixQuestion = document.getElementById('matrix-question');
+  const matrixContainer = document.getElementById('matrix-container');
+  const formStatus = document.getElementById('form-status');
+  const submitProjectBtn = document.getElementById('submitProject');
 
-  // app state
-  let sponsorData = {};        // built from CSV
-  let sponsorProjects = {};    // projects currently available for the signed-in sponsor
-  let currentProject = '';     // project currently shown in matrix
-  let completedProjects = {};  // tracks projects that have been submitted (greyed out)
+  // in-memory data
+  let sponsorData = {};      // built from CSV: email -> { projects: { projectName: [students] } }
+  let sponsorProjects = {};  // for current signed-in email: projectName -> [students]
+  let currentEmail = '';
+  let currentName = '';
+  let currentProject = '';
+  let completedProjects = {}; // { projectName: true }
+  let stagedRatings = {};     // saved drafts: stagedRatings[projectName] = { ratings: [{student, rating}], comment: "" }
 
-  // helpers
+  // UI helpers
   function setStatus(msg, color) {
-    status.textContent = msg || '';
-    status.style.color = color || 'inherit';
+    formStatus.textContent = msg || '';
+    formStatus.style.color = color || 'inherit';
   }
 
   function parseCSV(text) {
@@ -54,236 +65,306 @@ document.addEventListener('DOMContentLoaded', () => {
     return map;
   }
 
+  // Persist/restore progress to localStorage
+  function saveProgress() {
+    const payload = {
+      name: currentName,
+      email: currentEmail,
+      completedProjects,
+      stagedRatings
+    };
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+    } catch (e) {
+      console.warn('Could not save progress', e);
+    }
+  }
+
+  function loadProgress() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+      const obj = JSON.parse(raw);
+      if (obj && obj.email) {
+        currentName = obj.name || '';
+        currentEmail = obj.email || '';
+        completedProjects = obj.completedProjects || {};
+        stagedRatings = obj.stagedRatings || {};
+        nameInput.value = currentName;
+        emailInput.value = currentEmail;
+      }
+    } catch (e) {
+      console.warn('Could not load progress', e);
+    }
+  }
+
+  // CSV fetch
   async function tryFetchCSV() {
     try {
       const resp = await fetch(CSV_FILENAME, { cache: 'no-store' });
-      if (!resp.ok) throw new Error('not found');
+      if (!resp.ok) throw new Error('CSV not found');
       const txt = await resp.text();
       const rows = parseCSV(txt);
       sponsorData = buildSponsorMap(rows);
-      setStatus('Project data loaded. Enter your email to see projects.', 'green');
+      setStatus('Project data loaded. Enter your email to continue.', 'green');
+      // if local progress exists and email matches, go to projects stage
+      loadProgress();
+      if (currentEmail && sponsorData[currentEmail]) {
+        // go to project list automatically
+        showProjectsStage();
+        populateProjectListFor(currentEmail);
+      }
     } catch (err) {
       console.debug('CSV fetch failed', err);
-      setStatus('Project data not found. Make sure data.csv is present.');
+      setStatus('Project data not found. Ensure data.csv is present.');
     }
   }
 
-  // Populate selection dropdown and keep the list visible (stage 2)
-  function populateProjectDropdown(email) {
-    projectSelect.innerHTML = '<option value="">— Select a project —</option>';
+  // Stage switching
+  function showIdentityStage() {
+    stageIdentity.style.display = '';
+    stageProjects.style.display = 'none';
+    setStatus('');
+  }
+
+  function showProjectsStage() {
+    stageIdentity.style.display = 'none';
+    stageProjects.style.display = '';
+  }
+
+  // Build the project list UI for the signed-in sponsor
+  function populateProjectListFor(email) {
+    projectListEl.innerHTML = '';
     sponsorProjects = {};
     const entry = sponsorData[email];
     if (!entry || !entry.projects) {
-      projectSelect.disabled = true;
       setStatus('No projects found for that email.', 'red');
       return;
     }
-    Object.keys(entry.projects).forEach(p => {
-      const opt = document.createElement('option');
-      opt.value = p;
-      opt.textContent = p;
-      // if completed, mark disabled and style
+    // Build an array sorted: completed projects first (so they appear on top)
+    const allProjects = Object.keys(entry.projects).slice();
+    // Put projects with completedProjects true at top (maintain their relative order)
+    allProjects.sort((a,b) => {
+      const ca = completedProjects[a] ? -1 : 1;
+      const cb = completedProjects[b] ? -1 : 1;
+      return ca - cb;
+    });
+
+    allProjects.forEach((p) => {
+      const li = document.createElement('li');
+      li.className = 'project-item';
+      li.tabIndex = 0;
+      // visually mark completed/skipped
       if (completedProjects[p]) {
-        opt.disabled = true;
-        opt.dataset.completed = 'true';
+        li.classList.add('completed');
+        li.innerHTML = `<strong>${escapeHtml(p)}</strong> <span class="meta">(completed)</span>`;
+      } else {
+        li.innerHTML = `<strong>${escapeHtml(p)}</strong>`;
       }
-      projectSelect.appendChild(opt);
+      li.dataset.project = p;
+      li.addEventListener('click', () => {
+        if (completedProjects[p]) {
+          setStatus('This project is already completed.', 'red');
+          return;
+        }
+        // move selected project to top of list visually
+        projectListEl.prepend(li);
+        loadProjectIntoMatrix(p, entry.projects[p]);
+      });
+      projectListEl.appendChild(li);
       sponsorProjects[p] = entry.projects[p].slice();
     });
-    projectSelect.disabled = false;
-    setStatus('Please select the project you would like to evaluate.');
-    // show stage 2 UI (project list visible) — questionHeading remains hidden until load
-    questionHeading.style.display = 'none';
-    matrixContainer.innerHTML = '';
-    currentProject = '';
+    setStatus('Select a project from the list.');
   }
 
-  // Render the rating matrix for a chosen project
-  function renderMatrix(project) {
+  // escape helper to avoid injection
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, (m) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  }
+
+  // Render the rating matrix for a given project
+  function loadProjectIntoMatrix(projectName, students) {
+    currentProject = projectName;
     matrixContainer.innerHTML = '';
     questionHeading.style.display = 'block';
-    matrixQuestion.textContent = 'Please evaluate the students on Communication';
-    const students = sponsorProjects[project] || [];
-    if (!students.length) { matrixContainer.textContent = 'No students found'; return; }
+    matrixQuestion.textContent = `Please evaluate the students on Communication — ${projectName}`;
 
+    if (!students || !students.length) {
+      matrixContainer.textContent = 'No students found for this project.';
+      return;
+    }
+
+    // Table
     const table = document.createElement('table');
     table.className = 'matrix-table';
-    table.style.width = '100%';
-    table.style.borderCollapse = 'collapse';
 
-    // header
     const thead = document.createElement('thead');
     const headRow = document.createElement('tr');
     const thStudent = document.createElement('th'); thStudent.textContent = ''; headRow.appendChild(thStudent);
-    SCALE.forEach(label => { const th = document.createElement('th'); th.textContent = label; th.style.padding='6px'; headRow.appendChild(th); });
-    thead.appendChild(headRow); table.appendChild(thead);
+    SCALE.forEach(label => { const th = document.createElement('th'); th.textContent = label; headRow.appendChild(th); });
+    thead.appendChild(headRow);
+    table.appendChild(thead);
 
-    // body rows
     const tbody = document.createElement('tbody');
+
+    // If there is a draft for this project, use it
+    const draft = stagedRatings[projectName] || { ratings: {}, comment: '' };
+
     students.forEach((student, sIdx) => {
       const tr = document.createElement('tr');
-      const tdName = document.createElement('td'); tdName.textContent = student; tdName.style.padding='8px'; tr.appendChild(tdName);
+      const tdName = document.createElement('td'); tdName.textContent = student; tr.appendChild(tdName);
+
       SCALE.forEach((_, colIdx) => {
-        const td = document.createElement('td'); td.style.padding='6px'; td.style.textAlign='center';
-        const div = document.createElement('div'); div.className = 'rating-row';
-        const id = `rating-${encodeURIComponent(project)}-${sIdx}-${colIdx}`;
-        const input = document.createElement('input'); input.type = 'radio'; input.name = `rating-${sIdx}`; input.value = String(colIdx + 1); input.id = id;
-        const label = document.createElement('label'); label.htmlFor = id; label.textContent = ''; // visual is CSS
-        div.appendChild(input); div.appendChild(label); td.appendChild(div); tr.appendChild(td);
+        const td = document.createElement('td'); td.style.textAlign = 'center';
+        const wrapper = document.createElement('div'); wrapper.className = 'rating-row';
+        const id = `rating-${encodeURIComponent(projectName)}-${sIdx}-${colIdx}`;
+        const input = document.createElement('input'); input.type = 'radio'; input.name = `rating-${sIdx}`; input.value = String(colIdx+1); input.id = id;
+        // restore draft rating if present
+        if (draft.ratings && draft.ratings[student] && String(draft.ratings[student]) === String(colIdx+1)) {
+          input.checked = true;
+        }
+        const label = document.createElement('label'); label.htmlFor = id; label.textContent = '';
+        wrapper.appendChild(input); wrapper.appendChild(label); td.appendChild(wrapper); tr.appendChild(td);
       });
+
       tbody.appendChild(tr);
     });
 
     table.appendChild(tbody);
     matrixContainer.appendChild(table);
 
-    // Project-level comment box (added beneath the matrix)
+    // Project-level comment
     const commentWrap = document.createElement('div');
     commentWrap.className = 'project-comment-wrap';
-    commentWrap.style.marginTop = '12px';
-    const commentLabel = document.createElement('label');
-    commentLabel.textContent = 'Comments about this project (optional)';
-    commentLabel.htmlFor = 'project-comment';
-    commentLabel.style.display = 'block';
-    commentLabel.style.marginBottom = '6px';
-    const commentBox = document.createElement('textarea');
-    commentBox.id = 'project-comment';
-    commentBox.rows = 3;
-    commentBox.style.width = '100%';
-    commentBox.style.padding = '8px';
-    commentBox.style.borderRadius = '8px';
-    commentBox.style.border = '1px solid #dbe7fb';
-    commentWrap.appendChild(commentLabel);
-    commentWrap.appendChild(commentBox);
+    const lbl = document.createElement('label'); lbl.htmlFor = 'project-comment'; lbl.textContent = 'Comments about this project (optional)';
+    const ta = document.createElement('textarea'); ta.id = 'project-comment'; ta.rows = 3;
+    ta.style.width = '100%';
+    ta.value = draft.comment || '';
+    commentWrap.appendChild(lbl); commentWrap.appendChild(ta);
     matrixContainer.appendChild(commentWrap);
 
-    // Save current project
-    currentProject = project;
+    // Save draft when user changes any rating or comment
+    matrixContainer.addEventListener('change', saveDraftHandler);
+    matrixContainer.addEventListener('input', saveDraftHandler);
+
+    function saveDraftHandler() {
+      const rows = students.map((s, i) => {
+        const sel = document.querySelector(`input[name="rating-${i}"]:checked`);
+        return { student: s, rating: sel ? parseInt(sel.value, 10) : null };
+      });
+      const comment = document.getElementById('project-comment') ? document.getElementById('project-comment').value : '';
+      const draftObj = { ratings: {}, comment };
+      rows.forEach(r => { if (r.rating != null) draftObj.ratings[r.student] = r.rating; });
+      stagedRatings[projectName] = draftObj;
+      saveProgress();
+    }
   }
 
-  // Collect responses from the matrix and include project-level comment
-  function collectResponses(project) {
-    const students = sponsorProjects[project] || [];
-    const projectCommentEl = document.getElementById('project-comment');
-    const projectComment = projectCommentEl ? (projectCommentEl.value || '') : '';
-    return students.map((student, sIdx) => {
+  // Gather matrix responses + project comment and send to server (one POST where Worker writes one row per student)
+  async function submitCurrentProject() {
+    if (!currentProject) { setStatus('No project is loaded.', 'red'); return; }
+    const students = sponsorProjects[currentProject] || [];
+    if (!students.length) { setStatus('No students to submit.', 'red'); return; }
+
+    const rows = students.map((student, sIdx) => {
       const sel = document.querySelector(`input[name="rating-${sIdx}"]:checked`);
-      return { student, rating: sel ? parseInt(sel.value, 10) : null, comment: projectComment };
+      return { student, rating: sel ? parseInt(sel.value, 10) : null, comment: (document.getElementById('project-comment')?.value || '') };
     });
-  }
 
-  // input handler for email — stage progression
-  emailInput.addEventListener('input', () => {
-    const v = (emailInput.value || '').toLowerCase().trim();
-    // only populate if email recognized
-    if (!v) {
-      projectSelect.innerHTML = '<option value="">— Select a project —</option>';
-      projectSelect.disabled = true;
-      setStatus('Enter your email to load projects.');
-      return;
-    }
-    if (sponsorData[v]) {
-      populateProjectDropdown(v);
-    } else {
-      projectSelect.innerHTML = '<option value="">— Select a project —</option>';
-      projectSelect.disabled = true;
-      setStatus('No projects found for that email.', 'red');
-    }
-  });
+    if (!rows.some(r => r.rating !== null)) { setStatus('Please rate at least one student before submitting.', 'red'); return; }
 
-  // Load project button: simply render the selected project (matrix shows)
-  loadProjectBtn.addEventListener('click', () => {
-    const sel = projectSelect.value;
-    if (!sel) { setStatus('Please select a project to load.', 'red'); return; }
-    if (completedProjects[sel]) { setStatus('This project was already submitted (greyed out).', 'red'); return; }
-    renderMatrix(sel);
-    setStatus(`Loaded project "${sel}". Rate the students and add optional comments.`);
-  });
-
-  // Skip project button: remove it from dropdown (mark as skipped/greyed)
-  skipBtn.addEventListener('click', () => {
-    const sel = projectSelect.value;
-    if (!sel) { setStatus('Please select a project to skip.', 'red'); return; }
-    // mark completed so it can't be selected again in this session
-    completedProjects[sel] = true;
-    const opt = projectSelect.querySelector(`option[value="${sel}"]`);
-    if (opt) {
-      opt.disabled = true;
-      opt.dataset.completed = 'true';
-      opt.textContent = `${sel} — skipped`;
-    }
-    matrixContainer.innerHTML = ''; questionHeading.style.display = 'none';
-    setStatus(`Removed project "${sel}" from selection.`);
-    // keep currentProject cleared
-    if (currentProject === sel) currentProject = '';
-  });
-
-  // Form submit: collects responses for currentProject and sends payload
-  document.getElementById('judge-form').addEventListener('submit', async (evt) => {
-    evt.preventDefault();
-    const name = (nameInput.value || '').trim();
-    const email = (emailInput.value || '').trim();
-    const project = projectSelect.value;
-    if (!name) { setStatus('Please enter your name.', 'red'); return; }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setStatus('Please enter a valid email.', 'red'); return; }
-    if (!project) { setStatus('Please select a project.', 'red'); return; }
-    if (completedProjects[project]) { setStatus('This project is already completed.', 'red'); return; }
-
-    const responses = collectResponses(project);
-    if (!responses.some(r => r.rating !== null)) { setStatus('Please rate at least one student.', 'red'); return; }
-
-    const payload = { sponsorName: name, sponsorEmail: email, project, responses, timestamp: new Date().toISOString() };
+    const payload = {
+      sponsorName: currentName || nameInput.value.trim(),
+      sponsorEmail: currentEmail || emailInput.value.trim(),
+      project: currentProject,
+      responses: rows,
+      timestamp: new Date().toISOString()
+    };
 
     try {
-      setStatus('Submitting...');
-      submitBtn.disabled = true;
+      setStatus('Submitting...', 'black');
+      submitProjectBtn.disabled = true;
 
       const form = new FormData();
       form.append('payload', JSON.stringify(payload));
-
-      const resp = await fetch(ENDPOINT_URL, {
-        method: 'POST',
-        body: form
-      });
+      const resp = await fetch(ENDPOINT_URL, { method: 'POST', body: form });
 
       if (!resp.ok) {
         const txt = await resp.text();
-        console.error('Server error:', resp.status, txt);
+        console.error('Server error', resp.status, txt);
         throw new Error('Network response not ok: ' + resp.status);
       }
-
       const data = await resp.json();
-      console.log('Server response', data);
+      console.log('Saved', data);
       setStatus('Submission saved. Thank you!', 'green');
 
-      // mark project as completed (grey out)
-      completedProjects[project] = true;
-      const opt = projectSelect.querySelector(`option[value="${project}"]`);
-      if (opt) {
-        opt.disabled = true;
-        opt.dataset.completed = 'true';
-        opt.textContent = `${project} — completed`;
+      // mark as completed
+      completedProjects[currentProject] = true;
+      // remove draft for this project
+      delete stagedRatings[currentProject];
+      saveProgress();
+
+      // visually update project list: mark completed and move it to top
+      const item = projectListEl.querySelector(`li[data-project="${CSS.escape(currentProject)}"]`);
+      if (item) {
+        item.classList.add('completed');
+        item.innerHTML = `<strong>${escapeHtml(currentProject)}</strong> <span class="meta">(completed)</span>`;
+        projectListEl.prepend(item);
       }
 
-      // clear matrix and keep project list visible for next selection
+      // clear matrix
       matrixContainer.innerHTML = '';
       questionHeading.style.display = 'none';
       currentProject = '';
-
-      // Optionally remove the project from sponsorProjects map to avoid re-rendering
-      delete sponsorProjects[project];
 
     } catch (err) {
       console.error('Submission error', err);
       setStatus('Submission failed. See console.', 'red');
     } finally {
-      submitBtn.disabled = false;
+      submitProjectBtn.disabled = false;
     }
+  }
+
+  // Event wiring
+
+  identitySubmit.addEventListener('click', () => {
+    const name = nameInput.value.trim();
+    const email = (emailInput.value || '').toLowerCase().trim();
+    if (!name) { setStatus('Please enter your name.', 'red'); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setStatus('Please enter a valid email.', 'red'); return; }
+
+    currentName = name;
+    currentEmail = email;
+    saveProgress();
+
+    if (!sponsorData[email]) {
+      setStatus('No projects found for that email.', 'red');
+      return;
+    }
+
+    // go to project list stage
+    showProjectsStage();
+    populateProjectListFor(email);
   });
 
-  // initial CSV load from the repo (data.csv)
+  backToIdentity.addEventListener('click', () => {
+    showIdentityStage();
+  });
+
+  submitProjectBtn.addEventListener('click', () => {
+    submitCurrentProject();
+  });
+
+  // When email input changes, optionally preload if known
+  emailInput.addEventListener('input', () => {
+    setStatus('');
+  });
+
+  // Initialize
+  showIdentityStage();
   tryFetchCSV();
 });
+
 
 
 
