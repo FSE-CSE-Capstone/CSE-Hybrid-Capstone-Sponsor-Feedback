@@ -94,25 +94,62 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (e) { console.warn('Could not load progress', e); }
   }
 
-  // Hide any truly-empty .section cards to avoid displaying empty "bubbles"
-  function updateSectionVisibility() {
-    document.querySelectorAll('.section').forEach(s => {
-      // Detect meaningful content:
-      // - tables (matrix)
-      // - project items (.project-item)
-      // - form controls (input, textarea, select, button)
-      // - visible text
-      const hasTable = !!s.querySelector('table');
-      const hasProjectItems = !!s.querySelector('.project-item');
-      const hasFormControls = !!s.querySelector('input, textarea, select, button');
-      // innerText returns only visible text (not markup)
-      const visibleText = (s.innerText || '').trim();
-      const hasText = visibleText.length > 0;
+// Robustly hide any .section that has no meaningful content
+function updateSectionVisibility() {
+  // helper: returns true if node (or descendants) contains meaningful content
+  function hasMeaningfulContent(node) {
+    // text node with visible non-whitespace text
+    if (node.nodeType === Node.TEXT_NODE) {
+      if (node.textContent && node.textContent.trim().length > 0) return true;
+      return false;
+    }
 
-      const shouldShow = hasTable || hasProjectItems || hasFormControls || hasText;
-      s.style.display = shouldShow ? '' : 'none';
-    });
+    // element node
+    if (node.nodeType === Node.ELEMENT_NODE) {
+      const tag = node.tagName.toUpperCase();
+
+      // Tags we consider meaningful immediately
+      const meaningfulTags = new Set([
+        'TABLE','UL','OL','LI','INPUT','TEXTAREA','SELECT','BUTTON',
+        'LABEL','P','H1','H2','H3','H4','STRONG','EM','SPAN','A'
+      ]);
+      if (meaningfulTags.has(tag)) {
+        // but ignore anchors with no text and no meaningful children
+        if (tag === 'A' && !(node.textContent || '').trim() && !node.querySelector('*')) {
+          // not meaningful
+        } else {
+          // if element is visible (not display:none)
+          if (node.offsetParent !== null) return true;
+        }
+      }
+
+      // If element has role or aria-label or alt text, treat as meaningful
+      if (node.getAttribute && (node.getAttribute('role') || node.getAttribute('aria-label') || node.getAttribute('alt'))) {
+        if (node.offsetParent !== null) return true;
+      }
+
+      // Recurse children
+      for (let i = 0; i < node.childNodes.length; i++) {
+        if (hasMeaningfulContent(node.childNodes[i])) return true;
+      }
+    }
+
+    return false;
   }
+
+  // iterate each .section and hide if not meaningful
+  document.querySelectorAll('.section').forEach(s => {
+    try {
+      const shouldShow = hasMeaningfulContent(s);
+      s.style.display = shouldShow ? '' : 'none';
+    } catch (e) {
+      // fallback: if anything goes wrong, show the section
+      s.style.display = '';
+      console.warn('updateSectionVisibility error', e);
+    }
+  });
+}
+
 
   /* -------------------------
      Fetch CSV and init
