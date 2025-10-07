@@ -93,7 +93,6 @@ input:focus, select:focus, textarea:focus{box-shadow:0 8px 20px rgba(140,29,64,0
   .right{height:200px;order:2}
   .left{order:1;padding:28px 20px}
   .left-inner{max-width:700px}
-  .welcome h1{font-size:1.6rem}
 }
 
 
