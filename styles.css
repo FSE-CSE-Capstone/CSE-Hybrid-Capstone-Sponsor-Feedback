@@ -1,1 +1,161 @@
-:root{--accent:#0b72f0;--muted:#6b7280;--bg:#f6f8fb}*{box-sizing:border-box}body{font-family:Inter,system-ui,Arial,sans-serif;margin:0;background:var(--bg);color:#0b2540}.container{max-width:900px;margin:36px auto;padding:20px;background:#fff;border-radius:10px;box-shadow:0 8px 24px rgba(12,18,30,0.06)}h1{margin:0 0 6px;font-size:1.5rem}.lead{color:var(--muted);margin:0 0 18px}.form-row{margin-bottom:12px;display:flex;flex-direction:column}label{font-weight:600;margin-bottom:6px}input[type="text"],input[type="email"],select{padding:10px;border:1px solid #e6e9ef;border-radius:8px;font-size:1rem}button{background:var(--accent);color:#fff;border:0;padding:10px 14px;border-radius:8px;cursor:pointer}button.secondary{background:transparent;border:1px solid #e6edf3;color:#374151}.matrix-table{width:100%;border-collapse:collapse;margin-top:12px}.matrix-table th{padding:12px;border-bottom:1px solid #eef2f7;text-align:center;font-weight:700;color:#475569}.matrix-table td{padding:12px;border-bottom:1px solid #f1f5f9;vertical-align:middle}.matrix-table td:first-child{text-align:left;width:40%;padding-left:18px}.rating-row{display:flex;justify-content:center;gap:18px}.form-status{margin-top:12px;font-weight:600;color:var(--muted)}.actions{display:flex;gap:12px;margin-top:14px;align-items:center}.site-footer{margin-top:18px;text-align:center;color:var(--muted);font-size:0.9rem}@media (max-width:700px){ .matrix-table thead{display:none} .matrix-table td{display:block} .matrix-table tr{margin-bottom:8px;border:1px solid #eef2f7;border-radius:8px;padding:8px} }
+:root {
+  --accent:#0b72f0;
+  --muted:#6b7280;
+  --bg:#f6f8fb;
+}
+
+* {
+  box-sizing:border-box;
+}
+
+body {
+  font-family:Inter,system-ui,Arial,sans-serif;
+  margin:0;
+  background:var(--bg);
+  color:#0b2540;
+}
+
+.container {
+  max-width:900px;
+  margin:36px auto;
+  padding:20px;
+  background:#fff;
+  border-radius:10px;
+  box-shadow:0 8px 24px rgba(12,18,30,0.06);
+}
+
+h1 {
+  margin:0 0 6px;
+  font-size:1.5rem;
+}
+
+.lead {
+  color:var(--muted);
+  margin:0 0 18px;
+}
+
+.form-row {
+  margin-bottom:12px;
+  display:flex;
+  flex-direction:column;
+}
+
+label {
+  font-weight:600;
+  margin-bottom:6px;
+}
+
+input[type="text"],
+input[type="email"],
+select {
+  padding:10px;
+  border:1px solid #e6e9ef;
+  border-radius:8px;
+  font-size:1rem;
+}
+
+button {
+  background:var(--accent);
+  color:#fff;
+  border:0;
+  padding:10px 14px;
+  border-radius:8px;
+  cursor:pointer;
+}
+
+button.secondary {
+  background:transparent;
+  border:1px solid #e6edf3;
+  color:#374151;
+}
+
+.matrix-table {
+  width:100%;
+  border-collapse:collapse;
+  margin-top:12px;
+}
+
+.matrix-table th {
+  padding:12px;
+  border-bottom:1px solid #eef2f7;
+  text-align:center;
+  font-weight:700;
+  color:#475569;
+}
+
+.matrix-table td {
+  padding:12px;
+  border-bottom:1px solid #f1f5f9;
+  vertical-align:middle;
+}
+
+.matrix-table td:first-child {
+  text-align:left;
+  width:40%;
+  padding-left:18px;
+}
+
+.rating-row {
+  display:flex;
+  justify-content:center;
+  gap:18px;
+}
+
+.form-status {
+  margin-top:12px;
+  font-weight:600;
+  color:var(--muted);
+}
+
+.actions {
+  display:flex;
+  gap:12px;
+  margin-top:14px;
+  align-items:center;
+}
+
+.site-footer {
+  margin-top:18px;
+  text-align:center;
+  color:var(--muted);
+  font-size:0.9rem;
+}
+
+/* Responsive table for mobile */
+@media (max-width:700px){
+  .matrix-table thead {display:none}
+  .matrix-table td {display:block}
+  .matrix-table tr {
+    margin-bottom:8px;
+    border:1px solid #eef2f7;
+    border-radius:8px;
+    padding:8px;
+  }
+}
+
+/* === new additions === */
+
+/* visually indicate completed/disabled project options in dropdown */
+select option[data-completed="true"] {
+  color:#9ca3af; /* grey text */
+}
+
+/* style for project comment box below each matrix */
+.project-comment-wrap textarea#project-comment {
+  font-size:0.95rem;
+  resize:vertical;
+  min-height:66px;
+  padding:8px;
+  border-radius:8px;
+  border:1px solid #dbe7fb;
+  width:100%;
+  font-family:inherit;
+}
+
+/* nicer label spacing for project comments */
+.project-comment-wrap label {
+  display:block;
+  margin-bottom:6px;
+  color:#475569;
+  font-weight:500;
+}
