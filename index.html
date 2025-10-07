@@ -3,48 +3,75 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Sponsor Judging</title>
-  <link href="styles.css" rel="stylesheet">
+  <title>Sponsor Ratings</title>
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <main class="container">
-    <header>
-      <h1>Sponsor Judging</h1>
-      <p class="lead">Enter your name and email to load projects assigned to you.</p>
-    </header>
+  <div class="split">
+    <!-- LEFT: form area -->
+    <div class="left">
+      <div class="left-inner">
+        <header class="welcome">
+          <h1>Hello, <span class="accent">welcome!</span></h1>
+          <p class="lead">Please identify yourself and select a project to evaluate.</p>
+        </header>
 
-    <form id="judge-form" novalidate>
-      <div class="form-row">
-        <label for="fullName">Full name</label>
-        <input id="fullName" name="fullName" type="text" required autocomplete="name">
+        <section class="card">
+          <form id="judge-form" class="form" autocomplete="off">
+            <div class="form-row">
+              <label for="fullName">Your name</label>
+              <input id="fullName" name="fullName" type="text" placeholder="Jane Doe" />
+            </div>
+
+            <div class="form-row">
+              <label for="email">Your email</label>
+              <input id="email" name="email" type="email" placeholder="you@example.com" />
+            </div>
+
+            <div class="form-row inline">
+              <div style="flex:1">
+                <label for="project">Project</label>
+                <select id="project" name="project" disabled>
+                  <option value="">— Select a project —</option>
+                </select>
+              </div>
+              <div class="project-actions">
+                <button type="button" id="loadProjectBtn" class="btn btn-outline">Load Project</button>
+                <button type="button" id="skipBtn" class="btn btn-ghost">Skip</button>
+              </div>
+            </div>
+
+            <h3 id="question-heading" class="question-heading" style="display:none;">Evaluate students</h3>
+
+            <div id="matrix-question" class="matrix-question">Please evaluate the students on Communication</div>
+            <div id="matrix-container" class="matrix-container" aria-live="polite"></div>
+
+            <div class="form-status" id="form-status" aria-live="polite"></div>
+
+            <div class="actions">
+              <button id="submitBtn" class="btn btn-primary" type="submit">Submit ratings</button>
+            </div>
+          </form>
+        </section>
+
+        <footer class="footer">
+          <small>Built for your course. Data saved to Google Sheets.</small>
+        </footer>
       </div>
-      <div class="form-row">
-        <label for="email">Email</label>
-        <input id="email" name="email" type="email" required autocomplete="email">
+    </div>
+
+    <!-- RIGHT: graphic panel -->
+    <div class="right" aria-hidden="true">
+      <div class="graphic">
+        <!-- Decorative shapes (pure CSS + SVG-like circles) -->
+        <div class="shape circle large"></div>
+        <div class="shape circle mid"></div>
+        <div class="shape triangle"></div>
+        <div class="shape gradient-blob"></div>
       </div>
+    </div>
+  </div>
 
-      <div class="form-row" id="project-field">
-        <label for="project">Project</label>
-        <select id="project" disabled><option value="">— Select a project —</option></select>
-        <button type="button" id="loadProjectBtn" class="secondary">Load Project</button>
-      </div>
-
-      <section id="question-heading" style="display:none"><h3 id="matrix-question">Please evaluate the students on Communication</h3></section>
-      <div id="matrix-container"></div>
-
-      <div class="actions">
-        <button type="submit" id="submitBtn">Submit ratings for this project</button>
-        <button type="button" id="skipBtn" class="secondary">Skip (remove)</button>
-      </div>
-
-      <div id="form-status" role="status" aria-live="polite"></div>
-    </form>
-
-    <footer class="site-footer">
-      <small>© Sponsor Judging</small>
-    </footer>
-  </main>
-
-  <script src="scripts.js" defer></script>
+  <script src="scripts.js"></script>
 </body>
 </html>
