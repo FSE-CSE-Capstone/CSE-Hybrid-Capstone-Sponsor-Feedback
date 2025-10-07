@@ -1,464 +1,582 @@
-// scripts.js — Multi-stage UI, project list, per-project comments, local save/resume
-const ENDPOINT_URL = 'https://csesponsors.sbecerr7.workers.dev/';
-const CSV_FILENAME = 'data.csv';
-const SCALE = ['Terrible','Poor','Average','Good','Excellent'];
-const STORAGE_KEY = 'sponsor_progress_v1';
+// scripts.js — Full replacement
+// Multi-stage UI, project list, per-project comments, local save/resume
+(function () {
+  'use strict';
 
-document.addEventListener('DOMContentLoaded', () => {
-  // Stage nodes
-  const stageIdentity = document.getElementById('stage-identity');
-  const stageProjects = document.getElementById('stage-projects');
-  const stageThankyou = document.getElementById('stage-thankyou');
+  // Configuration
+  var ENDPOINT_URL = 'https://csesponsors.sbecerr7.workers.dev/';
+  var CSV_FILENAME = 'data.csv';
+  var SCALE = ['Terrible', 'Poor', 'Average', 'Good', 'Excellent'];
+  var STORAGE_KEY = 'sponsor_progress_v1';
 
-  // Identity controls
-  const identitySubmit = document.getElementById('identitySubmit');
-  const backToIdentity = document.getElementById('backToIdentity');
-  const nameInput = document.getElementById('fullName');
-  const emailInput = document.getElementById('email');
-
-  // Projects & matrix
-  const projectListEl = document.getElementById('project-list');
-  const projectHeadingOutside = document.getElementById('projects-heading-outside');
-  const matrixContainer = document.getElementById('matrix-container');
-  const formStatus = document.getElementById('form-status');
-  const submitProjectBtn = document.getElementById('submitProject');
-  const commentSection = document.querySelector('.section.section-comment');
+  // DOM nodes (some may be missing depending on HTML; guard against null)
+  var stageIdentity = document.getElementById('stage-identity');
+  var stageProjects = document.getElementById('stage-projects');
+  var stageThankyou = document.getElementById('stage-thankyou'); // optional
+  var identitySubmit = document.getElementById('identitySubmit');
+  var backToIdentity = document.getElementById('backToIdentity');
+  var nameInput = document.getElementById('fullName');
+  var emailInput = document.getElementById('email');
+  var projectListEl = document.getElementById('project-list');
+  var projectHeadingOutside = document.getElementById('projects-heading-outside');
+  var matrixContainer = document.getElementById('matrix-container');
+  var formStatus = document.getElementById('form-status');
+  var submitProjectBtn = document.getElementById('submitProject');
+  var matrixInfo = document.getElementById('matrix-info'); // optional block that may contain header + description
+  var finishStartOverBtn = document.getElementById('finishStartOver');
 
   // State
-  let sponsorData = {};
-  let sponsorProjects = {};
-  let currentEmail = '';
-  let currentName = '';
-  let currentProject = '';
-  let completedProjects = {};
-  let stagedRatings = {};
+  var sponsorData = {};
+  var sponsorProjects = {};
+  var currentEmail = '';
+  var currentName = '';
+  var currentProject = '';
+  var completedProjects = {};
+  var stagedRatings = {};
 
   /* -------------------------
-     Helpers
+     Helper utilities
      ------------------------- */
+  function logDebug() {
+    try { /* no-op */ } catch (e) {}
+  }
+
   function setStatus(msg, color) {
+    if (!formStatus) { return; }
     formStatus.textContent = msg || '';
-    formStatus.style.color = color || 'inherit';
+    if (color) {
+      formStatus.style.color = color;
+    } else {
+      formStatus.style.color = '';
+    }
   }
 
   function escapeHtml(s) {
-    const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
-    return String(s).replace(/[&<>"']/g, (m) => map[m]);
+    var map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+    return String(s).replace(/[&<>"']/g, function (m) { return map[m]; });
   }
 
   function parseCSV(text) {
-    const rows = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-    if (!rows.length) return [];
-    const headers = rows[0].split(',').map(h => h.trim());
-    return rows.slice(1).map(line => {
-      const parts = line.split(',').map(p => p.trim());
-      const obj = {};
-      headers.forEach((h, i) => obj[h] = parts[i] || '');
+    var rows = text.split(/\r?\n/).map(function (l) { return l.trim(); }).filter(Boolean);
+    if (!rows.length) { return []; }
+    var headers = rows[0].split(',').map(function (h) { return h.trim(); });
+    return rows.slice(1).map(function (line) {
+      var parts = line.split(',').map(function (p) { return p.trim(); });
+      var obj = {};
+      headers.forEach(function (h, i) { obj[h] = parts[i] || ''; });
       return obj;
     });
   }
 
   function buildSponsorMap(rows) {
-    const map = {};
-    rows.forEach(r => {
-      const email = (r.sponsorEmail || r.email || '').toLowerCase();
-      const project = (r.project || '').trim();
-      const student = (r.student || '').trim();
-      if (!email || !project || !student) return;
-      if (!map[email]) map[email] = { projects: {} };
-      if (!map[email].projects[project]) map[email].projects[project] = [];
-      if (!map[email].projects[project].includes(student)) map[email].projects[project].push(student);
+    var map = {};
+    rows.forEach(function (r) {
+      var email = (r.sponsorEmail || r.email || '').toLowerCase();
+      var project = (r.project || '').trim();
+      var student = (r.student || '').trim();
+      if (!email || !project || !student) { return; }
+      if (!map[email]) { map[email] = { projects: {} }; }
+      if (!map[email].projects[project]) { map[email].projects[project] = []; }
+      if (map[email].projects[project].indexOf(student) === -1) {
+        map[email].projects[project].push(student);
+      }
     });
     return map;
   }
 
-  // persist / restore
+  // persist/restore progress
   function saveProgress() {
-    const payload = { name: currentName, email: currentEmail, completedProjects, stagedRatings };
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(payload)); } catch (e) { console.warn('Could not save progress', e); }
+    var payload = {
+      name: currentName,
+      email: currentEmail,
+      completedProjects: completedProjects,
+      stagedRatings: stagedRatings
+    };
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+    } catch (e) {
+      // ignore storage failures
+      console.warn('Could not save progress', e);
+    }
   }
 
   function loadProgress() {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return;
-      const obj = JSON.parse(raw);
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) { return; }
+      var obj = JSON.parse(raw);
       if (obj && obj.email) {
         currentName = obj.name || '';
         currentEmail = obj.email || '';
         completedProjects = obj.completedProjects || {};
         stagedRatings = obj.stagedRatings || {};
-        nameInput.value = currentName;
-        emailInput.value = currentEmail;
+        if (nameInput) { nameInput.value = currentName; }
+        if (emailInput) { emailInput.value = currentEmail; }
       }
-    } catch (e) { console.warn('Could not load progress', e); }
+    } catch (e) {
+      console.warn('Could not load progress', e);
+    }
   }
 
-// Robustly hide any .section that has no meaningful content
-function updateSectionVisibility() {
-  // helper: returns true if node (or descendants) contains meaningful content
-  function hasMeaningfulContent(node) {
-    // text node with visible non-whitespace text
-    if (node.nodeType === Node.TEXT_NODE) {
-      if (node.textContent && node.textContent.trim().length > 0) return true;
+  // Robustly hide empty .section cards (walks DOM and checks for meaningful nodes)
+  function updateSectionVisibility() {
+    var sections = document.querySelectorAll('.section');
+    function hasMeaningfulContent(node) {
+      if (!node) { return false; }
+      if (node.nodeType === Node.TEXT_NODE) {
+        var t = node.textContent || '';
+        return t.trim().length > 0;
+      }
+      if (node.nodeType === Node.ELEMENT_NODE) {
+        var tag = node.tagName ? node.tagName.toUpperCase() : '';
+        var immediateMeaningful = ['TABLE','UL','OL','LI','INPUT','TEXTAREA','SELECT','BUTTON','LABEL','P','H1','H2','H3','H4','STRONG','EM','SPAN','A','IMG'];
+        if (immediateMeaningful.indexOf(tag) !== -1) {
+          // if element is visible
+          if (node.offsetParent !== null) { return true; }
+        }
+        // meaningful attributes
+        if (node.getAttribute) {
+          if (node.getAttribute('role') || node.getAttribute('aria-label') || node.getAttribute('alt')) {
+            if (node.offsetParent !== null) { return true; }
+          }
+        }
+        // check children
+        var i, children = node.childNodes || [];
+        for (i = 0; i < children.length; i++) {
+          if (hasMeaningfulContent(children[i])) { return true; }
+        }
+      }
       return false;
     }
 
-    // element node
-    if (node.nodeType === Node.ELEMENT_NODE) {
-      const tag = node.tagName.toUpperCase();
-
-      // Tags we consider meaningful immediately
-      const meaningfulTags = new Set([
-        'TABLE','UL','OL','LI','INPUT','TEXTAREA','SELECT','BUTTON',
-        'LABEL','P','H1','H2','H3','H4','STRONG','EM','SPAN','A'
-      ]);
-      if (meaningfulTags.has(tag)) {
-        // but ignore anchors with no text and no meaningful children
-        if (tag === 'A' && !(node.textContent || '').trim() && !node.querySelector('*')) {
-          // not meaningful
-        } else {
-          // if element is visible (not display:none)
-          if (node.offsetParent !== null) return true;
-        }
-      }
-
-      // If element has role or aria-label or alt text, treat as meaningful
-      if (node.getAttribute && (node.getAttribute('role') || node.getAttribute('aria-label') || node.getAttribute('alt'))) {
-        if (node.offsetParent !== null) return true;
-      }
-
-      // Recurse children
-      for (let i = 0; i < node.childNodes.length; i++) {
-        if (hasMeaningfulContent(node.childNodes[i])) return true;
+    for (var si = 0; si < sections.length; si++) {
+      var s = sections[si];
+      try {
+        var show = hasMeaningfulContent(s);
+        s.style.display = show ? '' : 'none';
+      } catch (err) {
+        s.style.display = '';
       }
     }
-
-    return false;
   }
 
-  // iterate each .section and hide if not meaningful
-  document.querySelectorAll('.section').forEach(s => {
-    try {
-      const shouldShow = hasMeaningfulContent(s);
-      s.style.display = shouldShow ? '' : 'none';
-    } catch (e) {
-      // fallback: if anything goes wrong, show the section
-      s.style.display = '';
-      console.warn('updateSectionVisibility error', e);
-    }
-  });
-}
-
-
   /* -------------------------
-     Fetch CSV and init
+     CSV load and init
      ------------------------- */
-  async function tryFetchCSV() {
-    try {
-      const resp = await fetch(CSV_FILENAME, { cache: 'no-store' });
-      if (!resp.ok) throw new Error('CSV not found: ' + resp.status);
-      const txt = await resp.text();
-      const rows = parseCSV(txt);
+  function tryFetchCSV() {
+    fetch(CSV_FILENAME, { cache: 'no-store' }).then(function (resp) {
+      if (!resp.ok) {
+        throw new Error('CSV fetch failed: ' + resp.status);
+      }
+      return resp.text();
+    }).then(function (txt) {
+      var rows = parseCSV(txt);
       sponsorData = buildSponsorMap(rows);
-      window._sponsorData = sponsorData; // debug inspect if needed
       setStatus('Project data loaded. Enter your email to continue.', 'green');
       loadProgress();
-
       if (currentEmail && sponsorData[currentEmail]) {
         showProjectsStage();
         populateProjectListFor(currentEmail);
       }
-    } catch (err) {
+      updateSectionVisibility();
+    }).catch(function (err) {
       console.debug('CSV fetch failed', err);
       setStatus('Project data not found. Ensure data.csv is present.');
       updateSectionVisibility();
-    }
+    });
   }
 
   /* -------------------------
      Stage switching
      ------------------------- */
   function showIdentityStage() {
-    stageIdentity.style.display = '';
-    stageProjects.style.display = 'none';
-    stageThankyou.style.display = 'none';
-    projectHeadingOutside.style.display = 'none';
+    if (stageIdentity) { stageIdentity.style.display = ''; }
+    if (stageProjects) { stageProjects.style.display = 'none'; }
+    if (stageThankyou) { stageThankyou.style.display = 'none'; }
+    if (projectHeadingOutside) { projectHeadingOutside.style.display = 'none'; }
     setStatus('');
     updateSectionVisibility();
   }
 
   function showProjectsStage() {
-    stageIdentity.style.display = 'none';
-    stageProjects.style.display = '';
-    stageThankyou.style.display = 'none';
-    projectHeadingOutside.style.display = '';
+    if (stageIdentity) { stageIdentity.style.display = 'none'; }
+    if (stageProjects) { stageProjects.style.display = ''; }
+    if (stageThankyou) { stageThankyou.style.display = 'none'; }
+    if (projectHeadingOutside) { projectHeadingOutside.style.display = ''; }
     updateSectionVisibility();
   }
 
   function showThankyouStage() {
-    stageIdentity.style.display = 'none';
-    stageProjects.style.display = 'none';
-    stageThankyou.style.display = '';
-    projectHeadingOutside.style.display = 'none';
+    if (stageIdentity) { stageIdentity.style.display = 'none'; }
+    if (stageProjects) { stageProjects.style.display = 'none'; }
+    if (stageThankyou) { stageThankyou.style.display = ''; }
+    if (projectHeadingOutside) { projectHeadingOutside.style.display = 'none'; }
     updateSectionVisibility();
   }
 
   /* -------------------------
-     Build project list
+     Project list builder
      ------------------------- */
   function populateProjectListFor(email) {
+    if (!projectListEl) { return; }
     projectListEl.innerHTML = '';
     sponsorProjects = {};
-    const entry = sponsorData[email];
+    var entry = sponsorData[email];
     if (!entry || !entry.projects) {
       setStatus('No projects found for that email.', 'red');
       updateSectionVisibility();
       return;
     }
+    var allProjects = Object.keys(entry.projects).slice();
 
-    const allProjects = Object.keys(entry.projects).slice();
-    // Put completed projects first (optional)
-    allProjects.sort((a,b) => {
-      const ca = completedProjects[a] ? -1 : 1;
-      const cb = completedProjects[b] ? -1 : 1;
+    // sort optionally so completed appear after/before as desired (here keep stable)
+    allProjects.sort(function (a, b) {
+      var ca = completedProjects[a] ? -1 : 1;
+      var cb = completedProjects[b] ? -1 : 1;
       return ca - cb;
     });
 
-    allProjects.forEach((p) => {
-      const li = document.createElement('li');
-      li.className = 'project-item';
-      li.tabIndex = 0;
-      li.dataset.project = p;
+    for (var i = 0; i < allProjects.length; i++) {
+      (function (p) {
+        var li = document.createElement('li');
+        li.className = 'project-item';
+        li.tabIndex = 0;
+        li.setAttribute('data-project', p);
 
-      if (completedProjects[p]) {
-        li.classList.add('completed');
-        li.innerHTML = `<strong>${escapeHtml(p)}</strong> <span class="meta">(completed)</span>`;
-      } else {
-        li.innerHTML = `<strong>${escapeHtml(p)}</strong>`;
-      }
-
-      li.addEventListener('click', () => {
         if (completedProjects[p]) {
-          setStatus('This project is already completed.', 'red');
-          return;
+          li.className = li.className + ' completed';
+          li.innerHTML = '<strong>' + escapeHtml(p) + '</strong> <span class="meta">(completed)</span>';
+        } else {
+          li.innerHTML = '<strong>' + escapeHtml(p) + '</strong>';
         }
-        // set active class
-        projectListEl.querySelectorAll('.project-item.active').forEach(el => el.classList.remove('active'));
-        li.classList.add('active');
 
-        // KEEP list order stable (do not move items)
-        loadProjectIntoMatrix(p, entry.projects[p]);
+        li.addEventListener('click', function () {
+          if (completedProjects[p]) {
+            setStatus('This project is already completed.', 'red');
+            return;
+          }
+          // mark active visually
+          var active = projectListEl.querySelectorAll('.project-item.active');
+          for (var ai = 0; ai < active.length; ai++) {
+            active[ai].classList.remove('active');
+          }
+          li.classList.add('active');
 
-        setStatus('');
-      });
+          // Load matrix (do NOT reorder the list)
+          loadProjectIntoMatrix(p, entry.projects[p]);
+          setStatus('');
+        });
 
-      projectListEl.appendChild(li);
-      sponsorProjects[p] = entry.projects[p].slice();
-    });
+        projectListEl.appendChild(li);
+        sponsorProjects[p] = entry.projects[p].slice();
+      })(allProjects[i]);
+    }
 
     setStatus('');
     updateSectionVisibility();
   }
 
   /* -------------------------
-     Render matrix (ratings)
+     Render matrix for a project
      ------------------------- */
   function loadProjectIntoMatrix(projectName, students) {
     currentProject = projectName;
+    if (!matrixContainer) { return; }
     matrixContainer.innerHTML = '';
 
-    // small header inside the card (project name)
-    let headerEl = document.querySelector('.current-project-header');
-    if (!headerEl) {
-      headerEl = document.createElement('div');
-      headerEl.className = 'current-project-header';
-      matrixContainer.parentNode.insertBefore(headerEl, matrixContainer);
+    // Ensure we have a project info block (matrix-info) that holds header and description.
+    var info = matrixInfo;
+    if (!info) {
+      // create a lightweight info block above the matrix
+      info = document.createElement('div');
+      info.id = 'matrix-info';
+      var hdr = document.createElement('div');
+      hdr.className = 'current-project-header';
+      var desc = document.createElement('div');
+      desc.className = 'matrix-description';
+      info.appendChild(hdr);
+      info.appendChild(desc);
+      matrixContainer.parentNode.insertBefore(info, matrixContainer);
+      matrixInfo = info;
     }
-    headerEl.textContent = projectName;
 
-    // show matrix info area and set description
-    const matrixInfoBlock = document.getElementById('matrix-info');
-if (matrixInfoBlock) matrixInfoBlock.style.display = '';
+    // project name first, then description
+    var headerEl = info.querySelector('.current-project-header');
+    var descEl = info.querySelector('.matrix-description');
+    if (headerEl) { headerEl.textContent = projectName; }
+    if (descEl) { descEl.textContent = 'Please evaluate the students on Communication'; }
 
-const projectHeader = matrixInfoBlock.querySelector('.current-project-header');
-const descEl = matrixInfoBlock.querySelector('.matrix-description');
+    if (!students || !students.length) {
+      matrixContainer.textContent = 'No students found for this project.';
+      updateSectionVisibility();
+      return;
+    }
 
-if (projectHeader) projectHeader.textContent = projectName;
-if (descEl) descEl.textContent = 'Please evaluate the students on Communication';
-
-    // Table
-    const table = document.createElement('table');
+    // create table
+    var table = document.createElement('table');
     table.className = 'matrix-table';
-    const thead = document.createElement('thead');
-    const headRow = document.createElement('tr');
-    const thStudent = document.createElement('th'); thStudent.textContent = ''; headRow.appendChild(thStudent);
-    SCALE.forEach(label => { const th = document.createElement('th'); th.textContent = label; headRow.appendChild(th); });
+    var thead = document.createElement('thead');
+    var headRow = document.createElement('tr');
+    var thStudent = document.createElement('th');
+    thStudent.textContent = '';
+    headRow.appendChild(thStudent);
+    for (var j = 0; j < SCALE.length; j++) {
+      var th = document.createElement('th');
+      th.textContent = SCALE[j];
+      headRow.appendChild(th);
+    }
     thead.appendChild(headRow);
     table.appendChild(thead);
 
-    const tbody = document.createElement('tbody');
+    var tbody = document.createElement('tbody');
+    var draft = stagedRatings[projectName] || { ratings: {}, comment: '' };
 
-    const draft = stagedRatings[projectName] || { ratings: {}, comment: '' };
+    for (var sIdx = 0; sIdx < students.length; sIdx++) {
+      var student = students[sIdx];
+      var tr = document.createElement('tr');
+      var tdName = document.createElement('td');
+      tdName.textContent = student;
+      tr.appendChild(tdName);
 
-    students.forEach((student, sIdx) => {
-      const tr = document.createElement('tr');
-      const tdName = document.createElement('td'); tdName.textContent = student; tr.appendChild(tdName);
-
-      SCALE.forEach((_, colIdx) => {
-        const td = document.createElement('td'); td.style.textAlign = 'center';
-        const wrapper = document.createElement('div'); wrapper.className = 'rating-row';
-        const id = 'rating-' + encodeURIComponent(projectName) + '-' + sIdx + '-' + colIdx;
-        const input = document.createElement('input'); input.type = 'radio'; input.name = 'rating-' + sIdx; input.value = String(colIdx + 1); input.id = id;
+      for (var colIdx = 0; colIdx < SCALE.length; colIdx++) {
+        var td = document.createElement('td');
+        td.style.textAlign = 'center';
+        var wrapper = document.createElement('div');
+        wrapper.className = 'rating-row';
+        var id = 'rating-' + encodeURIComponent(projectName) + '-' + sIdx + '-' + colIdx;
+        var input = document.createElement('input');
+        input.type = 'radio';
+        input.name = 'rating-' + sIdx;
+        input.value = String(colIdx + 1);
+        input.id = id;
+        // restore draft if present
         if (draft.ratings && draft.ratings[student] && String(draft.ratings[student]) === String(colIdx + 1)) {
           input.checked = true;
         }
-        const label = document.createElement('label'); label.htmlFor = id; label.textContent = '';
-        wrapper.appendChild(input); wrapper.appendChild(label); td.appendChild(wrapper); tr.appendChild(td);
-      });
-
+        var label = document.createElement('label');
+        label.htmlFor = id;
+        label.textContent = '';
+        wrapper.appendChild(input);
+        wrapper.appendChild(label);
+        td.appendChild(wrapper);
+        tr.appendChild(td);
+      }
       tbody.appendChild(tr);
-    });
+    }
 
     table.appendChild(tbody);
     matrixContainer.appendChild(table);
 
-    if (commentSection) {
-  commentSection.innerHTML = ''; // clear
-  const commentWrap = document.createElement('div');
-  commentSection.appendChild(commentWrap);
-  // explicitly show the comment section (override CSS default)
-  commentSection.style.display = '';
-}
+    // Insert comment area into a dedicated .section.section-comment (create if missing)
+    var commentSection = document.querySelector('.section.section-comment');
+    if (!commentSection) {
+      commentSection = document.createElement('div');
+      commentSection.className = 'section section-comment';
+      // insert after the matrixContainer
+      matrixContainer.parentNode.insertBefore(commentSection, matrixContainer.nextSibling);
+    }
+    commentSection.innerHTML = ''; // clear previous content safely
+
+    var commentWrap = document.createElement('div');
+    commentWrap.className = 'project-comment-wrap';
+    var lbl = document.createElement('label');
+    lbl.htmlFor = 'project-comment';
+    lbl.textContent = 'Comments about this project (optional)';
+    var ta = document.createElement('textarea');
+    ta.id = 'project-comment';
+    ta.rows = 4;
+    ta.style.width = '100%';
+    ta.value = (draft && draft.comment) ? draft.comment : '';
+    commentWrap.appendChild(lbl);
+    commentWrap.appendChild(ta);
+    commentSection.appendChild(commentWrap);
+
+    // explicitly make the comment section visible (override any display:none in CSS)
+    commentSection.style.display = '';
+    commentSection.style.visibility = 'visible';
 
     // Save draft when user changes ratings or comment
-    matrixContainer.removeEventListener('change', saveDraftHandler);
-    matrixContainer.removeEventListener('input', saveDraftHandler);
-    matrixContainer.addEventListener('change', saveDraftHandler);
-    matrixContainer.addEventListener('input', saveDraftHandler);
-
-    function saveDraftHandler() {
-      const rows = students.map((s, i) => {
-        const sel = document.querySelector('input[name="rating-' + i + '"]:checked');
-        return { student: s, rating: sel ? parseInt(sel.value, 10) : null };
-      });
-      const comment = document.getElementById('project-comment') ? document.getElementById('project-comment').value : '';
-      const draftObj = { ratings: {}, comment };
-      rows.forEach(r => { if (r.rating != null) draftObj.ratings[r.student] = r.rating; });
+    var saveDraftHandler = function () {
+      var rows = [];
+      for (var ii = 0; ii < students.length; ii++) {
+        var sel = document.querySelector('input[name="rating-' + ii + '"]:checked');
+        rows.push({ student: students[ii], rating: sel ? parseInt(sel.value, 10) : null });
+      }
+      var commentVal = '';
+      var taEl = document.getElementById('project-comment');
+      if (taEl) { commentVal = taEl.value || ''; }
+      var draftObj = { ratings: {}, comment: commentVal };
+      rows.forEach(function (r) { if (r.rating != null) { draftObj.ratings[r.student] = r.rating; } });
       stagedRatings[projectName] = draftObj;
       saveProgress();
-    }
+    };
+
+    // Remove previous listeners safely by cloning node (simple approach)
+    // (This avoids duplicate handlers)
+    var newMatrix = matrixContainer.cloneNode(true);
+    matrixContainer.parentNode.replaceChild(newMatrix, matrixContainer);
+    matrixContainer = newMatrix;
+
+    matrixContainer.addEventListener('change', saveDraftHandler);
+    matrixContainer.addEventListener('input', saveDraftHandler);
+    commentSection.addEventListener('input', saveDraftHandler);
 
     updateSectionVisibility();
   }
 
   /* -------------------------
-     Submit project
+     Submit current project to server
      ------------------------- */
-  async function submitCurrentProject() {
+  function submitCurrentProject() {
     if (!currentProject) { setStatus('No project is loaded.', 'red'); return; }
-    const students = sponsorProjects[currentProject] || [];
+    var students = sponsorProjects[currentProject] || [];
     if (!students.length) { setStatus('No students to submit.', 'red'); return; }
 
-    const rows = students.map((student, sIdx) => {
-      const sel = document.querySelector('input[name="rating-' + sIdx + '"]:checked');
-      return { student, rating: sel ? parseInt(sel.value, 10) : null, comment: (document.getElementById('project-comment')?.value || '') };
-    });
+    var rows = [];
+    for (var i = 0; i < students.length; i++) {
+      var sel = document.querySelector('input[name="rating-' + i + '"]:checked');
+      var commentVal = '';
+      var taEl = document.getElementById('project-comment');
+      if (taEl) { commentVal = taEl.value || ''; }
+      rows.push({ student: students[i], rating: sel ? parseInt(sel.value, 10) : null, comment: commentVal });
+    }
 
-    if (!rows.some(r => r.rating !== null)) { setStatus('Please rate at least one student before submitting.', 'red'); return; }
+    var anyRated = rows.some(function (r) { return r.rating != null; });
+    if (!anyRated) { setStatus('Please rate at least one student before submitting.', 'red'); return; }
 
-    const payload = {
-      sponsorName: currentName || nameInput.value.trim(),
-      sponsorEmail: currentEmail || emailInput.value.trim(),
+    var payload = {
+      sponsorName: currentName || (nameInput ? nameInput.value.trim() : ''),
+      sponsorEmail: currentEmail || (emailInput ? emailInput.value.trim() : ''),
       project: currentProject,
       responses: rows,
       timestamp: new Date().toISOString()
     };
 
-    try {
-      setStatus('Submitting...', 'black');
-      submitProjectBtn.disabled = true;
-      const form = new FormData(); form.append('payload', JSON.stringify(payload));
-      const resp = await fetch(ENDPOINT_URL, { method: 'POST', body: form });
+    setStatus('Submitting...', 'black');
+    if (submitProjectBtn) { submitProjectBtn.disabled = true; }
 
+    var form = new FormData();
+    form.append('payload', JSON.stringify(payload));
+
+    fetch(ENDPOINT_URL, { method: 'POST', body: form }).then(function (resp) {
       if (!resp.ok) {
-        const txt = await resp.text();
-        console.error('Server error', resp.status, txt);
-        throw new Error('Network response not ok: ' + resp.status);
+        return resp.text().then(function (txt) {
+          throw new Error('Server error ' + resp.status + ': ' + txt);
+        });
       }
-      const data = await resp.json();
+      return resp.json();
+    }).then(function (data) {
       console.log('Saved', data);
       setStatus('Submission saved. Thank you!', 'green');
 
-      // mark completed and save
+      // mark completed and persist
       completedProjects[currentProject] = true;
-      delete stagedRatings[currentProject];
+      if (stagedRatings && stagedRatings[currentProject]) {
+        delete stagedRatings[currentProject];
+      }
       saveProgress();
 
-      // update project list entry to completed
-      const item = projectListEl.querySelector('li[data-project="' + CSS.escape(currentProject) + '"]');
-      if (item) {
-        item.classList.add('completed'); item.classList.remove('active');
-        item.innerHTML = '<strong>' + escapeHtml(currentProject) + '</strong> <span class="meta">(completed)</span>';
+      // update list item UI
+      if (projectListEl) {
+        var li = projectListEl.querySelector('li[data-project="' + CSS.escape(currentProject) + '"]');
+        if (li) {
+          li.classList.add('completed');
+          li.classList.remove('active');
+          li.innerHTML = '<strong>' + escapeHtml(currentProject) + '</strong> <span class="meta">(completed)</span>';
+        }
       }
 
       // clear matrix and comment DOM
-      matrixContainer.innerHTML = '';
-      if (commentSection) commentSection.innerHTML = '';
-      const headerEl = document.querySelector('.current-project-header'); if (headerEl) headerEl.remove();
-      currentProject = '';
+      if (matrixContainer) { matrixContainer.innerHTML = ''; }
+      var commentSection = document.querySelector('.section.section-comment');
+      if (commentSection) { commentSection.innerHTML = ''; commentSection.style.display = 'none'; }
 
+      var headerEl = document.querySelector('.current-project-header');
+      if (headerEl) { headerEl.parentNode.removeChild(headerEl); }
+
+      currentProject = '';
       updateSectionVisibility();
 
+      // if all done, show thank-you
       if (hasCompletedAllProjects()) {
         showThankyouStage();
       }
-    } catch (err) {
-      console.error('Submission error', err);
+    }).catch(function (err) {
+      console.error('Submission failed', err);
       setStatus('Submission failed. See console.', 'red');
-    } finally {
-      submitProjectBtn.disabled = false;
-    }
+    }).finally(function () {
+      if (submitProjectBtn) { submitProjectBtn.disabled = false; }
+    });
   }
 
   function hasCompletedAllProjects() {
-    const entry = sponsorData[currentEmail];
-    if (!entry || !entry.projects) return false;
-    const all = Object.keys(entry.projects);
-    return all.length > 0 && all.every(p => completedProjects[p]);
+    var entry = sponsorData[currentEmail] || {};
+    var all = Object.keys(entry.projects || {});
+    if (!all || all.length === 0) { return false; }
+    for (var i = 0; i < all.length; i++) {
+      if (!completedProjects[all[i]]) { return false; }
+    }
+    return true;
   }
 
   /* -------------------------
      Event wiring
      ------------------------- */
-  identitySubmit.addEventListener('click', () => {
-    const name = nameInput.value.trim();
-    const email = (emailInput.value || '').toLowerCase().trim();
-    if (!name) { setStatus('Please enter your name.', 'red'); return; }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setStatus('Please enter a valid email.', 'red'); return; }
+  if (identitySubmit) {
+    identitySubmit.addEventListener('click', function () {
+      var name = nameInput ? nameInput.value.trim() : '';
+      var email = emailInput ? (emailInput.value || '').toLowerCase().trim() : '';
+      if (!name) { setStatus('Please enter your name.', 'red'); return; }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setStatus('Please enter a valid email.', 'red'); return; }
 
-    currentName = name; currentEmail = email; saveProgress();
+      currentName = name;
+      currentEmail = email;
+      saveProgress();
 
-    if (!sponsorData[email]) {
-      setStatus('No projects found for that email.', 'red');
-      return;
-    }
+      if (!sponsorData[email]) {
+        setStatus('No projects found for that email.', 'red');
+        return;
+      }
+      showProjectsStage();
+      populateProjectListFor(email);
+    });
+  }
 
-    showProjectsStage();
-    populateProjectListFor(email);
-  });
+  if (backToIdentity) {
+    backToIdentity.addEventListener('click', function () { showIdentityStage(); });
+  }
 
-  backToIdentity.addEventListener('click', () => showIdentityStage());
-  submitProjectBtn.addEventListener('click', () => submitCurrentProject());
-  document.getElementById('finishStartOver')?.addEventListener('click', () => {
-    completedProjects = {}; stagedRatings = {}; saveProgress(); currentProject = ''; matrixContainer.innerHTML = ''; if (commentSection) commentSection.innerHTML = ''; showIdentityStage();
-  });
+  if (submitProjectBtn) {
+    submitProjectBtn.addEventListener('click', function () { submitCurrentProject(); });
+  }
+
+  if (finishStartOverBtn) {
+    finishStartOverBtn.addEventListener('click', function () {
+      completedProjects = {};
+      stagedRatings = {};
+      saveProgress();
+      currentProject = '';
+      if (matrixContainer) { matrixContainer.innerHTML = ''; }
+      var commentSection = document.querySelector('.section.section-comment');
+      if (commentSection) { commentSection.innerHTML = ''; commentSection.style.display = 'none'; }
+      showIdentityStage();
+    });
+  }
 
   /* -------------------------
-     Init
+     Boot
      ------------------------- */
   showIdentityStage();
   tryFetchCSV();
-});
+
+  // Expose small helpers for debugging in console if needed
+  window.__sponsorDebug = {
+    sponsorData: sponsorData,
+    stagedRatings: stagedRatings,
+    completedProjects: completedProjects,
+    reloadCSV: tryFetchCSV,
+    updateSectionVisibility: updateSectionVisibility
+  };
+})();
 
 
