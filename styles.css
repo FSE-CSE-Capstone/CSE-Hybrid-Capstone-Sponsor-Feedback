@@ -31,6 +31,9 @@ body{background:linear-gradient(180deg,#fafafa,#f3f6ff);}
 .section + .section{margin-top:6px}
 .section-title{margin:0 0 8px;font-weight:700;color:var(--asu-maroon)}
 
+/* hide comment section until it gets real content (safer) */
+.section.section-comment{display:none}
+
 /* form */
 .form-row{margin-bottom:14px;display:flex;flex-direction:column}
 label{font-weight:700;font-size:0.95rem;color:#28334a;margin-bottom:8px}
@@ -94,5 +97,4 @@ input:focus, select:focus, textarea:focus{box-shadow:0 8px 20px rgba(140,29,64,0
   .left{order:1;padding:28px 20px}
   .left-inner{max-width:700px}
 }
-
 
