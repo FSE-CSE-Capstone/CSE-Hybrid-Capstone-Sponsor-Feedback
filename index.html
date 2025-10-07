@@ -11,31 +11,41 @@
   <main class="page-wrap" id="main" role="main">
     <section class="card" aria-labelledby="page-title">
       <header class="card-header">
-        <h1 id="page-title">Sponsor Judging</h1>
-        <p class="lead">Enter your name and email to load projects assigned to you.</p>
+        <div class="title-wrap">
+          <h1 id="page-title">Sponsor Judging</h1>
+          <p class="lead">Enter your name and email to load projects assigned to you.</p>
+        </div>
       </header>
 
       <form id="judge-form" class="card-body" novalidate>
-        <!-- Project selector section -->
-        <div class="section" id="section-projects" aria-labelledby="projects-heading">
-          <h2 id="projects-heading" class="section-title">Projects</h2>
-          <div class="field">
+        <!-- top row: name + email -->
+        <div class="row row-g">
+          <div class="col-6">
             <label for="fullName">Full name</label>
-            <input id="fullName" name="fullName" type="text" autocomplete="name" required>
+            <input id="fullName" name="fullName" type="text" autocomplete="name" placeholder="Your full name">
           </div>
-
-          <div class="field">
+          <div class="col-6">
             <label for="email">Email</label>
-            <input id="email" name="email" type="email" autocomplete="email" required>
+            <input id="email" name="email" type="email" autocomplete="email" placeholder="you@example.com">
+          </div>
+        </div>
+
+        <!-- project selection -->
+        <div class="section projects-section">
+          <div class="section-head">
+            <h2>Projects</h2>
+            <p class="muted">Choose a project assigned to your email, then click Load Project.</p>
           </div>
 
-          <div class="field">
-            <label for="project">Select a project</label>
-            <select id="project" name="project" disabled aria-disabled="true">
-              <option value="">— Select a project —</option>
-            </select>
-            <div class="project-actions">
-              <button type="button" id="loadProjectBtn" class="btn btn-secondary">Load Project</button>
+          <div class="row row-g align-center">
+            <div class="col-7">
+              <label for="project">Project</label>
+              <select id="project" name="project" disabled>
+                <option value="">— Select a project —</option>
+              </select>
+            </div>
+            <div class="col-5 actions-col">
+              <button type="button" id="loadProjectBtn" class="btn btn-outline">Load Project</button>
               <button type="button" id="skipBtn" class="btn btn-ghost">Skip (remove)</button>
             </div>
           </div>
@@ -43,21 +53,19 @@
           <div class="hint" id="csv-hint">Project data loaded from <code>data.csv</code>.</div>
         </div>
 
-        <!-- Matrix section -->
-        <div class="section" id="section-matrix" aria-labelledby="matrix-heading">
-          <h2 id="matrix-heading" class="section-title">Please evaluate the students on Communication</h2>
-
-          <div id="matrix-question" class="project-title" aria-live="polite"></div>
+        <!-- matrix -->
+        <div class="section matrix-section" aria-labelledby="matrix-heading">
+          <h2 id="matrix-heading">Please evaluate the students on Communication</h2>
+          <div id="matrix-project-title" class="matrix-title" aria-live="polite"></div>
           <div id="matrix-container" class="matrix-container" role="region" aria-label="Student rating matrix"></div>
         </div>
 
-        <!-- Comments section -->
-        <div class="section" id="section-comments" aria-labelledby="comments-heading">
-          <h2 id="comments-heading" class="section-title">Comments about this project (optional)</h2>
+        <!-- comments -->
+        <div class="section comments-section">
+          <h2>Comments about this project (optional)</h2>
           <textarea id="comments" name="comments" rows="5" placeholder="Add any comments about the project..."></textarea>
         </div>
 
-        <!-- Actions -->
         <div class="form-actions">
           <button id="submitBtn" type="submit" class="btn btn-primary">Submit ratings for project</button>
         </div>
@@ -74,4 +82,5 @@
   <script src="scripts.js" defer></script>
 </body>
 </html>
+
 
