@@ -3,84 +3,34 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Sponsor Judging</title>
+  <title>Sponsor Ratings</title>
 
   <link rel="stylesheet" href="styles.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-  <main class="page-wrap" id="main" role="main">
-    <section class="card" aria-labelledby="page-title">
-      <header class="card-header">
-        <div class="title-wrap">
-          <h1 id="page-title">Sponsor Judging</h1>
-          <p class="lead">Enter your name and email to load projects assigned to you.</p>
-        </div>
-      </header>
+  <div class="split">
 
-      <form id="judge-form" class="card-body" novalidate>
-        <!-- top row: name + email -->
-        <div class="row row-g">
-          <div class="col-6">
-            <label for="fullName">Full name</label>
-            <input id="fullName" name="fullName" type="text" autocomplete="name" placeholder="Your full name">
-          </div>
-          <div class="col-6">
-            <label for="email">Email</label>
-            <input id="email" name="email" type="email" autocomplete="email" placeholder="you@example.com">
-          </div>
-        </div>
+    <!-- LEFT: form area -->
+    <div class="left">
+      <div class="left-inner">
+        <!-- HEADING sits above the card -->
+        <h2 id="projects-heading-outside" class="projects-heading" style="display:none;">
+          Please select the project you would like to evaluate
+        </h2>
 
-        <!-- project selection -->
-        <div class="section projects-section">
-          <div class="section-head">
-            <h2>Projects</h2>
-            <p class="muted">Choose a project assigned to your email, then click Load Project.</p>
-          </div>
+        <section class="card">
+          <!-- STAGE 1: Identity -->
+          <div id="stage-identity" class="stage">
+            <h1 class="welcome-title">Hello, <span class="accent">welcome!</span></h1>
+            <p class="lead">Enter your name and email to continue.</p>
 
-          <div class="row row-g align-center">
-            <div class="col-7">
-              <label for="project">Project</label>
-              <select id="project" name="project" disabled>
-                <option value="">— Select a project —</option>
-              </select>
+            <div class="form-row">
+              <label for="fullName">Your name</label>
+              <input id="fullName" name="fullName" type="text" placeholder="Jane Doe" />
             </div>
-            <div class="col-5 actions-col">
-              <button type="button" id="loadProjectBtn" class="btn btn-outline">Load Project</button>
-              <button type="button" id="skipBtn" class="btn btn-ghost">Skip (remove)</button>
-            </div>
-          </div>
 
-          <div class="hint" id="csv-hint">Project data loaded from <code>data.csv</code>.</div>
-        </div>
-
-        <!-- matrix -->
-        <div class="section matrix-section" aria-labelledby="matrix-heading">
-          <h2 id="matrix-heading">Please evaluate the students on Communication</h2>
-          <div id="matrix-project-title" class="matrix-title" aria-live="polite"></div>
-          <div id="matrix-container" class="matrix-container" role="region" aria-label="Student rating matrix"></div>
-        </div>
-
-        <!-- comments -->
-        <div class="section comments-section">
-          <h2>Comments about this project (optional)</h2>
-          <textarea id="comments" name="comments" rows="5" placeholder="Add any comments about the project..."></textarea>
-        </div>
-
-        <div class="form-actions">
-          <button id="submitBtn" type="submit" class="btn btn-primary">Submit ratings for project</button>
-        </div>
-
-        <div id="form-status" class="form-status" role="status" aria-live="polite"></div>
-      </form>
-
-      <footer class="card-footer">
-        <small>© Sponsor Judging</small>
-      </footer>
-    </section>
-  </main>
-
-  <script src="scripts.js" defer></script>
-</body>
-</html>
+            <div class="form-row">
+              <label for=
 
 
