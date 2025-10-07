@@ -1,21 +1,27 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Sponsor Ratings</title>
 
-  <!-- Link to your CSS file -->
+  <!-- styles -->
   <link rel="stylesheet" href="styles.css">
 
-  <!-- (Optional) Google Fonts for Inter -->
+  <!-- optional font -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
   <div class="split">
-    <!-- LEFT SIDE: form container -->
+
+    <!-- LEFT: form area -->
     <div class="left">
       <div class="left-inner">
+        <!-- HEADING moved outside the white card -->
+        <h2 id="projects-heading-outside" class="projects-heading" style="display:none;">
+          Please select the project you would like to evaluate
+        </h2>
+
         <section class="card">
           <!-- STAGE 1: Identity -->
           <div id="stage-identity" class="stage">
@@ -37,25 +43,28 @@
             </div>
           </div>
 
-          <!-- STAGE 2: Projects + Matrix -->
+          <!-- STAGE 2: Projects + Matrix (hidden initially) -->
           <div id="stage-projects" class="stage" style="display:none;">
-            <h2 class="projects-heading">Please select the project you would like to evaluate</h2>
-
-            <!-- Project list (click a project to load its matrix) -->
+            <!-- project list -->
             <ul id="project-list" class="project-list" aria-live="polite"></ul>
 
-            <!-- When a project is clicked, matrix and comment appear here -->
-            <div id="project-top"></div>
+            <!-- anchor for moving selected project to top if needed -->
+            <div id="project-top" aria-hidden="true"></div>
 
-            <div id="question-heading" class="question-heading" style="display:none;">Evaluate students</div>
-            <div id="matrix-question" class="matrix-question">Please evaluate the students on Communication</div>
+            <!-- small header used when a project is loaded (created dynamically) -->
+            <div id="project-header-placeholder"></div>
+
             <div id="matrix-container" class="matrix-container" aria-live="polite"></div>
 
             <div class="form-status" id="form-status" aria-live="polite"></div>
 
-            <div class="actions">
-              <button id="backToIdentity" class="btn btn-outline" type="button">Back</button>
-              <button id="submitProject" class="btn btn-primary" type="button">Submit ratings for project</button>
+            <div class="actions actions-space-between">
+              <div>
+                <button id="backToIdentity" class="btn btn-outline" type="button">Back</button>
+              </div>
+              <div>
+                <button id="submitProject" class="btn btn-primary" type="button">Submit ratings for project</button>
+              </div>
             </div>
           </div>
         </section>
@@ -66,7 +75,7 @@
       </div>
     </div>
 
-    <!-- RIGHT SIDE: gradient artwork -->
+    <!-- RIGHT: artwork -->
     <div class="right" aria-hidden="true">
       <div class="graphic">
         <div class="shape circle large"></div>
@@ -77,7 +86,7 @@
     </div>
   </div>
 
-  <!-- Link to your main JavaScript -->
+  <!-- JS (replace scripts.js with the code below) -->
   <script src="scripts.js"></script>
 </body>
 </html>
