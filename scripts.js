@@ -102,8 +102,16 @@ document.addEventListener('DOMContentLoaded', () => {
   function showProjectsStage(){ stageIdentity.style.display='none'; stageProjects.style.display=''; stageThankyou.style.display='none'; projectHeadingOutside.style.display=''; }
   function showThankyouStage(){ stageIdentity.style.display='none'; stageProjects.style.display='none'; stageThankyou.style.display=''; projectHeadingOutside.style.display='none'; }
 
-  function escapeHtml(s){ return String(s).replace(/[&<>\"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',\"'\":\"&#39;\"}[m])); }
-
+  function escapeHtml(s) {
+  const map = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  };
+  return String(s).replace(/[&<>"']/g, (m) => map[m]);
+}
   function populateProjectListFor(email){
     projectListEl.innerHTML = '';
     sponsorProjects = {};
