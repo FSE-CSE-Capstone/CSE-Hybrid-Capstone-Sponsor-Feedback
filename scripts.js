@@ -323,17 +323,14 @@ if (descEl) descEl.textContent = 'Please evaluate the students on Communication'
     table.appendChild(tbody);
     matrixContainer.appendChild(table);
 
-    // put comment UI into the dedicated comment section (avoid empty card bubbles)
     if (commentSection) {
-      commentSection.innerHTML = ''; // clear
-      const commentWrap = document.createElement('div');
-      commentWrap.className = 'project-comment-wrap';
-      const lbl = document.createElement('label'); lbl.htmlFor = 'project-comment'; lbl.textContent = 'Comments about this project (optional)';
-      const ta = document.createElement('textarea'); ta.id = 'project-comment'; ta.rows = 4; ta.style.width = '100%';
-      ta.value = draft.comment || '';
-      commentWrap.appendChild(lbl); commentWrap.appendChild(ta);
-      commentSection.appendChild(commentWrap);
-    }
+  commentSection.innerHTML = ''; // clear
+  const commentWrap = document.createElement('div');
+  ...
+  commentSection.appendChild(commentWrap);
+  // explicitly show the comment section (override CSS default)
+  commentSection.style.display = '';
+}
 
     // Save draft when user changes ratings or comment
     matrixContainer.removeEventListener('change', saveDraftHandler);
