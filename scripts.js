@@ -1,19 +1,19 @@
-// scripts.js — updated UI (removed close button) and FormData submit
-const ENDPOINT_URL = 'https://csesponsors.sbecerr7.workers.dev/'; // Cloudflare Worker URL (proxy)
-const CSV_FILENAME = 'data.csv'; // Data file in repo
+// scripts.js — restored card UI + ASU colors. Uses Cloudflare Worker proxy endpoint.
+const ENDPOINT_URL = 'https://csesponsors.sbecerr7.workers.dev/'; // update this if your worker URL differs
+const CSV_FILENAME = 'data.csv';
 const SCALE = ['Terrible','Poor','Average','Good','Excellent'];
 
 document.addEventListener('DOMContentLoaded', () => {
-  const emailInput = document.getElementById('email');
   const nameInput = document.getElementById('fullName');
+  const emailInput = document.getElementById('email');
   const projectSelect = document.getElementById('project');
   const loadProjectBtn = document.getElementById('loadProjectBtn');
+  const skipBtn = document.getElementById('skipBtn');
   const matrixContainer = document.getElementById('matrix-container');
-  const matrixQuestion = document.getElementById('matrix-question');
+  const matrixTitle = document.getElementById('matrix-project-title');
   const status = document.getElementById('form-status');
   const submitBtn = document.getElementById('submitBtn');
   const commentsEl = document.getElementById('comments');
-  const skipBtn = document.getElementById('skipBtn');
 
   let sponsorData = {};
   let sponsorProjects = {};
@@ -52,7 +52,7 @@ document.addEventListener('DOMContentLoaded', () => {
   async function tryFetchCSV() {
     try {
       const resp = await fetch(CSV_FILENAME, { cache: 'no-store' });
-      if (!resp.ok) throw new Error('not found');
+      if (!resp.ok) throw new Error('CSV not found');
       const txt = await resp.text();
       const rows = parseCSV(txt);
       sponsorData = buildSponsorMap(rows);
@@ -69,7 +69,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const entry = sponsorData[email];
     if (!entry || !entry.projects) {
       projectSelect.disabled = true;
-      projectSelect.setAttribute('aria-disabled', 'true');
       setStatus('No projects found for that email.');
       return;
     }
@@ -81,18 +80,18 @@ document.addEventListener('DOMContentLoaded', () => {
       sponsorProjects[p] = entry.projects[p].slice();
     });
     projectSelect.disabled = false;
-    projectSelect.removeAttribute('aria-disabled');
     setStatus('Projects loaded. Select and click Load Project.');
   }
 
   function renderMatrix(project) {
     matrixContainer.innerHTML = '';
-    matrixQuestion.textContent = project ? project : '';
+    matrixTitle.textContent = project || '';
     const students = sponsorProjects[project] || [];
     if (!students.length) { matrixContainer.textContent = 'No students found'; return; }
 
     const table = document.createElement('table');
     table.className = 'matrix-table';
+
     const thead = document.createElement('thead');
     const headRow = document.createElement('tr');
     const thEmpty = document.createElement('th'); thEmpty.textContent = ''; headRow.appendChild(thEmpty);
@@ -108,7 +107,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const div = document.createElement('div'); div.className = 'rating-row';
         const id = `rating-${sIdx}-${colIdx}`;
         const input = document.createElement('input'); input.type = 'radio'; input.name = `rating-${sIdx}`; input.value = String(colIdx + 1); input.id = id;
-        const label = document.createElement('label'); label.htmlFor = id; label.className = 'visually-hidden';
+        const label = document.createElement('label'); label.htmlFor = id; label.className = 'sr-only';
         div.appendChild(input); div.appendChild(label); td.appendChild(div); tr.appendChild(td);
       });
       tbody.appendChild(tr);
@@ -144,7 +143,7 @@ document.addEventListener('DOMContentLoaded', () => {
     delete sponsorProjects[sel];
     const opt = projectSelect.querySelector(`option[value="${sel}"]`);
     if (opt) opt.remove();
-    matrixContainer.innerHTML = ''; matrixQuestion.textContent = '';
+    matrixContainer.innerHTML = ''; matrixTitle.textContent = '';
     setStatus(`Removed project "${sel}"`);
   });
 
@@ -173,7 +172,6 @@ document.addEventListener('DOMContentLoaded', () => {
       setStatus('Submitting...', null);
       submitBtn.disabled = true;
 
-      // Send as FormData to avoid preflight
       const form = new FormData();
       form.append('payload', JSON.stringify(payload));
 
@@ -183,7 +181,6 @@ document.addEventListener('DOMContentLoaded', () => {
       });
 
       const text = await resp.text();
-      // Try to parse JSON if server returned JSON, otherwise show raw text in console.
       let data = null;
       try { data = JSON.parse(text); } catch(e) { console.warn('Response not JSON:', text); }
 
@@ -193,15 +190,13 @@ document.addEventListener('DOMContentLoaded', () => {
       } else {
         if (data && data.status === 'ok') {
           setStatus('Submission saved. Thank you!', 'green');
-          // remove project from list and clear matrix
           delete sponsorProjects[project];
           const opt = projectSelect.querySelector(`option[value="${project}"]`);
           if (opt) opt.remove();
           matrixContainer.innerHTML = '';
-          matrixQuestion.textContent = '';
+          matrixTitle.textContent = '';
           commentsEl.value = '';
         } else {
-          // Server responded OK but content wasn't expected
           setStatus('Submission received (server response unexpected). Check console.', 'red');
           console.log('Server raw response:', text);
         }
@@ -217,5 +212,6 @@ document.addEventListener('DOMContentLoaded', () => {
   // initial CSV load
   tryFetchCSV();
 });
+
 
 
