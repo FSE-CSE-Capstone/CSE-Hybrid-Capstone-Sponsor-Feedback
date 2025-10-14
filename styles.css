@@ -1,7 +1,5 @@
 /* ------------------------
    Consolidated styles.css
-   (Complete — includes header, title, welcome, card, project list,
-   matrix table, buttons, responsive tweaks)
    ------------------------ */
 
 :root{
@@ -26,9 +24,7 @@ body{
   text-rendering: optimizeLegibility;
 }
 
-/* ------------------------
-   Fixed Header (logo, left)
-   ------------------------ */
+/* Header */
 .site-header{
   position: fixed;
   top: 0;
@@ -44,7 +40,6 @@ body{
   padding-left: 28px;
   box-shadow: 0 6px 20px rgba(7,18,40,0.04);
 }
-
 .header-inner{
   width: 100%;
   max-width: calc(var(--max-card-width) + 96px);
@@ -52,7 +47,6 @@ body{
   align-items:center;
   gap: 12px;
 }
-
 .site-logo{
   width: 260px;
   max-height: 64px;
@@ -61,9 +55,7 @@ body{
   display:block;
 }
 
-/* ------------------------
-   Page layout / content wrapper
-   ------------------------ */
+/* Page layout / content wrapper */
 .center-wrapper{
   min-height: calc(100vh - var(--header-height));
   display:flex;
@@ -72,8 +64,6 @@ body{
   padding: 32px;
   padding-top: calc(var(--header-height) + 32px);
 }
-
-/* center area that keeps title/welcome left-aligned relative to card */
 .content-inner{
   width: 100%;
   max-width: var(--max-card-width);
@@ -84,7 +74,17 @@ body{
   padding: 0 12px;
 }
 
-/* Title above the card */
+/* WELCOME block (large, top) */
+.welcome-block{ margin: 0; padding: 0; }
+.welcome-title{
+  font-size: 2.4rem;      /* large */
+  font-weight: 800;
+  margin: 0 0 6px 0;
+  color: var(--text);
+  line-height: 1;
+}
+
+/* Title (stays visible) */
 .form-title{
   margin: 0 0 6px 0;
   font-size: 1.6rem;
@@ -94,19 +94,15 @@ body{
   text-align: left;
 }
 
-/* Welcome block above the title (shown only on identity page) */
-.welcome-block{ margin: 0; padding: 0; }
-.welcome-title{
-  font-size: 1.8rem;
-  font-weight: 700;
-  margin: 0 0 6px 0;
-  color: var(--text);
+/* Instruction under title (only identity page) */
+.under-title{
+  margin-top: 0;
+  margin-bottom: 6px;
+  color: var(--muted);
+  font-size: 1rem;
 }
-.lead{ color: var(--muted); margin: 0 0 0 0; font-size: 1rem; }
 
-/* ------------------------
-   Card (form container)
-   ------------------------ */
+/* Card container */
 .card{
   width: 100%;
   background: var(--bg-left);
@@ -145,9 +141,7 @@ input:focus, select:focus, textarea:focus{
   border-color:rgba(111,179,210,0.18);
 }
 
-/* ------------------------
-   Buttons: larger and prominent
-   ------------------------ */
+/* Buttons */
 .btn{
   border:0;
   border-radius:10px;
@@ -175,134 +169,49 @@ input:focus, select:focus, textarea:focus{
 }
 .btn-outline:hover{ background:rgba(140,29,64,0.04); transform:translateY(-2px); }
 
-/* ------------------------
-   Project list (styled cards)
-   ------------------------ */
-.project-list{
-  list-style:none;
-  padding:0;
-  margin:6px 0 0;
-  display:flex;
-  flex-direction:column;
-  gap:12px;
-}
-.project-item{
-  background:#fff;
-  border:1px solid #eef2f7;
-  padding:14px 16px;
-  border-radius:12px;
-  cursor:pointer;
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  transition:all .14s ease;
-}
-.project-item:hover{
-  transform:translateY(-4px);
-  box-shadow:0 14px 36px rgba(12,18,30,0.06);
-  background:linear-gradient(90deg, rgba(140,29,64,0.04), rgba(255,198,39,0.03));
-}
-.project-item.active{
-  background:linear-gradient(90deg, rgba(140,29,64,0.12), rgba(255,198,39,0.06));
-  box-shadow:0 16px 40px rgba(140,29,64,0.10);
-  border-color:rgba(140,29,64,0.18);
-}
-.project-item.completed{
-  opacity:0.6;
-  background:#f5f6f8;
-  transform:none;
-  box-shadow:none;
-  cursor:default;
-}
+/* Project list */
+.project-list{ list-style:none; padding:0; margin:6px 0 0; display:flex; flex-direction:column; gap:12px; }
+.project-item{ background:#fff; border:1px solid #eef2f7; padding:14px 16px; border-radius:12px; cursor:pointer; display:flex; align-items:center; justify-content:space-between; transition:all .14s ease; }
+.project-item:hover{ transform:translateY(-4px); box-shadow:0 14px 36px rgba(12,18,30,0.06); background:linear-gradient(90deg, rgba(140,29,64,0.04), rgba(255,198,39,0.03)); }
+.project-item.active{ background:linear-gradient(90deg, rgba(140,29,64,0.12), rgba(255,198,39,0.06)); box-shadow:0 16px 40px rgba(140,29,64,0.10); border-color:rgba(140,29,64,0.18); }
+.project-item.completed{ opacity:0.6; background:#f5f6f8; transform:none; box-shadow:none; cursor:default; }
 .project-item .meta{ color:var(--muted); font-weight:600; margin-left:8px; font-size:0.9rem; }
 
-/* ------------------------
-   Matrix table layout (ratings)
-   ------------------------ */
+/* Matrix table (ratings) */
 .matrix-container{ margin-top:10px; padding-top:8px }
 .matrix-description{ font-weight:600; color:#2b3b51; margin-bottom:12px }
 .current-project-header{ font-weight:700; margin:10px 0 12px; color:#223; font-size:1.05rem }
-
-/* table */
-.matrix-table{
-  width:100%;
-  border-collapse:collapse;
-  margin-top:8px;
-  table-layout:fixed;
-}
-.matrix-table thead th{
-  padding:12px;
-  border-bottom:1px solid #eef2f7;
-  text-align:center;
-  font-weight:700;
-  color:#475569;
-  font-size:0.95rem;
-}
-.matrix-table tbody td{
-  padding:12px 14px;
-  border-bottom:1px solid #f1f5f9;
-  vertical-align:middle;
-  font-size:0.95rem;
-}
-.matrix-table td:first-child{
-  text-align:left;
-  width:40%;
-  padding-left:18px;
-  font-weight:600;
-}
-
-/* radio buttons alignment */
+.matrix-table{ width:100%; border-collapse:collapse; margin-top:8px; table-layout:fixed; }
+.matrix-table thead th{ padding:12px; border-bottom:1px solid #eef2f7; text-align:center; font-weight:700; color:#475569; font-size:0.95rem; }
+.matrix-table tbody td{ padding:12px 14px; border-bottom:1px solid #f1f5f9; vertical-align:middle; font-size:0.95rem; }
+.matrix-table td:first-child{ text-align:left; width:40%; padding-left:18px; font-weight:600; }
 .rating-row{ display:flex; justify-content:center; gap:18px; align-items:center; }
-.matrix-table input[type="radio"]{
-  width:18px;
-  height:18px;
-}
+.matrix-table input[type="radio"]{ width:18px; height:18px; }
 
-/* ------------------------
-   Comment area
-   ------------------------ */
+/* Comment area */
 .project-comment-wrap{ margin-top:18px }
-.project-comment-wrap textarea#project-comment{
-  font-size:0.95rem;
-  resize:vertical;
-  min-height:100px;
-  padding:12px;
-  border-radius:8px;
-  border:1px solid #e6edf8;
-  width:100%;
-  font-family:inherit;
-  background:#fff;
-  color:#0b2540;
-}
+.project-comment-wrap textarea#project-comment{ font-size:0.95rem; resize:vertical; min-height:100px; padding:12px; border-radius:8px; border:1px solid #e6edf8; width:100%; font-family:inherit; background:#fff; color:#0b2540; }
 .project-comment-wrap label{ display:block; margin-bottom:8px; color:#475569 }
 
-/* ------------------------
-   Status and actions
-   ------------------------ */
+/* Status and actions */
 .form-status{ margin-top:12px; font-weight:700; color:var(--muted) }
 .actions{ display:flex; gap:12px; margin-top:18px; justify-content:flex-end }
 .actions-space-between{ display:flex; align-items:center; justify-content:space-between; gap:12px }
 
-/* ------------------------
-   Footer
-   ------------------------ */
+/* Footer */
 .footer{ margin-top:18px; text-align:center; color:var(--muted); font-size:0.9rem }
 
-/* ------------------------
-   Accessibility / small helpers
-   ------------------------ */
+/* Helpers */
 .hidden{ display:none !important }
 
-/* ------------------------
-   Responsive
-   ------------------------ */
+/* Responsive */
 @media (max-width:980px){
   .site-header{ padding-left:16px; height:72px }
   .site-logo{ width:180px; max-height:48px }
   .center-wrapper{ padding:20px; padding-top: calc(var(--header-height) + 20px) }
   .content-inner{ padding: 0 8px }
+  .welcome-title{ font-size:1.6rem }
   .form-title{ font-size:1.25rem }
-  .welcome-title{ font-size:1.4rem }
   .card{ padding:20px }
   .btn{ font-size:1rem; padding:10px 14px }
   .btn-primary{ padding:12px 18px }
