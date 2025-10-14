@@ -5,93 +5,89 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>CSE Capstone Sponsor Feedback Survey</title>
 
-  <!-- Google font -->
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-
-  <!-- Main stylesheet -->
   <link rel="stylesheet" href="styles.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-  <!-- Fixed header with logo and optional title -->
+  <!-- Fixed header with left-aligned logo -->
   <header class="site-header" role="banner" aria-label="Site header">
     <div class="header-inner">
       <img src="logo.png" alt="CSE Capstone logo" class="site-logo" />
-      <!-- Optional small site text beside logo (hidden at very small widths) -->
-      <div class="header-title">CSE Capstone</div>
     </div>
   </header>
 
-  <!-- Page content centered (accounting for fixed header height) -->
+  <!-- Main content - centered vertically, with content-inner aligning title/card left within the centered area -->
   <main class="center-wrapper" role="main">
-    <div class="card" aria-labelledby="projects-heading-outside">
-      <!-- Form title -->
+    <div class="content-inner">
+      <!-- FORM TITLE: outside of the card and left-justified -->
       <h2 class="form-title">CSE Capstone Sponsor Feedback Survey</h2>
 
-      <!-- STAGE 1: Identity -->
-      <div id="stage-identity" class="stage">
+      <!-- WELCOME block: moved outside the card, left-justified -->
+      <div class="welcome-block">
         <h1 class="welcome-title">Hello, <span class="accent">welcome!</span></h1>
         <p class="lead">Enter your name and email to continue.</p>
-
-        <div class="form-row">
-          <label for="fullName">Your name</label>
-          <input id="fullName" name="fullName" type="text" placeholder="Jane Doe" />
-        </div>
-
-        <div class="form-row">
-          <label for="email">Your email</label>
-          <input id="email" name="email" type="email" placeholder="you@example.com" />
-        </div>
-
-        <div class="actions">
-          <button id="identitySubmit" class="btn btn-primary" type="button">Continue</button>
-        </div>
       </div>
 
-      <!-- STAGE 2: Projects + Matrix (hidden initially) -->
-      <div id="stage-projects" class="stage" style="display:none;">
-        <!-- PROJECT LIST SECTION -->
-        <div class="section section-projects" aria-labelledby="projects-heading">
-          <h3 id="projects-heading" class="section-title">Projects</h3>
-          <ul id="project-list" class="project-list" aria-live="polite"></ul>
-        </div>
-
-        <!-- MATRIX SECTION -->
-        <div class="section section-matrix" aria-live="polite">
-          <div id="matrix-info" class="matrix-info" style="display:none;">
-            <div class="current-project-header" id="current-project-header"></div>
-            <div class="matrix-description">Please evaluate the students on Communication</div>
+      <!-- Card (form) -->
+      <section class="card" aria-labelledby="projects-heading-outside">
+        <!-- STAGE 1: Identity (moved inputs here; greeting removed since it's outside now) -->
+        <div id="stage-identity" class="stage">
+          <div class="form-row">
+            <label for="fullName">Your name</label>
+            <input id="fullName" name="fullName" type="text" placeholder="Jane Doe" />
           </div>
-          <div id="matrix-container" class="matrix-container"></div>
-        </div>
 
-        <!-- COMMENT SECTION -->
-        <div class="section section-comment">
-          <!-- comment UI will be injected below matrix; kept as a section for spacing -->
-        </div>
-
-        <div class="form-status" id="form-status" aria-live="polite"></div>
-
-        <div class="actions actions-space-between">
-          <div>
-            <button id="backToIdentity" class="btn btn-outline" type="button">Back</button>
+          <div class="form-row">
+            <label for="email">Your email</label>
+            <input id="email" name="email" type="email" placeholder="you@example.com" />
           </div>
-          <div>
-            <button id="submitProject" class="btn btn-primary" type="button">Submit ratings for project</button>
+
+          <div class="actions">
+            <button id="identitySubmit" class="btn btn-primary" type="button">Continue</button>
           </div>
         </div>
-      </div>
 
-      <!-- STAGE 3: Thank you -->
-      <div id="stage-thankyou" class="stage" style="display:none;text-align:center;padding:36px;">
-        <h2>Thank you — your evaluations have been submitted.</h2>
-        <p class="lead">We appreciate your time and feedback.</p>
-        <div style="margin-top:20px;display:flex;justify-content:center;gap:12px;">
-          <button id="finishStartOver" class="btn btn-outline" type="button">Start Over</button>
+        <!-- STAGE 2: Projects + Matrix (hidden initially) -->
+        <div id="stage-projects" class="stage" style="display:none;">
+          <div class="section section-projects" aria-labelledby="projects-heading">
+            <h3 id="projects-heading" class="section-title">Projects</h3>
+            <ul id="project-list" class="project-list" aria-live="polite"></ul>
+          </div>
+
+          <div class="section section-matrix" aria-live="polite">
+            <div id="matrix-info" class="matrix-info" style="display:none;">
+              <div class="current-project-header" id="current-project-header"></div>
+              <div class="matrix-description">Please evaluate the students on Communication</div>
+            </div>
+            <div id="matrix-container" class="matrix-container"></div>
+          </div>
+
+          <div class="section section-comment"></div>
+
+          <div class="form-status" id="form-status" aria-live="polite"></div>
+
+          <div class="actions actions-space-between">
+            <div>
+              <button id="backToIdentity" class="btn btn-outline" type="button">Back</button>
+            </div>
+            <div>
+              <button id="submitProject" class="btn btn-primary" type="button">Submit ratings for project</button>
+            </div>
+          </div>
         </div>
-      </div>
+
+        <!-- STAGE 3: Thank you -->
+        <div id="stage-thankyou" class="stage" style="display:none;text-align:center;padding:36px;">
+          <h2>Thank you — your evaluations have been submitted.</h2>
+          <p class="lead">We appreciate your time and feedback.</p>
+          <div style="margin-top:20px;display:flex;justify-content:center;gap:12px;">
+            <button id="finishStartOver" class="btn btn-outline" type="button">Start Over</button>
+          </div>
+        </div>
+      </section>
+
+      <footer class="footer"><small>Built for your course. Data saved to Google Sheets.</small></footer>
     </div>
-
-    <footer class="footer"><small>Built for your course. Data saved to Google Sheets.</small></footer>
   </main>
 
   <script src="scripts.js"></script>
