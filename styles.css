@@ -251,6 +251,9 @@ input:focus, select:focus, textarea:focus{
 .project-item .meta{ color:var(--muted); font-weight:600; margin-left:8px; font-size:0.9rem; }
 
 /* Matrix table (ratings) */
+.matrix-criterion {
+  margin-bottom: 40px; /* adjust to your liking */
+}
 .matrix-container{ margin-top:10px; padding-top:8px }
 .matrix-description{ font-weight:600; color:#2b3b51; margin-bottom:12px }
 .current-project-header{ font-weight:700; margin:10px 0 12px; color:#223; font-size:1.05rem }
