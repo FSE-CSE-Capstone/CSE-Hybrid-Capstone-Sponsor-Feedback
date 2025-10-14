@@ -1,4 +1,4 @@
-// scripts.js — Full merged version with welcome-block toggle and tryFetchCSV present
+// scripts.js — Full merged version with welcome-block and under-title toggles
 (function () {
   'use strict';
 
@@ -24,8 +24,9 @@
   var matrixInfo = document.getElementById('matrix-info'); // may be created later
   var finishStartOverBtn = document.getElementById('finishStartOver');
 
-  // NEW: welcome block shown only on identity stage
-  var welcomeBlock = document.getElementById('welcome-block');
+  // Elements we toggle
+  var welcomeBlock = document.getElementById('welcome-block'); // large "Hello, welcome!"
+  var underTitle = document.getElementById('under-title');     // "Enter your name..." under title
 
   // State
   var sponsorData = {};
@@ -110,7 +111,6 @@
     }
   }
 
-  // Improved updateSectionVisibility() to hide empty "section" boxes across browsers
   function updateSectionVisibility() {
     var sections = document.querySelectorAll('.section');
 
@@ -176,7 +176,6 @@
     });
   }
 
-  // New helper: remove truly-empty .section placeholders that cause visible empty boxes
   function removeEmptySections() {
     try {
       var sections = document.querySelectorAll('.section');
@@ -189,7 +188,6 @@
           var ch = children[j];
           if (!ch.tagName) continue;
           var tag = ch.tagName.toUpperCase();
-          // treat interactive/form elements and container elements as meaningful
           if (['INPUT','TEXTAREA','SELECT','BUTTON','TABLE','UL','OL','LI','IMG','CANVAS','SVG'].indexOf(tag) !== -1) {
             hasMeaningfulChild = true;
             break;
@@ -197,7 +195,6 @@
           if ((ch.textContent || '').trim().length > 0) { hasMeaningfulChild = true; break; }
         }
         if (!text && !hasMeaningfulChild) {
-          // hide placeholder section to avoid blank bubble being rendered
           s.style.display = 'none';
         }
       }
@@ -223,7 +220,7 @@
         populateProjectListFor(currentEmail);
       }
       updateSectionVisibility();
-      removeEmptySections(); // ensure no empty placeholders remain
+      removeEmptySections();
     }).catch(function (err) {
       console.debug('CSV fetch failed', err);
       setStatus('Project data not found. Ensure data.csv is present.');
@@ -233,15 +230,17 @@
   }
 
   /* -------------------------
-     Stage switching
+     Stage switching (now explicitly hides/shows welcome & underTitle)
      ------------------------- */
   function showIdentityStage() {
     if (stageIdentity) stageIdentity.style.display = '';
     if (stageProjects) stageProjects.style.display = 'none';
     if (stageThankyou) stageThankyou.style.display = 'none';
     if (projectHeadingOutside) projectHeadingOutside.style.display = 'none';
-    // show welcome block for identity
+
     if (welcomeBlock) welcomeBlock.style.display = '';
+    if (underTitle) underTitle.style.display = '';
+
     setStatus('');
     updateSectionVisibility();
     removeEmptySections();
@@ -252,8 +251,10 @@
     if (stageProjects) stageProjects.style.display = '';
     if (stageThankyou) stageThankyou.style.display = 'none';
     if (projectHeadingOutside) projectHeadingOutside.style.display = '';
-    // hide welcome block on project stage
+
     if (welcomeBlock) welcomeBlock.style.display = 'none';
+    if (underTitle) underTitle.style.display = 'none';
+
     updateSectionVisibility();
     removeEmptySections();
   }
@@ -263,8 +264,10 @@
     if (stageProjects) stageProjects.style.display = 'none';
     if (stageThankyou) stageThankyou.style.display = '';
     if (projectHeadingOutside) projectHeadingOutside.style.display = 'none';
-    // hide welcome block on thankyou
+
     if (welcomeBlock) welcomeBlock.style.display = 'none';
+    if (underTitle) underTitle.style.display = 'none';
+
     updateSectionVisibility();
     removeEmptySections();
   }
@@ -416,7 +419,7 @@
     table.appendChild(tbody);
     matrixContainer.appendChild(table);
 
-    // comment section (dedicated .section.section-comment)
+    // comment section
     var commentSection = document.querySelector('.section.section-comment');
     if (!commentSection) {
       commentSection = document.createElement('div');
@@ -439,7 +442,6 @@
     commentWrap.appendChild(ta);
     commentSection.appendChild(commentWrap);
 
-    // explicitly show comment section (override any CSS that hid it)
     commentSection.style.display = '';
     commentSection.style.visibility = 'visible';
 
