@@ -131,7 +131,7 @@ body{
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.05);
   border: 1px solid rgba(0, 0, 0, 0.05);
   padding: 16px 18px;
-  margin-bottom: 40px;
+  margin-bottom: 40px !important;
 }
 
 /* Adjust the inner text spacing */
