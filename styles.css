@@ -1,33 +1,25 @@
-/* ------------------------
-   Variables & base
-   ------------------------ */
 :root{
-  --accent-1: #ffda7b; /* warm gold */
-  --accent-2: #8c1d40; /* deep maroon */
-  --accent-3: #6fb3d2; /* soft teal/blue */
+  --accent-1: #ffda7b;
+  --accent-2: #8c1d40;
+  --accent-3: #6fb3d2;
   --bg-left: #fff;
   --muted: #6b7280;
   --text: #07122a;
-  --card-radius: 16px;
-  --header-height: 72px;
-  --max-card-width: 720px;
+  --card-radius: 18px;
+  --header-height: 84px;       /* taller header to accommodate larger logo */
+  --max-card-width: 920px;     /* larger card width as requested */
 }
 
+/* base */
 *{box-sizing:border-box}
 html,body{height:100%;margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial;color:var(--text);-webkit-font-smoothing:antialiased}
-
-/* richer colorful page gradient */
-body {
+body{
   background: linear-gradient(135deg, #fef7e6 0%, #fff6fa 30%, #eef8ff 60%, #f3f6ff 100%);
   background-attachment: fixed;
-  -webkit-font-smoothing:antialiased;
-  text-rendering: optimizeLegibility;
 }
 
-/* ------------------------
-   Fixed Header (logo)
-   ------------------------ */
-.site-header {
+/* header */
+.site-header{
   position: fixed;
   top: 0;
   left: 0;
@@ -35,103 +27,107 @@ body {
   height: var(--header-height);
   display: flex;
   align-items: center;
-  justify-content: center;
-  background: linear-gradient(180deg, rgba(255,255,255,0.9), rgba(255,255,255,0.82));
-  backdrop-filter: blur(6px);
+  justify-content: flex-start;   /* left-justify the logo */
+  background: linear-gradient(180deg, rgba(255,255,255,0.92), rgba(255,255,255,0.86));
   border-bottom: 1px solid rgba(11,18,32,0.06);
   z-index: 1000;
-  box-shadow: 0 6px 24px rgba(7,18,40,0.04);
+  padding-left: 28px;            /* space from the left edge */
+  box-shadow: 0 6px 20px rgba(7,18,40,0.04);
 }
 
-.header-inner {
+.header-inner{
   width: 100%;
   max-width: calc(var(--max-card-width) + 96px);
   display:flex;
   align-items:center;
-  justify-content:center;
-  gap: 18px;
-  padding: 8px 20px;
+  gap: 12px;
 }
 
-/* Larger responsive logo */
-.site-logo {
-  width: 220px;
+/* larger logo, left aligned */
+.site-logo{
+  width: 260px;      /* larger logo */
+  max-height: 64px;
   height: auto;
+  object-fit: contain;
   display:block;
-  object-fit:contain;
-  opacity: 0.98;
-  max-height: 56px;
 }
 
-/* small title to the right of logo (optional visual) */
-.header-title {
-  font-weight:700;
-  color:var(--accent-2);
-  font-size:1.05rem;
-  letter-spacing:0.2px;
-}
-
-/* ------------------------
-   Centered content wrapper (account for fixed header)
-   ------------------------ */
-.center-wrapper {
+/* main centered area */
+.center-wrapper{
   min-height: calc(100vh - var(--header-height));
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 20px;
-  padding: 28px;
-  padding-top: calc(var(--header-height) + 28px); /* ensure not hidden under header */
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding: 32px;
+  padding-top: calc(var(--header-height) + 32px); /* avoid header overlap */
 }
 
-/* ------------------------
-   Card (form container)
-   ------------------------ */
-.card{
+/* centers content while allowing left alignment inside content-inner */
+.content-inner{
   width: 100%;
   max-width: var(--max-card-width);
+  display:flex;
+  flex-direction: column;
+  align-items: flex-start;  /* left-justify title & welcome relative to card */
+  gap: 18px;
+  padding: 0 12px;
+}
+
+/* FORM TITLE: outside the card, slightly left (left-justified with the card) */
+.form-title{
+  margin: 0;
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--accent-2);
+  letter-spacing: 0.1px;
+  align-self: stretch;
+  text-align: left;
+}
+
+/* Welcome block outside the card */
+.welcome-block{
+  margin-top: 6px;
+  margin-bottom: 6px;
+}
+
+.welcome-title{
+  font-size: 1.8rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--text);
+}
+.accent{ color: var(--accent-2); }
+.lead{ color: var(--muted); margin: 6px 0 0 0 }
+
+/* card (form container) — larger */
+.card{
+  width: 100%;
   background: var(--bg-left);
   border-radius: var(--card-radius);
-  padding: 28px;
-  box-shadow: 0 22px 48px rgba(11,18,40,0.08);
-  border:1px solid rgba(10,12,30,0.04);
+  padding: 30px;
+  box-shadow: 0 22px 50px rgba(11,18,40,0.08);
+  border:1px solid rgba(10,12,30,0.03);
 }
-
-/* Form title */
-.form-title{
-  margin: 0 0 14px 0;
-  font-size: 1.25rem;
-  color: var(--accent-2);
-  font-weight: 700;
-  text-align: center;
-}
-
-/* typography */
-.welcome-title{font-size:1.9rem;margin:0 0 6px;font-weight:700;text-align:left}
-.accent{color:var(--accent-2)}
-.lead{color:var(--muted);margin:0 0 18px}
 
 /* sections inside the card */
 .section{padding:16px;border-radius:10px;background:linear-gradient(180deg,rgba(255,255,255,1),rgba(250,250,252,1));margin-bottom:14px;border:1px solid #f0f3f6}
 .section + .section{margin-top:6px}
 .section-title{margin:0 0 8px;font-weight:700;color:var(--accent-2)}
 
-/* form */
+/* form fields */
 .form-row{margin-bottom:14px;display:flex;flex-direction:column}
-label{font-weight:700;font-size:0.95rem;color:#28334a;margin-bottom:8px}
-input[type="text"], input[type="email"], select, textarea{padding:12px;border-radius:10px;border:1px solid #e6edf8;font-size:1rem;outline:none}
-input:focus, select:focus, textarea:focus{box-shadow:0 10px 26px rgba(111,179,210,0.08);border-color:rgba(111,179,210,0.18)}
+label{font-weight:700;font-size:0.98rem;color:#28334a;margin-bottom:8px}
+input[type="text"], input[type="email"], select, textarea{padding:14px;border-radius:10px;border:1px solid #e6edf8;font-size:1rem;outline:none}
+input:focus, select:focus, textarea:focus{box-shadow:0 10px 28px rgba(111,179,210,0.08);border-color:rgba(111,179,210,0.18)}
 
-/* buttons */
-.btn{border:0;border-radius:10px;cursor:pointer;font-weight:700;transition:all .14s ease;padding:10px 14px}
+/* Buttons — slightly larger text & padding */
+.btn{border:0;border-radius:10px;cursor:pointer;font-weight:700;transition:all .14s ease;padding:12px 16px;font-size:1.02rem}
 .btn-primary{
   background: linear-gradient(90deg, var(--accent-2), #a22b51 60%, var(--accent-1));
-  color:#fff;padding:12px 18px;box-shadow:0 12px 30px rgba(140,29,64,0.12)
+  color:#fff;padding:14px 22px;font-size:1.04rem;box-shadow:0 12px 30px rgba(140,29,64,0.12)
 }
 .btn-primary:hover{filter:brightness(1.03);transform:translateY(-3px)}
-.btn-primary:active{filter:brightness(0.95);transform:translateY(-1px)}
-.btn-outline{background:transparent;border:2px solid rgba(140,29,64,0.12);color:var(--accent-2);padding:8px 12px;border-radius:10px}
+.btn-outline{background:transparent;border:2px solid rgba(140,29,64,0.12);color:var(--accent-2);padding:10px 16px;font-size:1.02rem;border-radius:10px}
 .btn-outline:hover{background:rgba(140,29,64,0.04);transform:translateY(-2px)}
 
 /* project list */
@@ -163,16 +159,20 @@ input:focus, select:focus, textarea:focus{box-shadow:0 10px 26px rgba(111,179,21
 .actions-space-between{display:flex;align-items:center;justify-content:space-between;gap:12px}
 
 /* footer */
-.footer{margin-top:8px;text-align:center;color:var(--muted);font-size:0.9rem}
+.footer{margin-top:18px;text-align:center;color:var(--muted);font-size:0.9rem}
 
-/* responsive */
+/* responsive tweaks */
 @media (max-width:980px){
-  .center-wrapper{padding-top: calc(var(--header-height) + 20px)}
-  .site-logo{width:160px}
+  .site-header{padding-left:16px}
+  .site-logo{width:180px; max-height:48px}
+  .center-wrapper{padding:20px; padding-top: calc(var(--header-height) + 20px)}
+  .content-inner{padding: 0 8px}
+  .form-title{font-size:1.25rem}
+  .welcome-title{font-size:1.4rem}
   .card{padding:20px}
-  .welcome-title{font-size:1.6rem}
-  .header-title{display:none}
+  .btn{font-size:1rem;padding:10px 14px}
+  .btn-primary{padding:12px 18px}
 }
 
-/* small helpers */
+/* utility */
 .hidden{display:none !important}
