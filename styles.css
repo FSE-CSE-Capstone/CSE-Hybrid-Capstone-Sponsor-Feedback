@@ -1,7 +1,13 @@
+/* ------------------------
+   Consolidated styles.css
+   (Complete — includes header, title, welcome, card, project list,
+   matrix table, buttons, responsive tweaks)
+   ------------------------ */
+
 :root{
-  --accent-1: #ffda7b;
-  --accent-2: #8c1d40;
-  --accent-3: #6fb3d2;
+  --accent-1: #ffda7b;    /* warm gold */
+  --accent-2: #8c1d40;    /* deep maroon */
+  --accent-3: #6fb3d2;    /* soft teal/blue */
   --bg-left: #fff;
   --muted: #6b7280;
   --text: #07122a;
@@ -10,15 +16,19 @@
   --max-card-width: 920px;
 }
 
-/* base */
+/* Reset / base */
 *{box-sizing:border-box}
 html,body{height:100%;margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial;color:var(--text);-webkit-font-smoothing:antialiased}
 body{
   background: linear-gradient(135deg, #fef7e6 0%, #fff6fa 30%, #eef8ff 60%, #f3f6ff 100%);
   background-attachment: fixed;
+  -webkit-font-smoothing:antialiased;
+  text-rendering: optimizeLegibility;
 }
 
-/* header */
+/* ------------------------
+   Fixed Header (logo, left)
+   ------------------------ */
 .site-header{
   position: fixed;
   top: 0;
@@ -27,11 +37,11 @@ body{
   height: var(--header-height);
   display: flex;
   align-items: center;
-  justify-content: flex-start;   /* left-justify the logo */
+  justify-content: flex-start;
   background: linear-gradient(180deg, rgba(255,255,255,0.92), rgba(255,255,255,0.86));
   border-bottom: 1px solid rgba(11,18,32,0.06);
   z-index: 1000;
-  padding-left: 28px;            /* space from the left edge */
+  padding-left: 28px;
   box-shadow: 0 6px 20px rgba(7,18,40,0.04);
 }
 
@@ -43,64 +53,60 @@ body{
   gap: 12px;
 }
 
-/* larger logo, left aligned */
 .site-logo{
-  width: 260px;      /* larger logo */
+  width: 260px;
   max-height: 64px;
   height: auto;
   object-fit: contain;
   display:block;
 }
 
-/* main centered area */
+/* ------------------------
+   Page layout / content wrapper
+   ------------------------ */
 .center-wrapper{
   min-height: calc(100vh - var(--header-height));
   display:flex;
   align-items:center;
   justify-content:center;
   padding: 32px;
-  padding-top: calc(var(--header-height) + 32px); /* avoid header overlap */
+  padding-top: calc(var(--header-height) + 32px);
 }
 
-/* centers content while allowing left alignment inside content-inner */
+/* center area that keeps title/welcome left-aligned relative to card */
 .content-inner{
   width: 100%;
   max-width: var(--max-card-width);
   display:flex;
   flex-direction: column;
-  align-items: flex-start;  /* left-justify title & welcome relative to card */
+  align-items: flex-start;
   gap: 18px;
   padding: 0 12px;
 }
 
-/* WELCOME block (now above the title). Initially visible; scripts toggle display */
-.welcome-block{
-  margin: 0;
-  padding: 0;
-}
-
-/* FORM TITLE: outside the card, slightly left (left-justified with the card) */
+/* Title above the card */
 .form-title{
-  margin: 0;
+  margin: 0 0 6px 0;
   font-size: 1.6rem;
   font-weight: 700;
   color: var(--accent-2);
   letter-spacing: 0.1px;
-  align-self: stretch;
   text-align: left;
 }
 
-/* Welcome block typography */
+/* Welcome block above the title (shown only on identity page) */
+.welcome-block{ margin: 0; padding: 0; }
 .welcome-title{
   font-size: 1.8rem;
   font-weight: 700;
   margin: 0 0 6px 0;
   color: var(--text);
 }
-.accent{ color: var(--accent-2); }
-.lead{ color: var(--muted); margin: 0 0 0 0 }
+.lead{ color: var(--muted); margin: 0 0 0 0; font-size: 1rem; }
 
-/* card (form container) — larger */
+/* ------------------------
+   Card (form container)
+   ------------------------ */
 .card{
   width: 100%;
   background: var(--bg-left);
@@ -110,32 +116,197 @@ body{
   border:1px solid rgba(10,12,30,0.03);
 }
 
-/* inputs, buttons, etc. (unchanged from previous) */
-.form-row{margin-bottom:14px;display:flex;flex-direction:column}
-label{font-weight:700;font-size:0.98rem;color:#28334a;margin-bottom:8px}
-input[type="text"], input[type="email"], select, textarea{padding:14px;border-radius:10px;border:1px solid #e6edf8;font-size:1rem;outline:none}
-input:focus, select:focus, textarea:focus{box-shadow:0 10px 28px rgba(111,179,210,0.08);border-color:rgba(111,179,210,0.18)}
+/* Sections inside the card */
+.section{
+  padding:16px;
+  border-radius:10px;
+  background: linear-gradient(180deg, rgba(255,255,255,1), rgba(250,250,252,1));
+  margin-bottom:14px;
+  border:1px solid #f0f3f6;
+}
+.section + .section{ margin-top:6px; }
+.section-title{ margin:0 0 8px; font-weight:700; color:var(--accent-2) }
 
-.btn{border:0;border-radius:10px;cursor:pointer;font-weight:700;transition:all .14s ease;padding:12px 16px;font-size:1.02rem}
+/* Inputs and labels */
+.form-row{ margin-bottom:14px; display:flex; flex-direction:column; width:100% }
+label{ font-weight:700; font-size:0.98rem; color:#28334a; margin-bottom:8px }
+input[type="text"], input[type="email"], select, textarea{
+  padding:14px;
+  border-radius:10px;
+  border:1px solid #e6edf8;
+  font-size:1rem;
+  outline:none;
+  width:100%;
+  background:#fff;
+  color:var(--text);
+}
+input:focus, select:focus, textarea:focus{
+  box-shadow:0 10px 28px rgba(111,179,210,0.08);
+  border-color:rgba(111,179,210,0.18);
+}
+
+/* ------------------------
+   Buttons: larger and prominent
+   ------------------------ */
+.btn{
+  border:0;
+  border-radius:10px;
+  cursor:pointer;
+  font-weight:700;
+  transition:all .14s ease;
+  padding:12px 16px;
+  font-size:1.02rem;
+}
 .btn-primary{
   background: linear-gradient(90deg, var(--accent-2), #a22b51 60%, var(--accent-1));
-  color:#fff;padding:14px 22px;font-size:1.04rem;box-shadow:0 12px 30px rgba(140,29,64,0.12)
+  color:#fff;
+  padding:14px 22px;
+  font-size:1.04rem;
+  box-shadow:0 12px 30px rgba(140,29,64,0.12);
+}
+.btn-primary:hover{ filter:brightness(1.03); transform:translateY(-3px); }
+.btn-outline{
+  background:transparent;
+  border:2px solid rgba(140,29,64,0.12);
+  color:var(--accent-2);
+  padding:10px 16px;
+  font-size:1.02rem;
+  border-radius:10px;
+}
+.btn-outline:hover{ background:rgba(140,29,64,0.04); transform:translateY(-2px); }
+
+/* ------------------------
+   Project list (styled cards)
+   ------------------------ */
+.project-list{
+  list-style:none;
+  padding:0;
+  margin:6px 0 0;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+.project-item{
+  background:#fff;
+  border:1px solid #eef2f7;
+  padding:14px 16px;
+  border-radius:12px;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  transition:all .14s ease;
+}
+.project-item:hover{
+  transform:translateY(-4px);
+  box-shadow:0 14px 36px rgba(12,18,30,0.06);
+  background:linear-gradient(90deg, rgba(140,29,64,0.04), rgba(255,198,39,0.03));
+}
+.project-item.active{
+  background:linear-gradient(90deg, rgba(140,29,64,0.12), rgba(255,198,39,0.06));
+  box-shadow:0 16px 40px rgba(140,29,64,0.10);
+  border-color:rgba(140,29,64,0.18);
+}
+.project-item.completed{
+  opacity:0.6;
+  background:#f5f6f8;
+  transform:none;
+  box-shadow:none;
+  cursor:default;
+}
+.project-item .meta{ color:var(--muted); font-weight:600; margin-left:8px; font-size:0.9rem; }
+
+/* ------------------------
+   Matrix table layout (ratings)
+   ------------------------ */
+.matrix-container{ margin-top:10px; padding-top:8px }
+.matrix-description{ font-weight:600; color:#2b3b51; margin-bottom:12px }
+.current-project-header{ font-weight:700; margin:10px 0 12px; color:#223; font-size:1.05rem }
+
+/* table */
+.matrix-table{
+  width:100%;
+  border-collapse:collapse;
+  margin-top:8px;
+  table-layout:fixed;
+}
+.matrix-table thead th{
+  padding:12px;
+  border-bottom:1px solid #eef2f7;
+  text-align:center;
+  font-weight:700;
+  color:#475569;
+  font-size:0.95rem;
+}
+.matrix-table tbody td{
+  padding:12px 14px;
+  border-bottom:1px solid #f1f5f9;
+  vertical-align:middle;
+  font-size:0.95rem;
+}
+.matrix-table td:first-child{
+  text-align:left;
+  width:40%;
+  padding-left:18px;
+  font-weight:600;
 }
 
-/* keep remaining rules from previous file as-is (project-list, matrix, responsiveness, etc.) */
-/* ... (you already have the rest of the rules; if not, include them) */
+/* radio buttons alignment */
+.rating-row{ display:flex; justify-content:center; gap:18px; align-items:center; }
+.matrix-table input[type="radio"]{
+  width:18px;
+  height:18px;
+}
 
+/* ------------------------
+   Comment area
+   ------------------------ */
+.project-comment-wrap{ margin-top:18px }
+.project-comment-wrap textarea#project-comment{
+  font-size:0.95rem;
+  resize:vertical;
+  min-height:100px;
+  padding:12px;
+  border-radius:8px;
+  border:1px solid #e6edf8;
+  width:100%;
+  font-family:inherit;
+  background:#fff;
+  color:#0b2540;
+}
+.project-comment-wrap label{ display:block; margin-bottom:8px; color:#475569 }
+
+/* ------------------------
+   Status and actions
+   ------------------------ */
+.form-status{ margin-top:12px; font-weight:700; color:var(--muted) }
+.actions{ display:flex; gap:12px; margin-top:18px; justify-content:flex-end }
+.actions-space-between{ display:flex; align-items:center; justify-content:space-between; gap:12px }
+
+/* ------------------------
+   Footer
+   ------------------------ */
+.footer{ margin-top:18px; text-align:center; color:var(--muted); font-size:0.9rem }
+
+/* ------------------------
+   Accessibility / small helpers
+   ------------------------ */
+.hidden{ display:none !important }
+
+/* ------------------------
+   Responsive
+   ------------------------ */
 @media (max-width:980px){
-  .site-header{padding-left:16px}
-  .site-logo{width:180px; max-height:48px}
-  .center-wrapper{padding:20px; padding-top: calc(var(--header-height) + 20px)}
-  .content-inner{padding: 0 8px}
-  .form-title{font-size:1.25rem}
-  .welcome-title{font-size:1.4rem}
-  .card{padding:20px}
-  .btn{font-size:1rem;padding:10px 14px}
-  .btn-primary{padding:12px 18px}
+  .site-header{ padding-left:16px; height:72px }
+  .site-logo{ width:180px; max-height:48px }
+  .center-wrapper{ padding:20px; padding-top: calc(var(--header-height) + 20px) }
+  .content-inner{ padding: 0 8px }
+  .form-title{ font-size:1.25rem }
+  .welcome-title{ font-size:1.4rem }
+  .card{ padding:20px }
+  .btn{ font-size:1rem; padding:10px 14px }
+  .btn-primary{ padding:12px 18px }
+  .matrix-table thead th{ font-size:0.85rem }
+  .matrix-table tbody td{ font-size:0.9rem; padding:10px 12px }
 }
-
-.hidden{display:none !important}
 
