@@ -16,23 +16,25 @@
     </div>
   </header>
 
-  <!-- Main content - centered vertically, with content-inner aligning title/card left within the centered area -->
+  <!-- Main content -->
   <main class="center-wrapper" role="main">
     <div class="content-inner">
 
-     <!-- WELCOME block (includes the instruction line) -->
-<div class="welcome-block" id="welcome-block">
-  <h1 class="welcome-title">Hello, <span class="accent">welcome!</span></h1>
-  <p class="lead under-title">Enter your name and email to continue.</p>
-</div>
+      <!-- WELCOME block: ONLY visible on identity (first) page -->
+      <div class="welcome-block" id="welcome-block">
+        <h1 class="welcome-title">Hello, <span class="accent">welcome!</span></h1>
+      </div>
 
-<!-- FORM TITLE -->
-<h2 class="form-title">CSE Capstone Sponsor Feedback Survey</h2>
+      <!-- FORM TITLE: stays visible across all pages -->
+      <h2 class="form-title">CSE Capstone Sponsor Feedback Survey</h2>
 
+      <!-- Instruction under title: only on first page (identity). We'll toggle via JS -->
+      <p id="under-title" class="lead under-title">Enter your name and email to continue.</p>
 
       <!-- Card (form) -->
       <section class="card" aria-labelledby="projects-heading-outside">
-        <!-- STAGE 1: Identity (inputs; greeting and lead remain outside in the welcome-block) -->
+
+        <!-- STAGE 1: Identity (inputs; greeting/lead are outside and controlled separately) -->
         <div id="stage-identity" class="stage">
           <div class="form-row">
             <label for="fullName">Your name</label>
@@ -51,11 +53,13 @@
 
         <!-- STAGE 2: Projects + Matrix (hidden initially) -->
         <div id="stage-projects" class="stage" style="display:none;">
+          <!-- PROJECT LIST SECTION -->
           <div class="section section-projects" aria-labelledby="projects-heading">
             <h3 id="projects-heading" class="section-title">Projects</h3>
             <ul id="project-list" class="project-list" aria-live="polite"></ul>
           </div>
 
+          <!-- MATRIX SECTION -->
           <div class="section section-matrix" aria-live="polite">
             <div id="matrix-info" class="matrix-info" style="display:none;">
               <div class="current-project-header" id="current-project-header"></div>
@@ -64,6 +68,7 @@
             <div id="matrix-container" class="matrix-container"></div>
           </div>
 
+          <!-- COMMENT SECTION -->
           <div class="section section-comment"></div>
 
           <div class="form-status" id="form-status" aria-live="polite"></div>
