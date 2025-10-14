@@ -262,9 +262,7 @@ input:focus, select:focus, textarea:focus{
 .rating-row{ display:flex; justify-content:center; gap:18px; align-items:center; }
 .matrix-table input[type="radio"]{ width:18px; height:18px; }
 
-.matrix-criterion {
-  margin-bottom: 40px; /* adjust to your liking */
-}
+
 /* Comment area */
 .project-comment-wrap{ margin-top:18px }
 .project-comment-wrap textarea#project-comment{ font-size:0.95rem; resize:vertical; min-height:100px; padding:12px; border-radius:8px; border:1px solid #e6edf8; width:100%; font-family:inherit; background:#fff; color:#0b2540; }
@@ -296,14 +294,4 @@ input:focus, select:focus, textarea:focus{
   .matrix-table tbody td{ font-size:0.9rem; padding:10px 12px }
 }
 
-/* add to styles.css (at the bottom) */
-.matrix-criterion {
-  margin-bottom: 32px !important;
-  padding-bottom: 0; /* keep bottom padding if any reset needed */
-}
-
-/* If layout uses flex and margin isn't applying, this helps */
-.matrix-criterion + .matrix-criterion {
-  margin-top: 32px !important;
-}
 
