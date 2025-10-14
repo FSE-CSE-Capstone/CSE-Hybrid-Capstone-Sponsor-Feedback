@@ -38,7 +38,7 @@
   ];
 
   // Ensure RUBRIC has 7 items (pad with generic if the uploaded sheet had fewer)
-  while (RUBRIC.length < 7) {
+  while (RUBRIC.length < 5) {
     var n = RUBRIC.length + 1;
     RUBRIC.push({
       title: 'Criterion ' + n,
