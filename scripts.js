@@ -246,9 +246,9 @@
       critWrap.appendChild(critTitle);
       // Description
       var critDesc = document.createElement('div');
-      critDesc.className = 'matrix-description';
-      critDesc.textContent = crit.description || '';
-      critWrap.appendChild(critDesc);
+critDesc.className = 'matrix-description';
+critDesc.style.fontWeight = 'normal';
+critDesc.textContent = crit.description || '';
 
       // Table
       var table = document.createElement('table');
