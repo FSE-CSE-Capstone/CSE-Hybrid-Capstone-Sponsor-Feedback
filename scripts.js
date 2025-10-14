@@ -37,15 +37,7 @@
     // If your spreadsheet has more items they should be placed above.
   ];
 
-  // Ensure RUBRIC has 7 items (pad with generic if the uploaded sheet had fewer)
-  while (RUBRIC.length < 5) {
-    var n = RUBRIC.length + 1;
-    RUBRIC.push({
-      title: 'Criterion ' + n,
-      description: 'Description for criterion ' + n + ' (replace with rubric text if needed).'
-    });
-  }
-
+  
   // --- DOM nodes ---
   var stageIdentity = document.getElementById('stage-identity');
   var stageProjects = document.getElementById('stage-projects');
