@@ -239,6 +239,7 @@
       // container per criterion
       var critWrap = document.createElement('div');
       critWrap.className = 'matrix-criterion';
+      critWrap.style.marginBottom = '32px';
       // Title
       var critTitle = document.createElement('h4');
       critTitle.className = 'matrix-criterion-title';
