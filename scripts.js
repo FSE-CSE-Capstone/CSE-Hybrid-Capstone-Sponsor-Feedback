@@ -1,4 +1,4 @@
-// scripts.js — Full merged version with welcome-block and under-title toggles
+// scripts.js — Full merged version with comment-section creation/removal fix
 (function () {
   'use strict';
 
@@ -11,7 +11,7 @@
   // DOM nodes (guarded)
   var stageIdentity = document.getElementById('stage-identity');
   var stageProjects = document.getElementById('stage-projects');
-  var stageThankyou = document.getElementById('stage-thankyou'); // optional
+  var stageThankyou = document.getElementById('stage-thankyou');
   var identitySubmit = document.getElementById('identitySubmit');
   var backToIdentity = document.getElementById('backToIdentity');
   var nameInput = document.getElementById('fullName');
@@ -195,6 +195,7 @@
           if ((ch.textContent || '').trim().length > 0) { hasMeaningfulChild = true; break; }
         }
         if (!text && !hasMeaningfulChild) {
+          // hide/remove placeholder section to avoid blank bubble being rendered
           s.style.display = 'none';
         }
       }
@@ -230,7 +231,7 @@
   }
 
   /* -------------------------
-     Stage switching (now explicitly hides/shows welcome & underTitle)
+     Stage switching (handles welcome & underTitle toggles)
      ------------------------- */
   function showIdentityStage() {
     if (stageIdentity) stageIdentity.style.display = '';
@@ -361,6 +362,11 @@
 
     if (!students || !students.length) {
       matrixContainer.textContent = 'No students found for this project.';
+      // Remove any existing comment section to avoid leaving an empty card
+      var existingComment = document.querySelector('.section.section-comment');
+      if (existingComment) {
+        existingComment.parentNode && existingComment.parentNode.removeChild(existingComment);
+      }
       updateSectionVisibility();
       removeEmptySections();
       return;
@@ -419,7 +425,7 @@
     table.appendChild(tbody);
     matrixContainer.appendChild(table);
 
-    // comment section
+    // comment section: create only when there are students (avoid leaving empty card)
     var commentSection = document.querySelector('.section.section-comment');
     if (!commentSection) {
       commentSection = document.createElement('div');
@@ -534,17 +540,16 @@
         }
       }
 
-      // clear matrix and comment DOM
+      // clear matrix and comment DOM (remove nodes to avoid blank leftover)
       if (matrixContainer) matrixContainer.innerHTML = '';
       var commentSection = document.querySelector('.section.section-comment');
       if (commentSection) {
-        commentSection.innerHTML = '';
-        commentSection.style.display = 'none';
+        commentSection.parentNode && commentSection.parentNode.removeChild(commentSection);
       }
 
       // remove the small header if present
       var headerEl = document.querySelector('.current-project-header');
-      if (headerEl) headerEl.parentNode.removeChild(headerEl);
+      if (headerEl && headerEl.parentNode) headerEl.parentNode.removeChild(headerEl);
 
       // hide/clear the #matrix-info block so description disappears
       var matrixInfoBlock = document.getElementById('matrix-info');
@@ -620,7 +625,9 @@
       currentProject = '';
       if (matrixContainer) matrixContainer.innerHTML = '';
       var commentSection = document.querySelector('.section.section-comment');
-      if (commentSection) { commentSection.innerHTML = ''; commentSection.style.display = 'none'; }
+      if (commentSection) {
+        commentSection.parentNode && commentSection.parentNode.removeChild(commentSection);
+      }
       showIdentityStage();
     });
   }
@@ -641,6 +648,7 @@
     removeEmptySections: removeEmptySections
   };
 })();
+
 
 
 
