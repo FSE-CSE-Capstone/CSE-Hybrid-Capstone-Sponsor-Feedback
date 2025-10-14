@@ -134,17 +134,7 @@ body{
   margin-bottom: 40px !important;
 }
 
-/* Divider line above the "Projects" title */
-.section-title {
-  margin: 28px 0 8px;
-  font-weight: 700;
-  color: var(--accent-2);
-  position: relative;
-  padding-top: 16px;
-}
-
-/* the line itself */
-.section-title::before {
+.section.section-projects .section-title::before {
   content: "";
   position: absolute;
   top: 0;
@@ -153,6 +143,12 @@ body{
   height: 1px;
   background: rgba(0, 0, 0, 0.08);
 }
+.section.section-projects .section-title {
+  margin-top: 28px;
+  padding-top: 16px;
+  position: relative;
+}
+
 /* Adjust the inner text spacing */
 .instructions-card .projects-instructions {
   background: none;
