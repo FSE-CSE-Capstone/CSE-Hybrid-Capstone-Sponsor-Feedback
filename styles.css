@@ -123,6 +123,11 @@ body{
 .section + .section{ margin-top:6px; }
 .section-title{ margin:0 0 8px; font-weight:700; color:var(--accent-2) }
 
+/* Hide the static comment placeholder when empty; JS will show it when it injects content */
+.section.section-comment {
+  display: none;
+}
+
 /* Inner card container for the Projects instructions */
 .instructions-card {
   width: 100%;
@@ -174,10 +179,7 @@ body{
 .projects-instructions ol { margin: 0 0 0 18px; padding: 0; }
 .projects-instructions li { margin-bottom: 6px; }
 
-/* Hide the static comment placeholder when empty; JS will show it when it injects content */
-.section.section-comment {
-  display: none;
-}
+
 
 
 /* small helper for the visually-hidden tip (if you use .sr-only elsewhere, keep consistent) */
