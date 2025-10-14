@@ -19,18 +19,19 @@
   <!-- Main content - centered vertically, with content-inner aligning title/card left within the centered area -->
   <main class="center-wrapper" role="main">
     <div class="content-inner">
-      <!-- FORM TITLE: outside of the card and left-justified -->
-      <h2 class="form-title">CSE Capstone Sponsor Feedback Survey</h2>
 
-      <!-- WELCOME block: moved outside the card, left-justified -->
-      <div class="welcome-block">
+      <!-- WELCOME block: appears only on the first page (identity). It now sits ABOVE the title. -->
+      <div class="welcome-block" id="welcome-block">
         <h1 class="welcome-title">Hello, <span class="accent">welcome!</span></h1>
         <p class="lead">Enter your name and email to continue.</p>
       </div>
 
+      <!-- FORM TITLE: outside the card and left-justified -->
+      <h2 class="form-title">CSE Capstone Sponsor Feedback Survey</h2>
+
       <!-- Card (form) -->
       <section class="card" aria-labelledby="projects-heading-outside">
-        <!-- STAGE 1: Identity (moved inputs here; greeting removed since it's outside now) -->
+        <!-- STAGE 1: Identity (inputs; greeting and lead remain outside in the welcome-block) -->
         <div id="stage-identity" class="stage">
           <div class="form-row">
             <label for="fullName">Your name</label>
@@ -93,5 +94,6 @@
   <script src="scripts.js"></script>
 </body>
 </html>
+
 
 
