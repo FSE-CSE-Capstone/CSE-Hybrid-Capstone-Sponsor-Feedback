@@ -11,8 +11,6 @@
   var STORAGE_KEY = 'sponsor_progress_v1';
 
   // --- RUBRIC ---
-  // This array was populated from your uploaded Sponsor Feedback Rubric.xlsx.
-  // If there were fewer than 7 items in the file, placeholders are appended so UI shows 7 matrices.
   var RUBRIC = [
     {
       title: "Student has contributed an appropriate amount of development effort towards this project",
@@ -34,10 +32,8 @@
       title: "Quality and frequency of student's communications",
       description: "Students are expected to be in regular communication and maintain professionalism when interacting with the sponsor."
     }
-    // If your spreadsheet has more items they should be placed above.
   ];
 
-  
   // --- DOM nodes ---
   var stageIdentity = document.getElementById('stage-identity');
   var stageProjects = document.getElementById('stage-projects');
@@ -50,7 +46,7 @@
   var matrixContainer = document.getElementById('matrix-container');
   var formStatus = document.getElementById('form-status');
   var submitProjectBtn = document.getElementById('submitProject');
-  var matrixInfo = document.getElementById('matrix-info'); // may be created later
+  var matrixInfo = document.getElementById('matrix-info');
   var finishStartOverBtn = document.getElementById('finishStartOver');
   var welcomeBlock = document.getElementById('welcome-block');
   var underTitle = document.getElementById('under-title');
@@ -62,7 +58,6 @@
   var currentName = '';
   var currentProject = '';
   var completedProjects = {};
-  // stagedRatings structure: { projectName: { studentIndex: { criterionIndex: score, ... }, ... }, ... }
   var stagedRatings = {};
 
   /* -------------------------
@@ -138,10 +133,6 @@
       console.warn('Could not load progress', e);
     }
   }
-
-  // keep the existing updateSectionVisibility/removeEmptySections implementations in your file
-  // (they're long; for brevity I call them if defined below)
-  // If your original functions are in the same file, they remain unchanged.
 
   /* -------------------------
      Project list builder
@@ -239,17 +230,21 @@
       // container per criterion
       var critWrap = document.createElement('div');
       critWrap.className = 'matrix-criterion';
-      
+      critWrap.style.marginBottom = '24px';
+
       // Title
       var critTitle = document.createElement('h4');
       critTitle.className = 'matrix-criterion-title';
       critTitle.textContent = (cIdx + 1) + '. ' + crit.title;
       critWrap.appendChild(critTitle);
+
       // Description
       var critDesc = document.createElement('div');
-critDesc.className = 'matrix-description';
-critDesc.style.fontWeight = 'normal';
-critDesc.textContent = crit.description || '';
+      critDesc.className = 'matrix-description';
+      critDesc.style.fontWeight = 'normal';
+      critDesc.textContent = crit.description || '';
+      // <-- important: append the description into the wrapper
+      critWrap.appendChild(critDesc);
 
       // Table
       var table = document.createElement('table');
@@ -286,7 +281,6 @@ critDesc.textContent = crit.description || '';
 
           var input = document.createElement('input');
           input.type = 'radio';
-          // name convention: rating-<criterionIndex>-<studentIndex>
           input.name = 'rating-' + cIdx + '-' + sIdx;
           input.value = String(score);
           input.id = 'rating-' + cIdx + '-' + sIdx + '-' + score;
@@ -322,7 +316,6 @@ critDesc.textContent = crit.description || '';
     });
 
     // Comment area (single for the project)
-    // First remove any existing comment section in DOM then add fresh
     var existingComment = document.querySelector('.section.section-comment');
     if (existingComment) {
       existingComment.parentNode && existingComment.parentNode.removeChild(existingComment);
@@ -339,7 +332,6 @@ critDesc.textContent = crit.description || '';
     commentTA.id = 'project-comment';
     commentTA.placeholder = 'Any additional feedback for the students or instructor...';
 
-    // restore any staged comment
     var staged = stagedRatings[currentProject] && stagedRatings[currentProject]._comment;
     if (staged) commentTA.value = staged;
 
@@ -347,7 +339,6 @@ critDesc.textContent = crit.description || '';
     commentWrap.appendChild(commentTA);
     commentSec.appendChild(commentWrap);
 
-    // Insert comment section after matrix container (match your HTML structure)
     matrixContainer.parentNode.insertBefore(commentSec, matrixContainer.nextSibling);
 
     // Add event listeners for auto-saving staged ratings
@@ -355,7 +346,6 @@ critDesc.textContent = crit.description || '';
     matrixContainer.addEventListener('input', saveDraftHandler);
     commentTA.addEventListener('input', saveDraftHandler);
 
-    // Update visibility helpers if present
     if (typeof updateSectionVisibility === 'function') updateSectionVisibility();
     if (typeof removeEmptySections === 'function') removeEmptySections();
   }
@@ -368,7 +358,6 @@ critDesc.textContent = crit.description || '';
     if (!stagedRatings[currentProject]) stagedRatings[currentProject] = {};
 
     var students = sponsorProjects[currentProject] || [];
-    // for each student/criterion, read selected radio
     for (var s = 0; s < students.length; s++) {
       if (!stagedRatings[currentProject][s]) stagedRatings[currentProject][s] = {};
       for (var c = 0; c < RUBRIC.length; c++) {
@@ -376,12 +365,10 @@ critDesc.textContent = crit.description || '';
         if (sel) {
           stagedRatings[currentProject][s][c] = parseInt(sel.value, 10);
         } else {
-          // do not delete existing; keep null if empty
           if (stagedRatings[currentProject][s][c] === undefined) stagedRatings[currentProject][s][c] = null;
         }
       }
     }
-    // store comment
     var ta = document.getElementById('project-comment');
     if (ta) stagedRatings[currentProject]._comment = ta.value || '';
 
@@ -396,7 +383,6 @@ critDesc.textContent = crit.description || '';
     var students = sponsorProjects[currentProject] || [];
     if (!students.length) { setStatus('No students to submit.', 'red'); return; }
 
-    // Build rows: for each student, collect ratings for each criterion
     var rows = [];
     for (var s = 0; s < students.length; s++) {
       var ratingsObj = {};
@@ -419,7 +405,7 @@ critDesc.textContent = crit.description || '';
       sponsorName: currentName || (nameInput ? nameInput.value.trim() : ''),
       sponsorEmail: currentEmail || (emailInput ? emailInput.value.trim() : ''),
       project: currentProject,
-      rubric: RUBRIC.map(function (r) { return r.title; }), // include rubric titles for clarity
+      rubric: RUBRIC.map(function (r) { return r.title; }),
       responses: rows,
       timestamp: new Date().toISOString()
     };
@@ -441,12 +427,10 @@ critDesc.textContent = crit.description || '';
       console.log('Saved', data);
       setStatus('Submission saved. Thank you!', 'green');
 
-      // mark completed and save
       completedProjects[currentProject] = true;
       if (stagedRatings && stagedRatings[currentProject]) delete stagedRatings[currentProject];
       saveProgress();
 
-      // update project list entry to completed
       if (projectListEl) {
         var li = projectListEl.querySelector('li[data-project="' + CSS.escape(currentProject) + '"]');
         if (li) {
@@ -456,18 +440,15 @@ critDesc.textContent = crit.description || '';
         }
       }
 
-      // clear matrix and comment DOM (remove nodes to avoid blank leftover)
       if (matrixContainer) matrixContainer.innerHTML = '';
       var commentSection = document.querySelector('.section.section-comment');
       if (commentSection) {
         commentSection.parentNode && commentSection.parentNode.removeChild(commentSection);
       }
 
-      // remove the small header if present
       var headerEl = document.querySelector('.current-project-header');
       if (headerEl && headerEl.parentNode) headerEl.parentNode.removeChild(headerEl);
 
-      // hide/clear the #matrix-info block so description disappears
       var matrixInfoBlock = document.getElementById('matrix-info');
       if (matrixInfoBlock) {
         var hdr = matrixInfoBlock.querySelector('.current-project-header');
