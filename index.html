@@ -55,9 +55,23 @@
         <div id="stage-projects" class="stage" style="display:none;">
           <!-- PROJECT LIST SECTION -->
           <div class="section section-projects" aria-labelledby="projects-heading">
-            <h3 id="projects-heading" class="section-title">Projects</h3>
-            <ul id="project-list" class="project-list" aria-live="polite"></ul>
-          </div>
+  <h3 id="projects-heading" class="section-title">Projects</h3>
+
+  <!-- Projects instructions: visible on the Projects stage -->
+  <div id="projects-instructions" class="projects-instructions" aria-live="polite">
+    <p><strong>Please follow these steps to evaluate students:</strong></p>
+    <ol>
+      <li>Select the project you are evaluating from the list.</li>
+      <li>For each student, choose the rating that best reflects their performance on <em>Communication</em>. (You must rate at least one student to submit.)</li>
+      <li>Use the comment box below to provide any additional feedback — this is optional but helpful.</li>
+      <li>When finished, click <strong>Submit ratings for project</strong>. Use <strong>Back</strong> to return to the previous screen if needed.</li>
+    </ol>
+    <p class="sr-only">Tip: Use tab and arrow keys to navigate and select radio buttons.</p>
+  </div>
+
+  <ul id="project-list" class="project-list" aria-live="polite"></ul>
+</div>
+
 
           <!-- MATRIX SECTION -->
           <div class="section section-matrix" aria-live="polite">
