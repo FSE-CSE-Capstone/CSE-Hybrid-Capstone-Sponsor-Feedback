@@ -296,3 +296,14 @@ input:focus, select:focus, textarea:focus{
   .matrix-table tbody td{ font-size:0.9rem; padding:10px 12px }
 }
 
+/* add to styles.css (at the bottom) */
+.matrix-criterion {
+  margin-bottom: 32px !important;
+  padding-bottom: 0; /* keep bottom padding if any reset needed */
+}
+
+/* If layout uses flex and margin isn't applying, this helps */
+.matrix-criterion + .matrix-criterion {
+  margin-top: 32px !important;
+}
+
