@@ -1,11 +1,13 @@
-// Full updated scripts.js
+// Full updated scripts.js (HYBRID site)
 (function () {
   'use strict';
 
   // --- Configuration (Cloudflare Workers endpoints) ---
-  var ENDPOINT_URL = 'https://csehybridsponsors.sbecerr7.workers.dev/';  // POST submissions here
-  var DATA_LOADER_URL = 'https://data-loader.sbecerr7.workers.dev/';     // GET sponsor/project data here
+  var ENDPOINT_URL = 'https://csehybridsponsors.sbecerr7.workers.dev/';  // POST submissions here (change if hybrid uses different endpoint)
+  var DATA_LOADER_URL = 'https://data-loader.sbecerr7.workers.dev/'; // HYBRID worker URL (reads hybrid sheet)
   var STORAGE_KEY = 'sponsor_progress_v1';
+  // for hybrid deployment keep DATA_SOURCE blank so no ?source param appended
+  var DATA_SOURCE = '';
 
   // --- RUBRIC (5 items) ---
   var RUBRIC = [
@@ -68,64 +70,96 @@
     return String(s || '').replace(/[&<>"']/g, function (m) { return map[m]; });
   }
 
-// REPLACE the existing buildSponsorMap with this robust version
-function buildSponsorMap(rows) {
-  // rows: array of objects produced by the data-loader (keys come from sheet header text)
-  var map = {};
+  // -------------------------
+  // Robust mapping from data-loader rows to sponsorData
+  // Accepts varied header names and trims values.
+  // -------------------------
+  function buildSponsorMap(rows) {
+    var map = {};
+    if (!Array.isArray(rows) || rows.length === 0) return map;
 
-  // harmless short-circuit
-  if (!Array.isArray(rows) || rows.length === 0) return map;
+    rows.forEach(function (rawRow) {
+      // produce a normalized object with canonical keys
+      var normalized = { sponsorEmail: '', project: '', student: '' };
 
-  // normalize keys for each row, supporting many header variants
-  rows.forEach(function (rawRow) {
-    // build a normalized object with canonical keys we expect:
-    // sponsorEmail, project, student
-    var normalized = { sponsorEmail: '', project: '', student: '' };
+      Object.keys(rawRow || {}).forEach(function (rawKey) {
+        var keyNorm = String(rawKey || '').trim().toLowerCase();
+        var rawVal = (rawRow[rawKey] || '').toString();
+        var val = rawVal.replace(/\u00A0/g, ' ').trim(); // replace NBSP, trim
 
-    Object.keys(rawRow || {}).forEach(function (rawKey) {
-      var k = String(rawKey || '').trim().toLowerCase();
-      var v = (rawRow[rawKey] || '').toString().trim();
+        // map header variants
+        if (keyNorm === 'sponsoremail' || keyNorm === 'sponsor email' || keyNorm === 'sponsor' || keyNorm === 'email' || keyNorm === 'login_id' || keyNorm === 'sponsor_email') {
+          if (!normalized.sponsorEmail) normalized.sponsorEmail = val;
+        } else if (keyNorm === 'project' || keyNorm === 'project name' || keyNorm === 'project_title' || keyNorm === 'group_name' || keyNorm === 'projectname') {
+          if (!normalized.project) normalized.project = val;
+        } else if (keyNorm === 'student' || keyNorm === 'student name' || keyNorm === 'students' || keyNorm === 'name' || keyNorm === 'student_name') {
+          if (!normalized.student) normalized.student = val;
+        } else {
+          // ignore other columns
+        }
+      });
 
-      // map known header variants to our canonical keys
-      if (k === 'sponsoremail' || k === 'sponsor email' || k === 'sponsor' || k === 'email' || k === 'login_id') {
-        // treat these as sponsor email candidate
-        if (!normalized.sponsorEmail) normalized.sponsorEmail = v;
-      } else if (k === 'project' || k === 'project name' || k === 'project_title' || k === 'group_name') {
-        if (!normalized.project) normalized.project = v;
-      } else if (k === 'student' || k === 'student name' || k === 'students' || k === 'name') {
-        if (!normalized.student) normalized.student = v;
-      } else {
-        // if the sheet used short names like 'project' / 'student' variations,
-        // we've already covered them. otherwise ignore unknown columns.
+      var email = (normalized.sponsorEmail || '').toLowerCase().trim();
+      var project = (normalized.project || '').trim();
+      var student = (normalized.student || '').trim();
+
+      // skip rows that are missing critical pieces
+      if (!email || !project || !student) return;
+
+      if (!map[email]) map[email] = { projects: {} };
+      if (!map[email].projects[project]) map[email].projects[project] = [];
+      if (map[email].projects[project].indexOf(student) === -1) {
+        map[email].projects[project].push(student);
       }
     });
 
-    var email = (normalized.sponsorEmail || '').toLowerCase().trim();
-    var project = (normalized.project || '').trim();
-    var student = (normalized.student || '').trim();
+    // debug summary
+    try {
+      var sponsorCount = Object.keys(map).length;
+      var projectCount = Object.keys(map).reduce(function (acc, e) {
+        return acc + Object.keys(map[e].projects || {}).length;
+      }, 0);
+      console.info('buildSponsorMap: mapped', sponsorCount, 'sponsors and', projectCount, 'projects total');
+    } catch (e) {}
 
-    if (!email || !project || !student) {
-      // skip incomplete rows
-      return;
+    return map;
+  }
+
+  // -------------------------
+  // Save / load progress
+  // -------------------------
+  function saveProgress() {
+    var payload = {
+      name: currentName,
+      email: currentEmail,
+      completedProjects: completedProjects,
+      stagedRatings: stagedRatings
+    };
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+    } catch (e) {
+      console.warn('Could not save progress', e);
     }
+  }
 
-    if (!map[email]) map[email] = { projects: {} };
-    if (!map[email].projects[project]) map[email].projects[project] = [];
-    if (map[email].projects[project].indexOf(student) === -1) {
-      map[email].projects[project].push(student);
+  function loadProgress() {
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+      var obj = JSON.parse(raw);
+      if (obj && obj.email) {
+        currentName = obj.name || '';
+        currentEmail = obj.email || '';
+        completedProjects = obj.completedProjects || {};
+        stagedRatings = obj.stagedRatings || {};
+        if (nameInput) nameInput.value = currentName;
+        if (emailInput) emailInput.value = currentEmail;
+        console.info('loadProgress: restored', currentEmail || '(none)');
+      }
+    } catch (e) {
+      console.warn('Could not load progress', e);
     }
-  });
-
-  // debug summary so you can inspect quickly in console
-  try {
-    console.info('buildSponsorMap: mapped', Object.keys(map).length, 'sponsors and',
-                 Object.keys(map).reduce(function (acc, e) {
-                   return acc + Object.keys(map[e].projects).length;
-                 }, 0), 'projects total');
-  } catch (e) {}
-  return map;
-}
-
+  }
 
   // -------------------------
   // Project list builder
@@ -178,7 +212,7 @@ function buildSponsorMap(rows) {
     setStatus('');
   }
 
-    // -------------------------
+  // -------------------------
   // Render matrix for a project (stacked rubric; each criterion in its own card)
   // -------------------------
   function loadProjectIntoMatrix(projectName, students) {
@@ -577,13 +611,27 @@ function buildSponsorMap(rows) {
   // Secure data fetch (replaces CSV)
   // -------------------------
   function tryFetchData(callback) {
-    fetch(DATA_LOADER_URL, { cache: 'no-store' })
+    var loaderUrl = DATA_LOADER_URL;
+    if (DATA_SOURCE) {
+      loaderUrl += (loaderUrl.indexOf('?') === -1
+        ? '?source=' + encodeURIComponent(DATA_SOURCE)
+        : '&source=' + encodeURIComponent(DATA_SOURCE));
+    }
+    // debug log of the exact URL requested
+    console.info('tryFetchData: requesting', loaderUrl);
+
+    fetch(loaderUrl, { cache: 'no-store' })
       .then(function (r) {
+        console.info('tryFetchData: response status', r.status, r.statusText);
         if (!r.ok) throw new Error('Data loader returned ' + r.status);
         return r.json();
       })
       .then(function (rows) {
-        sponsorData = buildSponsorMap(rows);
+        console.info('tryFetchData: rows received length=', Array.isArray(rows) ? rows.length : typeof rows);
+        sponsorData = buildSponsorMap(rows || []);
+        // update debug pointer to the fresh object (fixes stale reference)
+        window.__sponsorDebug && (window.__sponsorDebug.sponsorData = sponsorData);
+
         setStatus('Project data loaded securely.', 'green');
         loadProgress();
         if (currentEmail && sponsorData[currentEmail]) {
