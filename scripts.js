@@ -1,36 +1,21 @@
-// Full updated scripts.js (HYBRID site) - comment-section visibility fix + remove empty placeholder cards
+// Full updated scripts.js (HYBRID site)
+// - multi-email parsing, reliable comment section creation, remove empty placeholder cards
 (function () {
   'use strict';
 
   // --- Configuration (Cloudflare Workers endpoints) ---
-  var ENDPOINT_URL = 'https://csehybridsponsors.sbecerr7.workers.dev/';  // POST submissions here (change if hybrid uses different endpoint)
-  var DATA_LOADER_URL = 'https://data-loader.sbecerr7.workers.dev/'; // HYBRID worker URL (reads hybrid sheet)
+  var ENDPOINT_URL = 'https://csehybridsponsors.sbecerr7.workers.dev/';  // POST submissions here
+  var DATA_LOADER_URL = 'https://data-loader.sbecerr7.workers.dev/';    // HYBRID worker URL (reads hybrid sheet)
   var STORAGE_KEY = 'sponsor_progress_v1';
-  // for hybrid deployment keep DATA_SOURCE blank so no ?source param appended
-  var DATA_SOURCE = '';
+  var DATA_SOURCE = ''; // blank for hybrid
 
   // --- RUBRIC (5 items) ---
   var RUBRIC = [
-    {
-      title: "Student has contributed an appropriate amount of development effort towards this project",
-      description: "Development effort should be balanced between all team members; student should commit to a fair amount of development effort on each sprint."
-    },
-    {
-      title: "Student's level of contribution and participation in meetings",
-      description: "Students are expected to be proactive. Contributions and participation in meetings help ensure the student is aware of project goals."
-    },
-    {
-      title: "Student's understanding of your project/problem",
-      description: "Students are expected to understand important details of the project and be able to explain it from different stakeholder perspectives."
-    },
-    {
-      title: "Quality of student's work product",
-      description: "Students should complete assigned work to a high quality: correct, documented, and self-explanatory where appropriate."
-    },
-    {
-      title: "Quality and frequency of student's communications",
-      description: "Students are expected to be in regular communication and maintain professionalism when interacting with the sponsor."
-    }
+    { title: "Student has contributed an appropriate amount of development effort towards this project", description: "Development effort should be balanced between all team members; student should commit to a fair amount of development effort on each sprint." },
+    { title: "Student's level of contribution and participation in meetings", description: "Students are expected to be proactive. Contributions and participation in meetings help ensure the student is aware of project goals." },
+    { title: "Student's understanding of your project/problem", description: "Students are expected to understand important details of the project and be able to explain it from different stakeholder perspectives." },
+    { title: "Quality of student's work product", description: "Students should complete assigned work to a high quality: correct, documented, and self-explanatory where appropriate." },
+    { title: "Quality and frequency of student's communications", description: "Students are expected to be in regular communication and maintain professionalism when interacting with the sponsor." }
   ];
 
   // --- DOM nodes ---
@@ -78,11 +63,9 @@
 
     var cards = Array.prototype.slice.call(container.querySelectorAll('.card'));
     cards.forEach(function (c) {
-      // skip cards that clearly contain meaningful controls/content
       var hasControls = c.querySelector('input, textarea, select, button, table, label');
       var text = (c.textContent || '').replace(/\s+/g, '');
       if (!hasControls && text.length === 0) {
-        // be defensive: don't remove if it contains a marker class you rely on
         if (!c.classList.contains('matrix-card') && !c.classList.contains('persistent-placeholder')) {
           c.parentNode && c.parentNode.removeChild(c);
         }
@@ -98,11 +81,18 @@
     var map = {};
     if (!Array.isArray(rows) || rows.length === 0) return map;
 
-    // regex to match typical email addresses
     var emailRegex = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
 
+    function cleanToken(tok) {
+      if (!tok) return '';
+      tok = tok.replace(/^[\s"'`([{]+|[\s"'`)\]}.,:;]+$/g, '').replace(/\u00A0/g, ' ').trim();
+      if (tok.indexOf('@') !== -1 && tok.indexOf(' ') !== -1) {
+        tok = tok.split(' ').join('');
+      }
+      return tok;
+    }
+
     rows.forEach(function (rawRow) {
-      // collect canonical values per row
       var project = '';
       var student = '';
       var sponsorCell = '';
@@ -110,75 +100,78 @@
       Object.keys(rawRow || {}).forEach(function (rawKey) {
         var keyNorm = String(rawKey || '').trim().toLowerCase();
         var rawVal = (rawRow[rawKey] || '').toString();
-        var val = rawVal.replace(/\u00A0/g, ' ').trim(); // replace NBSP, trim
+        var val = rawVal.replace(/\u00A0/g, ' ').trim();
 
-        if (keyNorm === 'project' || keyNorm === 'project name' || keyNorm === 'project_title' || keyNorm === 'group_name' || keyNorm === 'projectname') {
-          if (!project) project = val;
-        } else if (keyNorm === 'student' || keyNorm === 'student name' || keyNorm === 'students' || keyNorm === 'name' || keyNorm === 'student_name') {
-          if (!student) student = val;
-        } else if (keyNorm === 'sponsoremail' || keyNorm === 'sponsor email' || keyNorm === 'sponsor' || keyNorm === 'email' || keyNorm === 'login_id' || keyNorm === 'sponsor_email') {
-          if (!sponsorCell) sponsorCell = val;
-        } else {
-          // ignore other columns
+        if (!project && (keyNorm === 'project' || keyNorm === 'project name' || keyNorm === 'project_title' || keyNorm === 'group_name' || keyNorm === 'projectname')) {
+          project = val;
+        } else if (!student && (keyNorm === 'student' || keyNorm === 'student name' || keyNorm === 'students' || keyNorm === 'name' || keyNorm === 'student_name')) {
+          student = val;
+        } else if (!sponsorCell && (keyNorm === 'sponsoremail' || keyNorm === 'sponsor email' || keyNorm === 'sponsor' || keyNorm === 'email' || keyNorm === 'login_id' || keyNorm === 'sponsor_email')) {
+          sponsorCell = val;
         }
       });
 
       project = (project || '').trim();
       student = (student || '').trim();
 
-      if (!sponsorCell || !project || !student) {
-        // if sponsorCell empty but there might be alternate email-like column names, attempt fallback:
-        // fallback: scan all row values for any email-like strings
-        if (!sponsorCell) {
-          var fallbackEmails = [];
-          Object.keys(rawRow || {}).forEach(function (k) {
-            var rv = (rawRow[k] || '').toString();
-            var found = rv.match(emailRegex);
-            if (found && found.length) fallbackEmails = fallbackEmails.concat(found);
-          });
-          if (fallbackEmails.length) sponsorCell = fallbackEmails.join(', ');
-        }
-        // still skip if missing critical data
-        if (!sponsorCell || !project || !student) return;
-      }
-
-      // extract emails from sponsorCell
-      var foundEmails = (sponsorCell.match(emailRegex) || []).map(function (e) { return e.toLowerCase().trim(); });
-
-      // if regex didn't find any emails, try splitting by common separators (comma, semicolon, slash, pipe, space)
-      if (!foundEmails.length) {
-        var parts = sponsorCell.split(/[,;\/|]+/);
-        parts = parts.map(function (p) { return p.replace(/\s+/g, ' ').trim(); }).filter(Boolean);
-        parts.forEach(function (p) {
-          var match = (p.match(emailRegex) || [])[0];
-          if (match) foundEmails.push(match.toLowerCase().trim());
+      if (!sponsorCell) {
+        var fallbackEmails = [];
+        Object.keys(rawRow || {}).forEach(function (k) {
+          var rv = (rawRow[k] || '').toString();
+          var found = rv.match(emailRegex);
+          if (found && found.length) fallbackEmails = fallbackEmails.concat(found);
         });
+        if (fallbackEmails.length) sponsorCell = fallbackEmails.join(', ');
       }
 
-      // final cleanup & dedupe
+      if (!sponsorCell || !project || !student) return;
+
+      // Split on common separators first
+      var tokens = sponsorCell.split(/[,;\/|]+/);
+      var foundEmails = [];
+
+      tokens.forEach(function (t) {
+        var cleaned = cleanToken(t);
+        if (!cleaned) return;
+        var m = cleaned.match(emailRegex);
+        if (m && m.length) {
+          m.forEach(function (em) { foundEmails.push(em.toLowerCase().trim()); });
+          return;
+        }
+        var m2 = t.match(emailRegex);
+        if (m2 && m2.length) {
+          m2.forEach(function (em) { foundEmails.push(em.toLowerCase().trim()); });
+          return;
+        }
+        if (t.indexOf('@') !== -1) {
+          var nospace = t.replace(/\s+/g, '');
+          var m3 = nospace.match(emailRegex);
+          if (m3 && m3.length) m3.forEach(function (em) { foundEmails.push(em.toLowerCase().trim()); });
+        }
+      });
+
+      // dedupe & sanity-check
       var uniqueEmails = [];
       foundEmails.forEach(function (em) {
         var e = (em || '').toLowerCase().trim();
         if (!e) return;
-        // simple sanity check: must contain '@' and a dot after '@'
         if (e.indexOf('@') === -1) return;
+        var parts = e.split('@');
+        if (parts.length !== 2 || parts[1].indexOf('.') === -1) return;
         if (uniqueEmails.indexOf(e) === -1) uniqueEmails.push(e);
       });
 
-      if (!uniqueEmails.length) return; // nothing to map
+      if (!uniqueEmails.length) return;
 
-      // map each email to the project / student
       uniqueEmails.forEach(function (email) {
         if (!map[email]) map[email] = { projects: {} };
         if (!map[email].projects[project]) map[email].projects[project] = [];
-        // avoid duplicate student entry
         if (map[email].projects[project].indexOf(student) === -1) {
           map[email].projects[project].push(student);
         }
       });
     });
 
-    // debug summary
     try {
       var sponsorCount = Object.keys(map).length;
       var projectCount = Object.keys(map).reduce(function (acc, e) {
@@ -194,17 +187,8 @@
   // Save / load progress
   // -------------------------
   function saveProgress() {
-    var payload = {
-      name: currentName,
-      email: currentEmail,
-      completedProjects: completedProjects,
-      stagedRatings: stagedRatings
-    };
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-    } catch (e) {
-      console.warn('Could not save progress', e);
-    }
+    var payload = { name: currentName, email: currentEmail, completedProjects: completedProjects, stagedRatings: stagedRatings };
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(payload)); } catch (e) { console.warn('Could not save progress', e); }
   }
 
   function loadProgress() {
@@ -221,9 +205,7 @@
         if (emailInput) emailInput.value = currentEmail;
         console.info('loadProgress: restored', currentEmail || '(none)');
       }
-    } catch (e) {
-      console.warn('Could not load progress', e);
-    }
+    } catch (e) { console.warn('Could not load progress', e); }
   }
 
   // -------------------------
@@ -234,10 +216,7 @@
     projectListEl.innerHTML = '';
     sponsorProjects = {};
     var entry = sponsorData[email];
-    if (!entry || !entry.projects) {
-      setStatus('No projects found for that email.', 'red');
-      return;
-    }
+    if (!entry || !entry.projects) { setStatus('No projects found for that email.', 'red'); return; }
     var allProjects = Object.keys(entry.projects).slice();
     allProjects.sort(function (a, b) {
       var ca = completedProjects[a] ? 1 : 0;
@@ -259,10 +238,7 @@
       }
 
       li.addEventListener('click', function () {
-        if (completedProjects[p]) {
-          setStatus('This project is already completed.', 'red');
-          return;
-        }
+        if (completedProjects[p]) { setStatus('This project is already completed.', 'red'); return; }
         var act = projectListEl.querySelectorAll('.project-item.active');
         for (var ai = 0; ai < act.length; ai++) act[ai].classList.remove('active');
         li.classList.add('active');
@@ -276,12 +252,12 @@
 
     // remove any leftover empty placeholder cards under the project list
     removeEmptyPlaceholderCards();
-
     setStatus('');
   }
 
   // -------------------------
   // Render matrix for a project (stacked rubric; each criterion in its own card)
+  // This function builds into a temporary container, swaps children, then creates the comment section after the matrix.
   // -------------------------
   function loadProjectIntoMatrix(projectName, students) {
     currentProject = projectName;
@@ -291,222 +267,129 @@
     var oldInfo = document.getElementById('matrix-info');
     if (oldInfo && oldInfo.parentNode) oldInfo.parentNode.removeChild(oldInfo);
 
-    // clear previous matrices (we'll rebuild)
-    // but keep a reference to the parent so we can re-insert things
-    var parentNode = matrixContainer.parentNode;
-
-    // remove any old comment section first
+    // Remove any old comment section first (we'll re-create it)
     var oldComment = document.querySelector('.section.section-comment');
     if (oldComment && oldComment.parentNode) oldComment.parentNode.removeChild(oldComment);
 
-    // create (or re-create) matrix-info and place it right before matrixContainer if possible
+    // Create matrix-info header and insert before matrixContainer if possible
     var info = document.createElement('div');
     info.id = 'matrix-info';
-    var hdr = document.createElement('div');
-    hdr.className = 'current-project-header';
-    hdr.textContent = projectName || '';
-    hdr.style.display = 'block';
-    hdr.style.marginBottom = '6px';
-    hdr.style.fontWeight = '600';
-    var topDesc = document.createElement('div');
-    topDesc.className = 'matrix-info-desc';
+    var hdr = document.createElement('div'); hdr.className = 'current-project-header'; hdr.textContent = projectName || '';
+    hdr.style.display = 'block'; hdr.style.marginBottom = '6px'; hdr.style.fontWeight = '600';
+    var topDesc = document.createElement('div'); topDesc.className = 'matrix-info-desc';
     topDesc.textContent = 'Please evaluate the students using the rubric below (scale 1–7).';
-    topDesc.style.display = 'block';
-    topDesc.style.color = '#0b1228';
-    topDesc.style.fontWeight = '400';
-    topDesc.style.fontSize = '14px';
-    topDesc.style.marginBottom = '12px';
+    topDesc.style.display = 'block'; topDesc.style.color = '#0b1228'; topDesc.style.fontWeight = '400';
+    topDesc.style.fontSize = '14px'; topDesc.style.marginBottom = '12px';
+    info.appendChild(hdr); info.appendChild(topDesc);
 
-    info.appendChild(hdr);
-    info.appendChild(topDesc);
+    if (matrixContainer.parentNode) matrixContainer.parentNode.insertBefore(info, matrixContainer);
+    else document.body.insertBefore(info, matrixContainer);
 
-    if (parentNode) {
-      parentNode.insertBefore(info, matrixContainer);
-    } else {
-      document.body.insertBefore(info, matrixContainer);
-    }
-
-    // defensive: if no students, show message and exit
     if (!students || !students.length) {
       matrixContainer.textContent = 'No students found for this project.';
       return;
     }
 
-    // Restore staged ratings for this project if existing
     if (!stagedRatings[currentProject]) stagedRatings[currentProject] = {};
 
-    // Start building new content into a temporary container (we will replace matrixContainer's children)
     var tempContainer = document.createElement('div');
 
-    // Build each criterion block stacked — each inside its own .card
     RUBRIC.forEach(function (crit, cIdx) {
-      // outer card wrapper (use existing .card class)
       var card = document.createElement('div');
       card.className = 'card matrix-card';
       card.style.marginBottom = '20px';
       card.style.padding = card.style.padding || '18px';
 
-      // inside card: container for the criterion
-      var critWrap = document.createElement('div');
-      critWrap.className = 'matrix-criterion';
+      var critWrap = document.createElement('div'); critWrap.className = 'matrix-criterion';
 
-      // Title
-      var critTitle = document.createElement('h4');
-      critTitle.className = 'matrix-criterion-title';
-      critTitle.textContent = (cIdx + 1) + '. ' + (crit.title || '');
-      critTitle.style.margin = '0 0 8px 0';
-      critTitle.style.fontWeight = '600';
+      var critTitle = document.createElement('h4'); critTitle.className = 'matrix-criterion-title';
+      critTitle.textContent = (cIdx + 1) + '. ' + (crit.title || ''); critTitle.style.margin = '0 0 8px 0'; critTitle.style.fontWeight = '600';
       critWrap.appendChild(critTitle);
 
-      // Description
-      var critDesc = document.createElement('div');
-      critDesc.className = 'matrix-criterion-desc';
-      critDesc.textContent = crit.description || '';
-      critDesc.style.display = 'block';
-      critDesc.style.color = '#0b1228';
-      critDesc.style.fontWeight = '400';
-      critDesc.style.fontSize = '14px';
-      critDesc.style.lineHeight = '1.3';
-      critDesc.style.margin = '0 0 12px 0';
+      var critDesc = document.createElement('div'); critDesc.className = 'matrix-criterion-desc';
+      critDesc.textContent = crit.description || ''; critDesc.style.display = 'block'; critDesc.style.color = '#0b1228';
+      critDesc.style.fontWeight = '400'; critDesc.style.fontSize = '14px'; critDesc.style.lineHeight = '1.3'; critDesc.style.margin = '0 0 12px 0';
       critWrap.appendChild(critDesc);
 
-      // Table
-      var table = document.createElement('table');
-      table.className = 'matrix-table';
-      table.style.width = '100%';
-      table.style.borderCollapse = 'collapse';
-      var thead = document.createElement('thead');
-      var trHead = document.createElement('tr');
+      var table = document.createElement('table'); table.className = 'matrix-table'; table.style.width = '100%'; table.style.borderCollapse = 'collapse';
+      var thead = document.createElement('thead'); var trHead = document.createElement('tr');
 
-      var thName = document.createElement('th');
-      thName.textContent = 'Student';
-      thName.style.textAlign = 'left';
-      thName.style.padding = '8px';
+      var thName = document.createElement('th'); thName.textContent = 'Student'; thName.style.textAlign = 'left'; thName.style.padding = '8px';
       trHead.appendChild(thName);
 
-      // columns 1..7
       for (var k = 1; k <= 7; k++) {
-        var th = document.createElement('th');
-        th.textContent = String(k);
-        th.style.padding = '8px';
-        th.style.textAlign = 'center';
-        trHead.appendChild(th);
+        var th = document.createElement('th'); th.textContent = String(k); th.style.padding = '8px'; th.style.textAlign = 'center'; trHead.appendChild(th);
       }
-      thead.appendChild(trHead);
-      table.appendChild(thead);
+      thead.appendChild(trHead); table.appendChild(thead);
 
       var tbody = document.createElement('tbody');
 
-      // build rows for students
       students.forEach(function (studentName, sIdx) {
         var tr = document.createElement('tr');
-
-        var tdName = document.createElement('td');
-        tdName.textContent = studentName;
-        tdName.style.padding = '8px 10px';
-        tdName.style.verticalAlign = 'middle';
+        var tdName = document.createElement('td'); tdName.textContent = studentName; tdName.style.padding = '8px 10px'; tdName.style.verticalAlign = 'middle';
         tr.appendChild(tdName);
 
         for (var score = 1; score <= 7; score++) {
-          var td = document.createElement('td');
-          td.style.textAlign = 'center';
-          td.style.padding = '8px';
-
-          var input = document.createElement('input');
-          input.type = 'radio';
-          input.name = 'rating-' + cIdx + '-' + sIdx;
-          input.value = String(score);
+          var td = document.createElement('td'); td.style.textAlign = 'center'; td.style.padding = '8px';
+          var input = document.createElement('input'); input.type = 'radio'; input.name = 'rating-' + cIdx + '-' + sIdx; input.value = String(score);
           input.id = 'rating-' + cIdx + '-' + sIdx + '-' + score;
 
-          // restore staged if present
           var stagedForProject = stagedRatings[currentProject] || {};
           var stagedForStudent = stagedForProject[sIdx] || {};
-          if (stagedForStudent[cIdx] && String(stagedForStudent[cIdx]) === String(score)) {
-            input.checked = true;
-          }
+          if (stagedForStudent[cIdx] && String(stagedForStudent[cIdx]) === String(score)) input.checked = true;
 
-          var label = document.createElement('label');
-          label.setAttribute('for', input.id);
-          label.style.cursor = 'pointer';
-          label.style.display = 'inline-block';
-          label.style.padding = '2px';
+          var label = document.createElement('label'); label.setAttribute('for', input.id); label.style.cursor = 'pointer'; label.style.display = 'inline-block'; label.style.padding = '2px';
           label.appendChild(input);
-
-          td.appendChild(label);
-          tr.appendChild(td);
+          td.appendChild(label); tr.appendChild(td);
         }
 
         tbody.appendChild(tr);
       });
 
-      table.appendChild(tbody);
-      critWrap.appendChild(table);
-
-      // Append criterion container into card, then card into temp container
-      card.appendChild(critWrap);
-      tempContainer.appendChild(card);
+      table.appendChild(tbody); critWrap.appendChild(table); card.appendChild(critWrap); tempContainer.appendChild(card);
     });
 
-    // Now replace matrixContainer's children with the built content safely
-    // (preserve the same matrixContainer node reference so outer code still points to it)
+    // Replace matrixContainer children with built content
     while (matrixContainer.firstChild) matrixContainer.removeChild(matrixContainer.firstChild);
     while (tempContainer.firstChild) matrixContainer.appendChild(tempContainer.firstChild);
 
-    // After replacing children, ensure the comment section is created and appended AFTER the matrixContainer
-    // Remove any old comment just in case, then create a fresh one
-    var existingComment = document.querySelector('.section.section-comment');
-    if (existingComment && existingComment.parentNode) existingComment.parentNode.removeChild(existingComment);
-
+    // Create the comment section AFTER the matrix
     var commentSec = document.createElement('div');
     commentSec.className = 'section section-comment';
     commentSec.style.marginTop = '12px';
-    // *** FIX: override the CSS rule that hides .section.section-comment by default
-    commentSec.style.display = 'block';
+    commentSec.style.display = 'block'; // explicit display to avoid CSS hiding
 
-    var commentWrap = document.createElement('div');
-    commentWrap.className = 'project-comment-wrap';
-    var commentLabel = document.createElement('label');
-    commentLabel.setAttribute('for', 'project-comment');
-    commentLabel.textContent = 'Optional project comment';
-    commentLabel.style.display = 'block';
-    commentLabel.style.marginBottom = '6px';
-    var commentTA = document.createElement('textarea');
-    commentTA.id = 'project-comment';
+    var commentWrap = document.createElement('div'); commentWrap.className = 'project-comment-wrap';
+    var commentLabel = document.createElement('label'); commentLabel.setAttribute('for', 'project-comment'); commentLabel.textContent = 'Optional project comment';
+    commentLabel.style.display = 'block'; commentLabel.style.marginBottom = '6px';
+    var commentTA = document.createElement('textarea'); commentTA.id = 'project-comment';
     commentTA.placeholder = 'Any additional feedback for the students or instructor...';
-    commentTA.style.width = '100%';
-    commentTA.style.minHeight = '80px';
-    commentTA.style.padding = '8px';
+    commentTA.style.width = '100%'; commentTA.style.minHeight = '80px'; commentTA.style.padding = '8px'; commentTA.style.boxSizing = 'border-box';
 
-    // Restore staged comment if present
     var stagedComment = stagedRatings[currentProject] && stagedRatings[currentProject]._comment;
     if (stagedComment) commentTA.value = stagedComment;
 
-    commentWrap.appendChild(commentLabel);
-    commentWrap.appendChild(commentTA);
-    commentSec.appendChild(commentWrap);
+    commentWrap.appendChild(commentLabel); commentWrap.appendChild(commentTA); commentSec.appendChild(commentWrap);
 
     if (matrixContainer && matrixContainer.parentNode) {
-      // put the comment section immediately after matrixContainer
-      if (matrixContainer.nextSibling) {
-        matrixContainer.parentNode.insertBefore(commentSec, matrixContainer.nextSibling);
-      } else {
-        matrixContainer.parentNode.appendChild(commentSec);
-      }
+      if (matrixContainer.nextSibling) matrixContainer.parentNode.insertBefore(commentSec, matrixContainer.nextSibling);
+      else matrixContainer.parentNode.appendChild(commentSec);
     } else {
       document.body.appendChild(commentSec);
     }
 
-    // tidy up any empty placeholder cards that remain
+    // tidy up remaining placeholders
     removeEmptyPlaceholderCards();
 
-    // Attach event listeners
-    matrixContainer.removeEventListener && matrixContainer.removeEventListener('change', saveDraftHandler);
-    matrixContainer.removeEventListener && matrixContainer.removeEventListener('input', saveDraftHandler);
+    // Attach event listeners (avoid duplicates)
+    try {
+      matrixContainer.removeEventListener && matrixContainer.removeEventListener('change', saveDraftHandler);
+      matrixContainer.removeEventListener && matrixContainer.removeEventListener('input', saveDraftHandler);
+    } catch (e) {}
     matrixContainer.addEventListener('change', saveDraftHandler);
     matrixContainer.addEventListener('input', saveDraftHandler);
 
-    // ensure comment textarea saves to stagedRatings on input
-    commentTA.removeEventListener && commentTA.removeEventListener('input', saveDraftHandler);
+    try { commentTA.removeEventListener && commentTA.removeEventListener('input', saveDraftHandler); } catch (e) {}
     commentTA.addEventListener('input', saveDraftHandler);
 
     if (typeof updateSectionVisibility === 'function') updateSectionVisibility();
@@ -703,11 +586,8 @@
   function tryFetchData(callback) {
     var loaderUrl = DATA_LOADER_URL;
     if (DATA_SOURCE) {
-      loaderUrl += (loaderUrl.indexOf('?') === -1
-        ? '?source=' + encodeURIComponent(DATA_SOURCE)
-        : '&source=' + encodeURIComponent(DATA_SOURCE));
+      loaderUrl += (loaderUrl.indexOf('?') === -1 ? '?source=' + encodeURIComponent(DATA_SOURCE) : '&source=' + encodeURIComponent(DATA_SOURCE));
     }
-    // debug log of the exact URL requested
     console.info('tryFetchData: requesting', loaderUrl);
 
     fetch(loaderUrl, { cache: 'no-store' })
@@ -719,7 +599,6 @@
       .then(function (rows) {
         console.info('tryFetchData: rows received length=', Array.isArray(rows) ? rows.length : typeof rows);
         sponsorData = buildSponsorMap(rows || []);
-        // update debug pointer to the fresh object (fixes stale reference)
         window.__sponsorDebug && (window.__sponsorDebug.sponsorData = sponsorData);
 
         setStatus('Project data loaded securely.', 'green');
