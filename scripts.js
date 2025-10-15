@@ -187,8 +187,9 @@
     setStatus('');
   }
 
-  /* -------------------------
-     Render matrix for a project (stacked rubric)
+  
+   /* -------------------------
+     Render matrix for a project (stacked rubric; each criterion in its own card)
      ------------------------- */
   function loadProjectIntoMatrix(projectName, students) {
     currentProject = projectName;
@@ -209,6 +210,186 @@
       info.appendChild(desc);
       matrixContainer.parentNode.insertBefore(info, matrixContainer);
     }
+
+    // set header and top description — force visible styles
+    var headerEl = info.querySelector('.current-project-header');
+    var descEl = info.querySelector('.matrix-description');
+    if (headerEl) {
+      headerEl.textContent = projectName;
+      headerEl.style.display = 'block';
+    }
+    if (descEl) {
+      descEl.textContent = 'Please evaluate the students using the rubric below (scale 1–7).';
+      descEl.style.display = 'block';
+      descEl.style.color = '#0b1228';
+      descEl.style.fontWeight = '400';
+      descEl.style.fontSize = '14px';
+      descEl.style.marginBottom = '12px';
+    }
+    info.style.display = '';
+
+    if (!students || !students.length) {
+      matrixContainer.textContent = 'No students found for this project.';
+      return;
+    }
+
+    // Restore staged ratings for this project if existing
+    if (!stagedRatings[currentProject]) stagedRatings[currentProject] = {};
+
+    // Build each criterion block stacked — each inside its own .card
+    RUBRIC.forEach(function (crit, cIdx) {
+      // outer card wrapper
+      var card = document.createElement('div');
+      // uses your existing card styling; add a specific class for extra control if needed
+      card.className = 'card matrix-card';
+      // spacing to separate cards
+      card.style.marginBottom = '20px';
+      card.style.padding = '20px';
+
+      // inside card: container for the criterion
+      var critWrap = document.createElement('div');
+      critWrap.className = 'matrix-criterion';
+
+      // Title
+      var critTitle = document.createElement('h4');
+      critTitle.className = 'matrix-criterion-title';
+      critTitle.textContent = (cIdx + 1) + '. ' + crit.title;
+      critTitle.style.margin = '0 0 8px 0';
+      critTitle.style.fontWeight = '600';
+      critWrap.appendChild(critTitle);
+
+      // Description — visible and styled
+      var critDesc = document.createElement('div');
+      critDesc.className = 'matrix-criterion-desc';
+      critDesc.textContent = crit.description || '';
+      critDesc.style.display = 'block';
+      critDesc.style.color = '#0b1228';
+      critDesc.style.fontWeight = '400';
+      critDesc.style.fontSize = '14px';
+      critDesc.style.lineHeight = '1.3';
+      critDesc.style.margin = '0 0 12px 0';
+      critWrap.appendChild(critDesc);
+
+      // Table
+      var table = document.createElement('table');
+      table.className = 'matrix-table';
+      table.style.width = '100%';
+      table.style.borderCollapse = 'collapse';
+      var thead = document.createElement('thead');
+      var trHead = document.createElement('tr');
+
+      var thName = document.createElement('th');
+      thName.textContent = 'Student';
+      thName.style.textAlign = 'left';
+      thName.style.padding = '8px';
+      trHead.appendChild(thName);
+
+      // columns 1..7
+      for (var k = 1; k <= 7; k++) {
+        var th = document.createElement('th');
+        th.textContent = String(k);
+        th.style.padding = '8px';
+        th.style.textAlign = 'center';
+        trHead.appendChild(th);
+      }
+      thead.appendChild(trHead);
+      table.appendChild(thead);
+
+      var tbody = document.createElement('tbody');
+
+      // build rows for students
+      students.forEach(function (studentName, sIdx) {
+        var tr = document.createElement('tr');
+
+        var tdName = document.createElement('td');
+        tdName.textContent = studentName;
+        tdName.style.padding = '8px 10px';
+        tdName.style.verticalAlign = 'middle';
+        tr.appendChild(tdName);
+
+        for (var score = 1; score <= 7; score++) {
+          var td = document.createElement('td');
+          td.style.textAlign = 'center';
+          td.style.padding = '8px';
+
+          var input = document.createElement('input');
+          input.type = 'radio';
+          input.name = 'rating-' + cIdx + '-' + sIdx;
+          input.value = String(score);
+          input.id = 'rating-' + cIdx + '-' + sIdx + '-' + score;
+
+          // restore staged if present
+          var stagedForProject = stagedRatings[currentProject] || {};
+          var stagedForStudent = stagedForProject[sIdx] || {};
+          if (stagedForStudent[cIdx] && String(stagedForStudent[cIdx]) === String(score)) {
+            input.checked = true;
+          }
+
+          var label = document.createElement('label');
+          label.setAttribute('for', input.id);
+          label.style.cursor = 'pointer';
+          label.style.display = 'inline-block';
+          label.style.padding = '2px';
+          label.appendChild(input);
+
+          td.appendChild(label);
+          tr.appendChild(td);
+        }
+
+        tbody.appendChild(tr);
+      });
+
+      table.appendChild(tbody);
+      critWrap.appendChild(table);
+
+      // Append criterion container into card, then card into matrix container
+      card.appendChild(critWrap);
+      matrixContainer.appendChild(card);
+    });
+
+    // Comment area (single for the project)
+    // remove any existing comment section then add fresh
+    var existingComment = document.querySelector('.section.section-comment');
+    if (existingComment) {
+      existingComment.parentNode && existingComment.parentNode.removeChild(existingComment);
+    }
+    var commentSec = document.createElement('div');
+    commentSec.className = 'section section-comment';
+    commentSec.style.marginTop = '12px';
+
+    var commentWrap = document.createElement('div');
+    commentWrap.className = 'project-comment-wrap';
+    var commentLabel = document.createElement('label');
+    commentLabel.setAttribute('for', 'project-comment');
+    commentLabel.textContent = 'Optional project comment';
+    commentLabel.style.display = 'block';
+    commentLabel.style.marginBottom = '6px';
+    var commentTA = document.createElement('textarea');
+    commentTA.id = 'project-comment';
+    commentTA.placeholder = 'Any additional feedback for the students or instructor...';
+    commentTA.style.width = '100%';
+    commentTA.style.minHeight = '80px';
+    commentTA.style.padding = '8px';
+
+    var staged = stagedRatings[currentProject] && stagedRatings[currentProject]._comment;
+    if (staged) commentTA.value = staged;
+
+    commentWrap.appendChild(commentLabel);
+    commentWrap.appendChild(commentTA);
+    commentSec.appendChild(commentWrap);
+
+    // Insert comment section after matrix container
+    matrixContainer.parentNode.insertBefore(commentSec, matrixContainer.nextSibling);
+
+    // Add event listeners for auto-saving staged ratings
+    matrixContainer.addEventListener('change', saveDraftHandler);
+    matrixContainer.addEventListener('input', saveDraftHandler);
+    commentTA.addEventListener('input', saveDraftHandler);
+
+    if (typeof updateSectionVisibility === 'function') updateSectionVisibility();
+    if (typeof removeEmptySections === 'function') removeEmptySections();
+  }
+
 
     // set header and top description
     var headerEl = info.querySelector('.current-project-header');
