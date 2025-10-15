@@ -68,53 +68,64 @@
     return String(s || '').replace(/[&<>"']/g, function (m) { return map[m]; });
   }
 
-  function buildSponsorMap(rows) {
-    var map = {};
-    rows.forEach(function (r) {
-      var email = (r.sponsorEmail || r.email || '').toLowerCase();
-      var project = (r.project || '').trim();
-      var student = (r.student || '').trim();
-      if (!email || !project || !student) return;
-      if (!map[email]) map[email] = { projects: {} };
-      if (!map[email].projects[project]) map[email].projects[project] = [];
-      if (map[email].projects[project].indexOf(student) === -1) {
-        map[email].projects[project].push(student);
+// REPLACE the existing buildSponsorMap with this robust version
+function buildSponsorMap(rows) {
+  // rows: array of objects produced by the data-loader (keys come from sheet header text)
+  var map = {};
+
+  // harmless short-circuit
+  if (!Array.isArray(rows) || rows.length === 0) return map;
+
+  // normalize keys for each row, supporting many header variants
+  rows.forEach(function (rawRow) {
+    // build a normalized object with canonical keys we expect:
+    // sponsorEmail, project, student
+    var normalized = { sponsorEmail: '', project: '', student: '' };
+
+    Object.keys(rawRow || {}).forEach(function (rawKey) {
+      var k = String(rawKey || '').trim().toLowerCase();
+      var v = (rawRow[rawKey] || '').toString().trim();
+
+      // map known header variants to our canonical keys
+      if (k === 'sponsoremail' || k === 'sponsor email' || k === 'sponsor' || k === 'email' || k === 'login_id') {
+        // treat these as sponsor email candidate
+        if (!normalized.sponsorEmail) normalized.sponsorEmail = v;
+      } else if (k === 'project' || k === 'project name' || k === 'project_title' || k === 'group_name') {
+        if (!normalized.project) normalized.project = v;
+      } else if (k === 'student' || k === 'student name' || k === 'students' || k === 'name') {
+        if (!normalized.student) normalized.student = v;
+      } else {
+        // if the sheet used short names like 'project' / 'student' variations,
+        // we've already covered them. otherwise ignore unknown columns.
       }
     });
-    return map;
-  }
 
-  function saveProgress() {
-    var payload = {
-      name: currentName,
-      email: currentEmail,
-      completedProjects: completedProjects,
-      stagedRatings: stagedRatings
-    };
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-    } catch (e) {
-      console.warn('Could not save progress', e);
-    }
-  }
+    var email = (normalized.sponsorEmail || '').toLowerCase().trim();
+    var project = (normalized.project || '').trim();
+    var student = (normalized.student || '').trim();
 
-  function loadProgress() {
-    try {
-      var raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return;
-      var obj = JSON.parse(raw);
-      if (obj && obj.email) {
-        currentName = obj.name || '';
-        currentEmail = obj.email || '';
-        completedProjects = obj.completedProjects || {};
-        stagedRatings = obj.stagedRatings || {};
-        if (nameInput) nameInput.value = currentName;
-        if (emailInput) emailInput.value = currentEmail;
-      }
-    } catch (e) {
-      console.warn('Could not load progress', e);
+    if (!email || !project || !student) {
+      // skip incomplete rows
+      return;
     }
-  }
+
+    if (!map[email]) map[email] = { projects: {} };
+    if (!map[email].projects[project]) map[email].projects[project] = [];
+    if (map[email].projects[project].indexOf(student) === -1) {
+      map[email].projects[project].push(student);
+    }
+  });
+
+  // debug summary so you can inspect quickly in console
+  try {
+    console.info('buildSponsorMap: mapped', Object.keys(map).length, 'sponsors and',
+                 Object.keys(map).reduce(function (acc, e) {
+                   return acc + Object.keys(map[e].projects).length;
+                 }, 0), 'projects total');
+  } catch (e) {}
+  return map;
+}
+
 
   // -------------------------
   // Project list builder
