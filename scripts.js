@@ -9,7 +9,7 @@
   // for hybrid deployment keep DATA_SOURCE blank so no ?source param appended
   var DATA_SOURCE = '';
 
-  // --- RUBRIC (5 items) ---
+ // --- RUBRIC (5 items) ---
   var RUBRIC = [
     {
       title: "Student has contributed an appropriate amount of development effort towards this project",
@@ -72,45 +72,90 @@
 
   // -------------------------
   // Robust mapping from data-loader rows to sponsorData
-  // Accepts varied header names and trims values.
+  // Accepts varied header names, trims values, and supports multiple emails per sponsor cell.
   // -------------------------
   function buildSponsorMap(rows) {
     var map = {};
     if (!Array.isArray(rows) || rows.length === 0) return map;
 
+    // regex to match typical email addresses
+    var emailRegex = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
+
     rows.forEach(function (rawRow) {
-      // produce a normalized object with canonical keys
-      var normalized = { sponsorEmail: '', project: '', student: '' };
+      // collect canonical values per row
+      var project = '';
+      var student = '';
+      var sponsorCell = '';
 
       Object.keys(rawRow || {}).forEach(function (rawKey) {
         var keyNorm = String(rawKey || '').trim().toLowerCase();
         var rawVal = (rawRow[rawKey] || '').toString();
         var val = rawVal.replace(/\u00A0/g, ' ').trim(); // replace NBSP, trim
 
-        // map header variants
-        if (keyNorm === 'sponsoremail' || keyNorm === 'sponsor email' || keyNorm === 'sponsor' || keyNorm === 'email' || keyNorm === 'login_id' || keyNorm === 'sponsor_email') {
-          if (!normalized.sponsorEmail) normalized.sponsorEmail = val;
-        } else if (keyNorm === 'project' || keyNorm === 'project name' || keyNorm === 'project_title' || keyNorm === 'group_name' || keyNorm === 'projectname') {
-          if (!normalized.project) normalized.project = val;
+        if (keyNorm === 'project' || keyNorm === 'project name' || keyNorm === 'project_title' || keyNorm === 'group_name' || keyNorm === 'projectname') {
+          if (!project) project = val;
         } else if (keyNorm === 'student' || keyNorm === 'student name' || keyNorm === 'students' || keyNorm === 'name' || keyNorm === 'student_name') {
-          if (!normalized.student) normalized.student = val;
+          if (!student) student = val;
+        } else if (keyNorm === 'sponsoremail' || keyNorm === 'sponsor email' || keyNorm === 'sponsor' || keyNorm === 'email' || keyNorm === 'login_id' || keyNorm === 'sponsor_email') {
+          if (!sponsorCell) sponsorCell = val;
         } else {
           // ignore other columns
         }
       });
 
-      var email = (normalized.sponsorEmail || '').toLowerCase().trim();
-      var project = (normalized.project || '').trim();
-      var student = (normalized.student || '').trim();
+      project = (project || '').trim();
+      student = (student || '').trim();
 
-      // skip rows that are missing critical pieces
-      if (!email || !project || !student) return;
-
-      if (!map[email]) map[email] = { projects: {} };
-      if (!map[email].projects[project]) map[email].projects[project] = [];
-      if (map[email].projects[project].indexOf(student) === -1) {
-        map[email].projects[project].push(student);
+      if (!sponsorCell || !project || !student) {
+        // if sponsorCell empty but there might be alternate email-like column names, attempt fallback:
+        // fallback: scan all row values for any email-like strings
+        if (!sponsorCell) {
+          var fallbackEmails = [];
+          Object.keys(rawRow || {}).forEach(function (k) {
+            var rv = (rawRow[k] || '').toString();
+            var found = rv.match(emailRegex);
+            if (found && found.length) fallbackEmails = fallbackEmails.concat(found);
+          });
+          if (fallbackEmails.length) sponsorCell = fallbackEmails.join(', ');
+        }
+        // still skip if missing critical data
+        if (!sponsorCell || !project || !student) return;
       }
+
+      // extract emails from sponsorCell
+      var foundEmails = (sponsorCell.match(emailRegex) || []).map(function (e) { return e.toLowerCase().trim(); });
+
+      // if regex didn't find any emails, try splitting by common separators (comma, semicolon, slash, pipe, space)
+      if (!foundEmails.length) {
+        var parts = sponsorCell.split(/[,;\/|]+/);
+        parts = parts.map(function (p) { return p.replace(/\s+/g, ' ').trim(); }).filter(Boolean);
+        parts.forEach(function (p) {
+          var match = (p.match(emailRegex) || [])[0];
+          if (match) foundEmails.push(match.toLowerCase().trim());
+        });
+      }
+
+      // final cleanup & dedupe
+      var uniqueEmails = [];
+      foundEmails.forEach(function (em) {
+        var e = (em || '').toLowerCase().trim();
+        if (!e) return;
+        // simple sanity check: must contain '@' and a dot after '@'
+        if (e.indexOf('@') === -1) return;
+        if (uniqueEmails.indexOf(e) === -1) uniqueEmails.push(e);
+      });
+
+      if (!uniqueEmails.length) return; // nothing to map
+
+      // map each email to the project / student
+      uniqueEmails.forEach(function (email) {
+        if (!map[email]) map[email] = { projects: {} };
+        if (!map[email].projects[project]) map[email].projects[project] = [];
+        // avoid duplicate student entry
+        if (map[email].projects[project].indexOf(student) === -1) {
+          map[email].projects[project].push(student);
+        }
+      });
     });
 
     // debug summary
