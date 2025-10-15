@@ -1,14 +1,3 @@
-// Full updated scripts.js (HYBRID site)
-(function () {
-  'use strict';
-
-  // --- Configuration (Cloudflare Workers endpoints) ---
-  var ENDPOINT_URL = 'https://csehybridsponsors.sbecerr7.workers.dev/';  // POST submissions here (change if hybrid uses different endpoint)
-  var DATA_LOADER_URL = 'https://data-loader.sbecerr7.workers.dev/'; // HYBRID worker URL (reads hybrid sheet)
-  var STORAGE_KEY = 'sponsor_progress_v1';
-  // for hybrid deployment keep DATA_SOURCE blank so no ?source param appended
-  var DATA_SOURCE = '';
-
 // Full updated scripts.js (HYBRID site) - comment-section visibility fix + remove empty placeholder cards
 (function () {
   'use strict';
@@ -511,8 +500,6 @@
     removeEmptyPlaceholderCards();
 
     // Attach event listeners
-    // remove previous listeners if present by cloning node (guard against duplicates) - only for matrixContainer events
-    // (We avoid re-cloning the whole matrixContainer here since we already rebuilt children; simply ensure listeners attached once)
     matrixContainer.removeEventListener && matrixContainer.removeEventListener('change', saveDraftHandler);
     matrixContainer.removeEventListener && matrixContainer.removeEventListener('input', saveDraftHandler);
     matrixContainer.addEventListener('change', saveDraftHandler);
