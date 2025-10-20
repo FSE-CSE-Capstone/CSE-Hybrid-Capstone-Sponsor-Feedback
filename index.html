@@ -35,21 +35,21 @@
       <section class="card" aria-labelledby="projects-heading-outside">
 
         <!-- STAGE 1: Identity (inputs; greeting/lead are outside and controlled separately) -->
-        <div id="stage-identity" class="stage">
-          <div class="form-row">
-            <label for="fullName">Your name</label>
-            <input id="fullName" name="fullName" type="text" placeholder="Jane Doe" />
-          </div>
+<div id="stage-identity" class="stage" data-stage="identity">
+  <div class="form-row">
+    <label for="fullName">Your name</label>
+    <input id="fullName" name="fullName" type="text" placeholder="Jane Doe" />
+  </div>
 
-          <div class="form-row">
-            <label for="email">Your email</label>
-            <input id="email" name="email" type="email" placeholder="you@example.com" />
-          </div>
+  <div class="form-row">
+    <label for="email">Your email</label>
+    <input id="email" name="email" type="email" placeholder="you@example.com" />
+  </div>
 
-          <div class="actions">
-            <button id="identitySubmit" class="btn btn-primary" type="button">Continue</button>
-          </div>
-        </div>
+  <div class="actions">
+    <button id="identitySubmit" class="btn btn-primary" type="button">Continue</button>
+  </div>
+</div>
 
         <!-- STAGE 2: Projects + Matrix (hidden initially) -->
         <div id="stage-projects" class="stage" style="display:none;">
