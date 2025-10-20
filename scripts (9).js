@@ -1,636 +1,502 @@
-// Full updated scripts.js (HYBRID site)
-// - multi-email parsing, reliable comment section creation, remove empty placeholder cards
+// scripts.js — full updated client logic with descriptor columns, collapsible per-student comment panels,
+// localStorage draft saving (sponsor_progress_v1), team row, and payload format compatible with your hybrid-worker.
+// Assumptions: your page defines DATA_LOADER_URL, ENDPOINT_URL, STORAGE_KEY (sponsor_progress_v1), and RUBRIC.
+// If any of those are missing the defaults will be used below.
+
 (function () {
   'use strict';
 
-  // --- Configuration (Cloudflare Workers endpoints) ---
-  var ENDPOINT_URL = 'https://csehybridsponsors.sbecerr7.workers.dev/';  // POST submissions here
-  var DATA_LOADER_URL = 'https://data-loader.sbecerr7.workers.dev/';    // HYBRID worker URL (reads hybrid sheet)
-  var STORAGE_KEY = 'sponsor_progress_v1';
-  var DATA_SOURCE = ''; // blank for hybrid
-
-  // --- RUBRIC (5 items) ---
-  var RUBRIC = [
-    { title: "Student has contributed an appropriate amount of development effort towards this project", description: "Development effort should be balanced between all team members; student should commit to a fair amount of development effort on each sprint." },
-    { title: "Student's level of contribution and participation in meetings", description: "Students are expected to be proactive. Contributions and participation in meetings help ensure the student is aware of project goals." },
-    { title: "Student's understanding of your project/problem", description: "Students are expected to understand important details of the project and be able to explain it from different stakeholder perspectives." },
-    { title: "Quality of student's work product", description: "Students should complete assigned work to a high quality: correct, documented, and self-explanatory where appropriate." },
-    { title: "Quality and frequency of student's communications", description: "Students are expected to be in regular communication and maintain professionalism when interacting with the sponsor." }
+  // ---------- CONFIG (keeps your existing variables if present) ----------
+  var DATA_LOADER_URL = (typeof DATA_LOADER_URL !== 'undefined') ? DATA_LOADER_URL : '';
+  var ENDPOINT_URL = (typeof ENDPOINT_URL !== 'undefined') ? ENDPOINT_URL : '';
+  var STORAGE_KEY = (typeof STORAGE_KEY !== 'undefined') ? STORAGE_KEY : 'sponsor_progress_v1';
+  // Use the RUBRIC array already on the page if present (user requested existing rubric)
+  var RUBRIC = (typeof RUBRIC !== 'undefined' && Array.isArray(RUBRIC) && RUBRIC.length) ? RUBRIC : [
+    { title: "Effort", description: "" },
+    { title: "Meetings", description: "" },
+    { title: "Understanding", description: "" },
+    { title: "Quality", description: "" },
+    { title: "communication", description: "" }
   ];
 
-  // --- DOM nodes ---
-  var stageIdentity = document.getElementById('stage-identity');
-  var stageProjects = document.getElementById('stage-projects');
-  var stageThankyou = document.getElementById('stage-thankyou');
-  var identitySubmit = document.getElementById('identitySubmit');
-  var backToIdentity = document.getElementById('backToIdentity');
-  var nameInput = document.getElementById('fullName');
-  var emailInput = document.getElementById('email');
-  var projectListEl = document.getElementById('project-list');
-  var matrixContainer = document.getElementById('matrix-container');
-  var formStatus = document.getElementById('form-status');
-  var submitProjectBtn = document.getElementById('submitProject');
-  var finishStartOverBtn = document.getElementById('finishStartOver');
-  var welcomeBlock = document.getElementById('welcome-block');
-  var underTitle = document.getElementById('under-title');
+  // Descriptor texts (confirmed by user)
+  var LEFT_DESCRIPTOR = "Far Below Expectations (Fail)";
+  var RIGHT_DESCRIPTOR = "Exceeds Expectations (A+)";
 
-  // --- State ---
-  var sponsorData = {};
-  var sponsorProjects = {};
-  var currentEmail = '';
-  var currentName = '';
-  var currentProject = '';
-  var completedProjects = {};
-  var stagedRatings = {};
+  // UI selectors - adjust if your HTML uses different IDs
+  var selectors = {
+    container: '#app', // parent container into which we will render matrix UI (fallback used if not present)
+    projectsSection: '#projects-stage', // where instructions live
+    instructions: '.projects-instructions', // sticky instructions block selector
+    projectSelect: '#project-select', // project selection element (if you have one)
+    sponsorName: '#sponsor-name',
+    sponsorEmail: '#sponsor-email',
+    startButton: '#start-btn', // optional
+    matrixStage: '#matrix-stage', // where matrix/cards are rendered
+    submitButton: '#submit-btn',
+    savedBanner: '#saved-banner' // optional element to show "draft saved"
+  };
 
-  // --- Helpers ---
-  function setStatus(msg, color) {
-    if (!formStatus) return;
-    formStatus.textContent = msg || '';
-    formStatus.style.color = color || '';
+  // If your page doesn't have an app container, create one at body end
+  if (!document.querySelector(selectors.container)) {
+    var appDiv = document.createElement('div');
+    appDiv.id = 'app';
+    document.body.appendChild(appDiv);
   }
 
-  function escapeHtml(s) {
-    var map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
-    return String(s || '').replace(/[&<>"']/g, function (m) { return map[m]; });
-  }
+  var state = {
+    sponsorName: '',
+    sponsorEmail: '',
+    project: '',
+    // responsesMap: keyed by studentKey (student name string) - contains { ratings: {rubricTitle: value}, commentShared, commentInstructor, isTeam }
+    responsesMap: {},
+    students: [], // array of student display names (strings)
+    teamKey: '__TEAM__'
+  };
 
-  // --- remove empty placeholder cards that cause the "empty card" gap ---
-  function removeEmptyPlaceholderCards() {
-    if (!projectListEl) return;
-    var container = projectListEl.parentNode;
-    if (!container) return;
-
-    var cards = Array.prototype.slice.call(container.querySelectorAll('.card'));
-    cards.forEach(function (c) {
-      var hasControls = c.querySelector('input, textarea, select, button, table, label');
-      var text = (c.textContent || '').replace(/\s+/g, '');
-      if (!hasControls && text.length === 0) {
-        if (!c.classList.contains('matrix-card') && !c.classList.contains('persistent-placeholder')) {
-          c.parentNode && c.parentNode.removeChild(c);
-        }
-      }
-    });
-  }
-
-  // -------------------------
-  // Robust mapping from data-loader rows to sponsorData
-  // Accepts varied header names, trims values, and supports multiple emails per sponsor cell.
-  // -------------------------
-  function buildSponsorMap(rows) {
-    var map = {};
-    if (!Array.isArray(rows) || rows.length === 0) return map;
-
-    var emailRegex = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
-
-    function cleanToken(tok) {
-      if (!tok) return '';
-      tok = tok.replace(/^[\s"'`([{]+|[\s"'`)\]}.,:;]+$/g, '').replace(/\u00A0/g, ' ').trim();
-      if (tok.indexOf('@') !== -1 && tok.indexOf(' ') !== -1) {
-        tok = tok.split(' ').join('');
-      }
-      return tok;
-    }
-
-    rows.forEach(function (rawRow) {
-      var project = '';
-      var student = '';
-      var sponsorCell = '';
-
-      Object.keys(rawRow || {}).forEach(function (rawKey) {
-        var keyNorm = String(rawKey || '').trim().toLowerCase();
-        var rawVal = (rawRow[rawKey] || '').toString();
-        var val = rawVal.replace(/\u00A0/g, ' ').trim();
-
-        if (!project && (keyNorm === 'project' || keyNorm === 'project name' || keyNorm === 'project_title' || keyNorm === 'group_name' || keyNorm === 'projectname')) {
-          project = val;
-        } else if (!student && (keyNorm === 'student' || keyNorm === 'student name' || keyNorm === 'students' || keyNorm === 'name' || keyNorm === 'student_name')) {
-          student = val;
-        } else if (!sponsorCell && (keyNorm === 'sponsoremail' || keyNorm === 'sponsor email' || keyNorm === 'sponsor' || keyNorm === 'email' || keyNorm === 'login_id' || keyNorm === 'sponsor_email')) {
-          sponsorCell = val;
-        }
-      });
-
-      project = (project || '').trim();
-      student = (student || '').trim();
-
-      if (!sponsorCell) {
-        var fallbackEmails = [];
-        Object.keys(rawRow || {}).forEach(function (k) {
-          var rv = (rawRow[k] || '').toString();
-          var found = rv.match(emailRegex);
-          if (found && found.length) fallbackEmails = fallbackEmails.concat(found);
-        });
-        if (fallbackEmails.length) sponsorCell = fallbackEmails.join(', ');
-      }
-
-      if (!sponsorCell || !project || !student) return;
-
-      // Split on common separators first
-      var tokens = sponsorCell.split(/[,;\/|]+/);
-      var foundEmails = [];
-
-      tokens.forEach(function (t) {
-        var cleaned = cleanToken(t);
-        if (!cleaned) return;
-        var m = cleaned.match(emailRegex);
-        if (m && m.length) {
-          m.forEach(function (em) { foundEmails.push(em.toLowerCase().trim()); });
-          return;
-        }
-        var m2 = t.match(emailRegex);
-        if (m2 && m2.length) {
-          m2.forEach(function (em) { foundEmails.push(em.toLowerCase().trim()); });
-          return;
-        }
-        if (t.indexOf('@') !== -1) {
-          var nospace = t.replace(/\s+/g, '');
-          var m3 = nospace.match(emailRegex);
-          if (m3 && m3.length) m3.forEach(function (em) { foundEmails.push(em.toLowerCase().trim()); });
-        }
-      });
-
-      // dedupe & sanity-check
-      var uniqueEmails = [];
-      foundEmails.forEach(function (em) {
-        var e = (em || '').toLowerCase().trim();
-        if (!e) return;
-        if (e.indexOf('@') === -1) return;
-        var parts = e.split('@');
-        if (parts.length !== 2 || parts[1].indexOf('.') === -1) return;
-        if (uniqueEmails.indexOf(e) === -1) uniqueEmails.push(e);
-      });
-
-      if (!uniqueEmails.length) return;
-
-      uniqueEmails.forEach(function (email) {
-        if (!map[email]) map[email] = { projects: {} };
-        if (!map[email].projects[project]) map[email].projects[project] = [];
-        if (map[email].projects[project].indexOf(student) === -1) {
-          map[email].projects[project].push(student);
-        }
-      });
-    });
-
+  // Utility: load state from localStorage
+  function loadDraft() {
     try {
-      var sponsorCount = Object.keys(map).length;
-      var projectCount = Object.keys(map).reduce(function (acc, e) {
-        return acc + Object.keys(map[e].projects || {}).length;
-      }, 0);
-      console.info('buildSponsorMap: mapped', sponsorCount, 'sponsors and', projectCount, 'projects total');
-    } catch (e) {}
-
-    return map;
-  }
-
-  // -------------------------
-  // Save / load progress
-  // -------------------------
-  function saveProgress() {
-    var payload = { name: currentName, email: currentEmail, completedProjects: completedProjects, stagedRatings: stagedRatings };
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(payload)); } catch (e) { console.warn('Could not save progress', e); }
-  }
-
-  function loadProgress() {
-    try {
-      var raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return;
-      var obj = JSON.parse(raw);
-      if (obj && obj.email) {
-        currentName = obj.name || '';
-        currentEmail = obj.email || '';
-        completedProjects = obj.completedProjects || {};
-        stagedRatings = obj.stagedRatings || {};
-        if (nameInput) nameInput.value = currentName;
-        if (emailInput) emailInput.value = currentEmail;
-        console.info('loadProgress: restored', currentEmail || '(none)');
+      var txt = localStorage.getItem(STORAGE_KEY);
+      if (!txt) return;
+      var parsed = JSON.parse(txt);
+      if (parsed) {
+        if (parsed.sponsorName) state.sponsorName = parsed.sponsorName;
+        if (parsed.sponsorEmail) state.sponsorEmail = parsed.sponsorEmail;
+        if (parsed.project) state.project = parsed.project;
+        if (parsed.responsesMap) state.responsesMap = parsed.responsesMap;
       }
-    } catch (e) { console.warn('Could not load progress', e); }
-  }
-
-  // -------------------------
-  // Project list builder
-  // -------------------------
-  function populateProjectListFor(email) {
-    if (!projectListEl) return;
-    projectListEl.innerHTML = '';
-    sponsorProjects = {};
-    var entry = sponsorData[email];
-    if (!entry || !entry.projects) { setStatus('No projects found for that email.', 'red'); return; }
-    var allProjects = Object.keys(entry.projects).slice();
-    allProjects.sort(function (a, b) {
-      var ca = completedProjects[a] ? 1 : 0;
-      var cb = completedProjects[b] ? 1 : 0;
-      return ca - cb;
-    });
-
-    allProjects.forEach(function (p) {
-      var li = document.createElement('li');
-      li.className = 'project-item';
-      li.tabIndex = 0;
-      li.setAttribute('data-project', p);
-
-      if (completedProjects[p]) {
-        li.className += ' completed';
-        li.innerHTML = '<strong>' + escapeHtml(p) + '</strong> <span class="meta">(completed)</span>';
-      } else {
-        li.innerHTML = '<strong>' + escapeHtml(p) + '</strong>';
-      }
-
-      li.addEventListener('click', function () {
-        if (completedProjects[p]) { setStatus('This project is already completed.', 'red'); return; }
-        var act = projectListEl.querySelectorAll('.project-item.active');
-        for (var ai = 0; ai < act.length; ai++) act[ai].classList.remove('active');
-        li.classList.add('active');
-        loadProjectIntoMatrix(p, entry.projects[p]);
-        setStatus('');
-      });
-
-      projectListEl.appendChild(li);
-      sponsorProjects[p] = entry.projects[p].slice();
-    });
-
-    // remove any leftover empty placeholder cards under the project list
-    removeEmptyPlaceholderCards();
-    setStatus('');
-  }
-
-  // -------------------------
-  // Render matrix for a project (stacked rubric; each criterion in its own card)
-  // This function builds into a temporary container, swaps children, then creates the comment section after the matrix.
-  // -------------------------
-  function loadProjectIntoMatrix(projectName, students) {
-    currentProject = projectName;
-    if (!matrixContainer) return;
-
-    // Remove any previously injected matrix-info to avoid duplicates
-    var oldInfo = document.getElementById('matrix-info');
-    if (oldInfo && oldInfo.parentNode) oldInfo.parentNode.removeChild(oldInfo);
-
-    // Remove any old comment section first (we'll re-create it)
-    var oldComment = document.querySelector('.section.section-comment');
-    if (oldComment && oldComment.parentNode) oldComment.parentNode.removeChild(oldComment);
-
-    // Create matrix-info header and insert before matrixContainer if possible
-    var info = document.createElement('div');
-    info.id = 'matrix-info';
-    var hdr = document.createElement('div'); hdr.className = 'current-project-header'; hdr.textContent = projectName || '';
-    hdr.style.display = 'block'; hdr.style.marginBottom = '6px'; hdr.style.fontWeight = '600';
-    var topDesc = document.createElement('div'); topDesc.className = 'matrix-info-desc';
-    topDesc.textContent = 'Please evaluate the students using the rubric below (scale 1–7).';
-    topDesc.style.display = 'block'; topDesc.style.color = '#0b1228'; topDesc.style.fontWeight = '400';
-    topDesc.style.fontSize = '14px'; topDesc.style.marginBottom = '12px';
-    info.appendChild(hdr); info.appendChild(topDesc);
-
-    if (matrixContainer.parentNode) matrixContainer.parentNode.insertBefore(info, matrixContainer);
-    else document.body.insertBefore(info, matrixContainer);
-
-    if (!students || !students.length) {
-      matrixContainer.textContent = 'No students found for this project.';
-      return;
+    } catch (e) {
+      console.warn('Failed reading draft from localStorage', e);
     }
+  }
 
-    if (!stagedRatings[currentProject]) stagedRatings[currentProject] = {};
-
-    var tempContainer = document.createElement('div');
-
-    RUBRIC.forEach(function (crit, cIdx) {
-      var card = document.createElement('div');
-      card.className = 'card matrix-card';
-      card.style.marginBottom = '20px';
-      card.style.padding = card.style.padding || '18px';
-
-      var critWrap = document.createElement('div'); critWrap.className = 'matrix-criterion';
-
-      var critTitle = document.createElement('h4'); critTitle.className = 'matrix-criterion-title';
-      critTitle.textContent = (cIdx + 1) + '. ' + (crit.title || ''); critTitle.style.margin = '0 0 8px 0'; critTitle.style.fontWeight = '600';
-      critWrap.appendChild(critTitle);
-
-      var critDesc = document.createElement('div'); critDesc.className = 'matrix-criterion-desc';
-      critDesc.textContent = crit.description || ''; critDesc.style.display = 'block'; critDesc.style.color = '#0b1228';
-      critDesc.style.fontWeight = '400'; critDesc.style.fontSize = '14px'; critDesc.style.lineHeight = '1.3'; critDesc.style.margin = '0 0 12px 0';
-      critWrap.appendChild(critDesc);
-
-      var table = document.createElement('table'); table.className = 'matrix-table'; table.style.width = '100%'; table.style.borderCollapse = 'collapse';
-      var thead = document.createElement('thead'); var trHead = document.createElement('tr');
-
-      var thName = document.createElement('th'); thName.textContent = 'Student'; thName.style.textAlign = 'left'; thName.style.padding = '8px';
-      trHead.appendChild(thName);
-
-      for (var k = 1; k <= 7; k++) {
-        var th = document.createElement('th'); th.textContent = String(k); th.style.padding = '8px'; th.style.textAlign = 'center'; trHead.appendChild(th);
+  // Utility: save to localStorage
+  function saveDraft() {
+    try {
+      var payload = {
+        sponsorName: state.sponsorName,
+        sponsorEmail: state.sponsorEmail,
+        project: state.project,
+        responsesMap: state.responsesMap
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+      // optional UI notify
+      var b = document.querySelector(selectors.savedBanner);
+      if (b) {
+        b.textContent = 'Draft saved';
+        setTimeout(()=>{ b.textContent = ''; }, 1500);
       }
-      thead.appendChild(trHead); table.appendChild(thead);
+    } catch (e) {
+      console.warn('Failed saving draft', e);
+    }
+  }
 
-      var tbody = document.createElement('tbody');
+  // Create a safe key for a student (used to index responsesMap)
+  function studentKey(name) {
+    return String(name || '').trim() || 'NO_NAME';
+  }
 
-      students.forEach(function (studentName, sIdx) {
-        var tr = document.createElement('tr');
-        var tdName = document.createElement('td'); tdName.textContent = studentName; tdName.style.padding = '8px 10px'; tdName.style.verticalAlign = 'middle';
-        tr.appendChild(tdName);
+  // Initialize response record if missing
+  function ensureResponseRecordFor(name) {
+    var key = studentKey(name);
+    if (!state.responsesMap[key]) {
+      state.responsesMap[key] = { ratings: {}, commentShared: '', commentInstructor: '', isTeam: (key === state.teamKey) ? true : false };
+    }
+  }
 
-        for (var score = 1; score <= 7; score++) {
-          var td = document.createElement('td'); td.style.textAlign = 'center'; td.style.padding = '8px';
-          var input = document.createElement('input'); input.type = 'radio'; input.name = 'rating-' + cIdx + '-' + sIdx; input.value = String(score);
-          input.id = 'rating-' + cIdx + '-' + sIdx + '-' + score;
+  // Render helpers
+  function el(tag, attrs, children) {
+    var node = document.createElement(tag);
+    if (attrs) {
+      Object.keys(attrs).forEach(function(k){
+        if (k === 'class') node.className = attrs[k];
+        else if (k === 'html') node.innerHTML = attrs[k];
+        else node.setAttribute(k, attrs[k]);
+      });
+    }
+    if (children) {
+      (Array.isArray(children) ? children : [children]).forEach(function(c){
+        if (typeof c === 'string') node.appendChild(document.createTextNode(c));
+        else if (c) node.appendChild(c);
+      });
+    }
+    return node;
+  }
 
-          var stagedForProject = stagedRatings[currentProject] || {};
-          var stagedForStudent = stagedForProject[sIdx] || {};
-          if (stagedForStudent[cIdx] && String(stagedForStudent[cIdx]) === String(score)) input.checked = true;
+  // Render the stacked rubric cards and matrix with descriptor columns
+  function renderMatrixCards(container) {
+    container.innerHTML = '';
 
-          var label = document.createElement('label'); label.setAttribute('for', input.id); label.style.cursor = 'pointer'; label.style.display = 'inline-block'; label.style.padding = '2px';
-          label.appendChild(input);
-          td.appendChild(label); tr.appendChild(td);
+    // For each rubric item, create one .card containing a table
+    RUBRIC.forEach(function(rubric, rubricIndex){
+      var card = el('div',{class:'card rubric-card', 'data-rubric-index':String(rubricIndex)});
+      var header = el('div',{class:'card-header'}, [
+        el('h3',{class:'rubric-title', html: rubric.title }),
+        rubric.description ? el('p',{class:'rubric-desc', html: rubric.description}) : null
+      ]);
+      card.appendChild(header);
+
+      // Table for ratings
+      var table = el('table',{class:'rubric-table'});
+      var thead = el('thead');
+      var trHead = el('tr');
+
+      // Left descriptor column header
+      trHead.appendChild(el('th',{class:'descriptor-left'}, LEFT_DESCRIPTOR));
+
+      // number columns 1..7
+      for (var n=1;n<=7;n++){
+        trHead.appendChild(el('th',{class:'rating-col'}, String(n)));
+      }
+
+      // Right descriptor column header
+      trHead.appendChild(el('th',{class:'descriptor-right'}, RIGHT_DESCRIPTOR));
+      thead.appendChild(trHead);
+      table.appendChild(thead);
+
+      var tbody = el('tbody');
+
+      // Rows for each student
+      state.students.forEach(function(studentName, studentIndex){
+        ensureResponseRecordFor(studentName);
+        var key = studentKey(studentName);
+        var tr = el('tr',{class:'student-row', 'data-student-key':key});
+
+        // Left descriptor cell (empty visually)
+        tr.appendChild(el('td',{class:'descriptor-left-cell'}));
+
+        for (var n=1;n<=7;n++){
+          var td = el('td',{class:'rating-cell'});
+          var radioName = `rating__${key}__${rubric.title}`;
+          var radioId = `r__${key}__${rubricIndex}__${n}`;
+          var input = el('input', {type:'radio', name:radioName, id:radioId, value:String(n)});
+          // restore checked from state if exists
+          var saved = (state.responsesMap[key] && state.responsesMap[key].ratings && state.responsesMap[key].ratings[rubric.title]) ? String(state.responsesMap[key].ratings[rubric.title]) : '';
+          if (saved === String(n)) input.checked = true;
+
+          // when changed, update state and save
+          input.addEventListener('change', function(ev){
+            var val = ev.target.value;
+            var nameParts = ev.target.name.split('__'); // ["rating", key, rubricTitle]
+            var sKey = nameParts[1];
+            var rTitle = nameParts.slice(2).join('__'); // rubric title may contain __ if weird
+            ensureResponseRecordFor(sKey);
+            state.responsesMap[sKey].ratings[rTitle] = val;
+            saveDraft();
+          });
+
+          td.appendChild(input);
+          tr.appendChild(td);
         }
 
+        // Right descriptor cell
+        tr.appendChild(el('td',{class:'descriptor-right-cell'}));
         tbody.appendChild(tr);
       });
 
-      table.appendChild(tbody); critWrap.appendChild(table); card.appendChild(critWrap); tempContainer.appendChild(card);
-    });
-
-    // Replace matrixContainer children with built content
-    while (matrixContainer.firstChild) matrixContainer.removeChild(matrixContainer.firstChild);
-    while (tempContainer.firstChild) matrixContainer.appendChild(tempContainer.firstChild);
-
-    // Create the comment section AFTER the matrix
-    var commentSec = document.createElement('div');
-    commentSec.className = 'section section-comment';
-    commentSec.style.marginTop = '12px';
-    commentSec.style.display = 'block'; // explicit display to avoid CSS hiding
-
-    var commentWrap = document.createElement('div'); commentWrap.className = 'project-comment-wrap';
-    var commentLabel = document.createElement('label'); commentLabel.setAttribute('for', 'project-comment'); commentLabel.textContent = 'Optional project comment';
-    commentLabel.style.display = 'block'; commentLabel.style.marginBottom = '6px';
-    var commentTA = document.createElement('textarea'); commentTA.id = 'project-comment';
-    commentTA.placeholder = 'Any additional feedback for the students or instructor...';
-    commentTA.style.width = '100%'; commentTA.style.minHeight = '80px'; commentTA.style.padding = '8px'; commentTA.style.boxSizing = 'border-box';
-
-    var stagedComment = stagedRatings[currentProject] && stagedRatings[currentProject]._comment;
-    if (stagedComment) commentTA.value = stagedComment;
-
-    commentWrap.appendChild(commentLabel); commentWrap.appendChild(commentTA); commentSec.appendChild(commentWrap);
-
-    if (matrixContainer && matrixContainer.parentNode) {
-      if (matrixContainer.nextSibling) matrixContainer.parentNode.insertBefore(commentSec, matrixContainer.nextSibling);
-      else matrixContainer.parentNode.appendChild(commentSec);
-    } else {
-      document.body.appendChild(commentSec);
-    }
-
-    // tidy up remaining placeholders
-    removeEmptyPlaceholderCards();
-
-    // Attach event listeners (avoid duplicates)
-    try {
-      matrixContainer.removeEventListener && matrixContainer.removeEventListener('change', saveDraftHandler);
-      matrixContainer.removeEventListener && matrixContainer.removeEventListener('input', saveDraftHandler);
-    } catch (e) {}
-    matrixContainer.addEventListener('change', saveDraftHandler);
-    matrixContainer.addEventListener('input', saveDraftHandler);
-
-    try { commentTA.removeEventListener && commentTA.removeEventListener('input', saveDraftHandler); } catch (e) {}
-    commentTA.addEventListener('input', saveDraftHandler);
-
-    if (typeof updateSectionVisibility === 'function') updateSectionVisibility();
-    if (typeof removeEmptySections === 'function') removeEmptySections();
-  }
-
-  // -------------------------
-  // Draft saving handler
-  // -------------------------
-  function saveDraftHandler() {
-    if (!currentProject) return;
-    if (!stagedRatings[currentProject]) stagedRatings[currentProject] = {};
-
-    var students = sponsorProjects[currentProject] || [];
-    for (var s = 0; s < students.length; s++) {
-      if (!stagedRatings[currentProject][s]) stagedRatings[currentProject][s] = {};
-      for (var c = 0; c < RUBRIC.length; c++) {
-        var sel = document.querySelector('input[name="rating-' + c + '-' + s + '"]:checked');
-        if (sel) stagedRatings[currentProject][s][c] = parseInt(sel.value, 10);
+      // Add team row (evaluate whole team)
+      ensureResponseRecordFor(state.teamKey);
+      var teamTr = el('tr',{class:'student-row team-row', 'data-student-key': state.teamKey});
+      teamTr.appendChild(el('td',{class:'descriptor-left-cell'}));
+      for (var m=1;m<=7;m++){
+        var td2 = el('td',{class:'rating-cell'});
+        var radioName2 = `rating__${state.teamKey}__${rubric.title}`;
+        var radioId2 = `r__${state.teamKey}__${rubricIndex}__${m}`;
+        var input2 = el('input', {type:'radio', name:radioName2, id:radioId2, value:String(m)});
+        var saved2 = (state.responsesMap[state.teamKey] && state.responsesMap[state.teamKey].ratings && state.responsesMap[state.teamKey].ratings[rubric.title]) ? String(state.responsesMap[state.teamKey].ratings[rubric.title]) : '';
+        if (saved2 === String(m)) input2.checked = true;
+        input2.addEventListener('change', function(ev){
+          var val = ev.target.value;
+          var nameParts = ev.target.name.split('__');
+          var sKey = nameParts[1];
+          var rTitle = nameParts.slice(2).join('__');
+          ensureResponseRecordFor(sKey);
+          state.responsesMap[sKey].ratings[rTitle] = val;
+          state.responsesMap[sKey].isTeam = true;
+          saveDraft();
+        });
+        td2.appendChild(input2);
+        teamTr.appendChild(td2);
       }
-    }
-    var ta = document.getElementById('project-comment');
-    if (ta) stagedRatings[currentProject]._comment = ta.value || '';
+      teamTr.appendChild(el('td',{class:'descriptor-right-cell'}));
+      tbody.appendChild(teamTr);
 
-    saveProgress();
-  }
+      table.appendChild(tbody);
+      card.appendChild(table);
 
-  // -------------------------
-  // Submit current project (collect all criteria)
-  // -------------------------
-  function submitCurrentProject() {
-    if (!currentProject) { setStatus('No project is loaded.', 'red'); return; }
-    var students = sponsorProjects[currentProject] || [];
-    if (!students.length) { setStatus('No students to submit.', 'red'); return; }
-
-    var rows = [];
-    for (var s = 0; s < students.length; s++) {
-      var ratingsObj = {};
-      for (var c = 0; c < RUBRIC.length; c++) {
-        var sel = document.querySelector('input[name="rating-' + c + '-' + s + '"]:checked');
-        ratingsObj[RUBRIC[c].title] = sel ? parseInt(sel.value, 10) : null;
-      }
-      var commentVal = '';
-      var taEl = document.getElementById('project-comment');
-      if (taEl) commentVal = taEl.value || '';
-      rows.push({ student: students[s], ratings: ratingsObj, comment: commentVal });
-    }
-
-    var payload = {
-      sponsorName: currentName || (nameInput ? nameInput.value.trim() : ''),
-      sponsorEmail: currentEmail || (emailInput ? emailInput.value.trim() : ''),
-      project: currentProject,
-      rubric: RUBRIC.map(function (r) { return r.title; }),
-      responses: rows,
-      timestamp: new Date().toISOString()
-    };
-
-    setStatus('Submitting...', 'black');
-    if (submitProjectBtn) submitProjectBtn.disabled = true;
-
-    fetch(ENDPOINT_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    }).then(function (resp) {
-      if (!resp.ok) {
-        return resp.text().then(function (txt) { throw new Error('Server error ' + resp.status + ': ' + txt); });
-      }
-      return resp.json().catch(function () { return {}; });
-    }).then(function (data) {
-      console.log('Saved', data);
-      setStatus('Submission saved. Thank you!', 'green');
-
-      completedProjects[currentProject] = true;
-      if (stagedRatings && stagedRatings[currentProject]) delete stagedRatings[currentProject];
-      saveProgress();
-
-      if (projectListEl) {
-        var selector = 'li[data-project="' + CSS.escape(currentProject) + '"]';
-        var li = projectListEl.querySelector(selector);
-        if (li) {
-          li.classList.add('completed');
-          li.classList.remove('active');
-          li.innerHTML = '<strong>' + escapeHtml(currentProject) + '</strong> <span class="meta">(completed)</span>';
-        }
-      }
-
-      if (matrixContainer) matrixContainer.innerHTML = '';
-      var commentSection = document.querySelector('.section.section-comment');
-      if (commentSection) commentSection.parentNode.removeChild(commentSection);
-
-      var headerEl = document.querySelector('.current-project-header');
-      if (headerEl && headerEl.parentNode) headerEl.parentNode.removeChild(headerEl);
-
-      var matrixInfoBlock = document.getElementById('matrix-info');
-      if (matrixInfoBlock) matrixInfoBlock.style.display = 'none';
-
-      currentProject = '';
-      if (typeof updateSectionVisibility === 'function') updateSectionVisibility();
-      if (typeof removeEmptySections === 'function') removeEmptySections();
-
-      if (hasCompletedAllProjects()) showThankyouStage();
-    }).catch(function (err) {
-      console.error('Submission failed', err);
-      setStatus('Submission failed. See console.', 'red');
-    }).finally(function () {
-      if (submitProjectBtn) submitProjectBtn.disabled = false;
+      container.appendChild(card);
     });
   }
 
-  function hasCompletedAllProjects() {
-    var entry = sponsorData[currentEmail] || {};
-    var all = Object.keys(entry.projects || {});
-    for (var i = 0; i < all.length; i++) if (!completedProjects[all[i]]) return false;
+  // Render collapsible comment panels (one per student and one team)
+  function renderCommentPanels(container) {
+    // Title above panels
+    var title = el('h3',{class:'comments-title'}, 'Add your additional comments');
+    container.appendChild(title);
+
+    var panelsWrap = el('div',{class:'comments-wrap'});
+    // For each student
+    state.students.concat([state.teamKey]).forEach(function(name){
+      ensureResponseRecordFor(name);
+      var key = studentKey(name);
+      var displayName = (key === state.teamKey) ? 'Team (Group as a whole)' : name;
+
+      var panelCard = el('div',{class:'card comment-card', 'data-student-key': key});
+      var header = el('div',{class:'comment-header'});
+      var headerBtn = el('button',{class:'collapsible-toggle', type:'button'}, displayName + ' ▾');
+      headerBtn.addEventListener('click', function(){
+        bodyDiv.classList.toggle('collapsed');
+        headerBtn.classList.toggle('open');
+      });
+      header.appendChild(headerBtn);
+      panelCard.appendChild(header);
+
+      var bodyDiv = el('div',{class:'comment-body collapsed'});
+
+      // Shared with student label + textarea
+      bodyDiv.appendChild(el('label',{class:'comment-label'}, 'Comments to be SHARED WITH THE STUDENT'));
+      var taShared = el('textarea',{class:'comment-shared', rows:4, placeholder:'Optional comments that the student will see.'});
+      taShared.value = state.responsesMap[key].commentShared || '';
+      taShared.addEventListener('input', function(ev){
+        ensureResponseRecordFor(key);
+        state.responsesMap[key].commentShared = ev.target.value;
+        saveDraft();
+      });
+      bodyDiv.appendChild(taShared);
+
+      // Instructor-only label + textarea
+      bodyDiv.appendChild(el('label',{class:'comment-label'}, 'Comments to be SHARED ONLY WITH THE INSTRUCTOR'));
+      var taInst = el('textarea',{class:'comment-instructor', rows:4, placeholder:'Private comments for the instructor only.'});
+      taInst.value = state.responsesMap[key].commentInstructor || '';
+      taInst.addEventListener('input', function(ev){
+        ensureResponseRecordFor(key);
+        state.responsesMap[key].commentInstructor = ev.target.value;
+        saveDraft();
+      });
+      bodyDiv.appendChild(taInst);
+
+      // small helper
+      bodyDiv.appendChild(el('div',{class:'comment-hint'}, key === state.teamKey ? 'Team comments apply to the group as a whole.' : ''));
+
+      panelCard.appendChild(bodyDiv);
+      panelsWrap.appendChild(panelCard);
+    });
+
+    container.appendChild(panelsWrap);
+  }
+
+  // Build the complete UI (matrix cards + comments)
+  function buildUI() {
+    var matrixStage = document.querySelector(selectors.matrixStage);
+    if (!matrixStage) {
+      // If no explicit stage, attach to #app
+      matrixStage = document.querySelector('#app');
+    }
+    matrixStage.innerHTML = '';
+
+    // Keep a sticky instructions block if present on page (do not duplicate)
+    var instr = document.querySelector(selectors.instructions);
+    if (instr) {
+      // ensure sticky style via CSS snippet we'll add
+      instr.classList.add('sticky-instructions');
+      matrixStage.appendChild(instr.cloneNode(true));
+    }
+
+    // Container for matrix cards
+    var cardsWrap = el('div',{class:'cards-wrap'});
+    matrixStage.appendChild(cardsWrap);
+    renderMatrixCards(cardsWrap);
+
+    // Comments area
+    var commentsContainer = el('div',{class:'comments-section'});
+    renderCommentPanels(commentsContainer);
+    matrixStage.appendChild(commentsContainer);
+
+    // Submit button (if not present on page, create one)
+    var submitBtn = document.querySelector(selectors.submitButton);
+    if (!submitBtn) {
+      submitBtn = el('button',{id:'submit-btn', class:'btn submit-btn', type:'button'}, 'Submit');
+      matrixStage.appendChild(submitBtn);
+    }
+    submitBtn.addEventListener('click', handleSubmit);
+  }
+
+  // Build responses array in the shape your worker expects
+  function buildResponsesArray() {
+    var responses = [];
+    Object.keys(state.responsesMap).forEach(function(key){
+      var rec = state.responsesMap[key];
+      // Skip if no ratings and empty comments? We'll include anyway so sheet gets team rows consistently.
+      var ratings = {};
+      RUBRIC.forEach(function(r){
+        ratings[r.title] = (rec.ratings && rec.ratings[r.title]) ? rec.ratings[r.title] : '';
+      });
+
+      responses.push({
+        student: (key === state.teamKey) ? state.teamKey : key,
+        ratings: ratings,
+        commentShared: rec.commentShared || '',
+        commentInstructor: rec.commentInstructor || '',
+        isTeam: rec.isTeam ? "TRUE" : ""
+      });
+    });
+
+    return responses;
+  }
+
+  // Basic validation
+  function validateBeforeSubmit() {
+    if (!state.sponsorName || !state.sponsorEmail || !state.project) {
+      alert('Please provide your name, email, and select a project before submitting.');
+      return false;
+    }
+    // At least one response required (your worker expects at least one).
+    if (Object.keys(state.responsesMap).length === 0) {
+      alert('No students or team rows found to submit.');
+      return false;
+    }
     return true;
   }
 
-  // -------------------------
-  // Event wiring
-  // -------------------------
-  function onIdentitySubmit() {
-    var name = nameInput ? nameInput.value.trim() : '';
-    var email = emailInput ? (emailInput.value || '').toLowerCase().trim() : '';
-    if (!name) { setStatus('Please enter your name.', 'red'); return; }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setStatus('Please enter a valid email.', 'red'); return; }
+  // Submit handler: POST JSON to ENDPOINT_URL
+  async function handleSubmit(ev) {
+    if (!validateBeforeSubmit()) return;
+    var payload = {
+      sponsorName: state.sponsorName,
+      sponsorEmail: state.sponsorEmail,
+      project: state.project,
+      rubric: RUBRIC.map(r=>r.title),
+      responses: buildResponsesArray()
+    };
 
-    currentName = name;
-    currentEmail = email;
-    saveProgress();
-
-    if (!sponsorData || Object.keys(sponsorData).length === 0) {
-      setStatus('Loading project data, please wait...', 'black');
-      tryFetchData(function () {
-        if (!sponsorData || !sponsorData[currentEmail]) {
-          setStatus('No projects found for that email.', 'red');
-          return;
-        }
-        showProjectsStage();
-        populateProjectListFor(currentEmail);
+    try {
+      var resp = await fetch(ENDPOINT_URL, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify(payload)
       });
-    } else {
-      if (!sponsorData[currentEmail]) {
-        setStatus('No projects found for that email.', 'red');
-        return;
+      var json = await resp.json();
+      if (resp.ok) {
+        // Clear local draft on success
+        localStorage.removeItem(STORAGE_KEY);
+        alert('Submission saved. Thank you!');
+        // optional: redirect or clear UI
+      } else {
+        console.error('Submission failed', json);
+        alert('Submission failed — see console for details.');
       }
-      showProjectsStage();
-      populateProjectListFor(currentEmail);
+    } catch (err) {
+      console.error('Submission error', err);
+      alert('Submission error — network or endpoint problem. See console for details.');
     }
   }
 
-  if (identitySubmit) identitySubmit.addEventListener('click', onIdentitySubmit);
-  if (backToIdentity) backToIdentity.addEventListener('click', function () { showIdentityStage(); });
-  if (submitProjectBtn) submitProjectBtn.addEventListener('click', function () { submitCurrentProject(); });
-  if (finishStartOverBtn) finishStartOverBtn.addEventListener('click', function () {
-    completedProjects = {};
-    stagedRatings = {};
-    saveProgress();
-    currentProject = '';
-    if (matrixContainer) matrixContainer.innerHTML = '';
-    var commentSection = document.querySelector('.section.section-comment');
-    if (commentSection) commentSection.parentNode.removeChild(commentSection);
-    showIdentityStage();
+  // Wire up inputs for sponsorName/email/project on the page (if exist), and restore values from draft
+  function wireUpTopFields() {
+    // load existing draft into state
+    loadDraft();
+
+    // sponsor name
+    var sn = document.querySelector(selectors.sponsorName);
+    if (sn) {
+      sn.value = state.sponsorName || '';
+      sn.addEventListener('input', function(e){ state.sponsorName = e.target.value; saveDraft(); });
+    } else {
+      // if missing, create simple inputs at top of #app
+      var app = document.querySelector('#app');
+      var topbar = el('div',{class:'sponsor-topbar'});
+      var inName = el('input',{id:'sponsor-name', placeholder:'Your name'});
+      inName.value = state.sponsorName || '';
+      inName.addEventListener('input', function(e){ state.sponsorName = e.target.value; saveDraft(); });
+      var inEmail = el('input',{id:'sponsor-email', placeholder:'Your email'});
+      inEmail.value = state.sponsorEmail || '';
+      inEmail.addEventListener('input', function(e){ state.sponsorEmail = e.target.value; saveDraft(); });
+      topbar.appendChild(inName);
+      topbar.appendChild(inEmail);
+      app.insertBefore(topbar, app.firstChild);
+      // update selectors so later code uses these nodes
+      selectors.sponsorName = '#sponsor-name';
+      selectors.sponsorEmail = '#sponsor-email';
+    }
+
+    // sponsor email
+    var se = document.querySelector(selectors.sponsorEmail);
+    if (se) {
+      se.value = state.sponsorEmail || '';
+      se.addEventListener('input', function(e){ state.sponsorEmail = e.target.value; saveDraft(); });
+    }
+
+    // project select
+    var ps = document.querySelector(selectors.projectSelect);
+    if (ps) {
+      ps.value = state.project || '';
+      ps.addEventListener('change', function(e){
+        state.project = e.target.value;
+        saveDraft();
+      });
+    }
+  }
+
+  // Load the list of projects & students from your data loader endpoint (if set); otherwise use a fallback
+  async function loadDataAndStart() {
+    // If loaded previously from other script/page variables, keep them.
+    // For this implementation we'll attempt to fetch JSON from DATA_LOADER_URL if present.
+    var studentsList = [];
+    var projectName = state.project || '';
+
+    if (DATA_LOADER_URL) {
+      try {
+        var r = await fetch(DATA_LOADER_URL);
+        if (r.ok) {
+          var j = await r.json();
+          // Expecting the data loader to return something like: { projects: [{name:'Project Alpha', students:['A','B']}, ...], project: 'Project Alpha' }
+          if (Array.isArray(j.projects) && j.projects.length) {
+            // Pick project by name in state if present, otherwise first project
+            var chosen = null;
+            if (state.project) chosen = j.projects.find(p=>p.name===state.project);
+            if (!chosen) chosen = j.projects[0];
+            projectName = chosen.name;
+            studentsList = Array.isArray(chosen.students) ? chosen.students.slice() : [];
+          } else if (Array.isArray(j.students) && j.students.length) {
+            studentsList = j.students.slice();
+            projectName = j.project || projectName;
+          }
+        } else {
+          console.warn('DATA_LOADER_URL returned non-ok status', r.status);
+        }
+      } catch (err) {
+        console.warn('Could not fetch data loader', err);
+      }
+    }
+
+    // fallback demo students if fetch failed and none are loaded
+    if (!studentsList.length) {
+      studentsList = ['Student A','Student B','Student C'];
+    }
+
+    state.students = studentsList;
+    if (!state.project) state.project = projectName || 'Unknown Project';
+
+    // Ensure each student and team record exists
+    state.students.forEach(s=>ensureResponseRecordFor(s));
+    ensureResponseRecordFor(state.teamKey);
+    state.responsesMap[state.teamKey].isTeam = true;
+
+    // Wire up name/email/project inputs and restore draft
+    wireUpTopFields();
+
+    // Finally build the UI
+    var matrixEl = document.querySelector(selectors.matrixStage) || document.querySelector('#app');
+    buildUI();
+  }
+
+  // Start
+  document.addEventListener('DOMContentLoaded', function(){
+    loadDraft(); // load early
+    loadDataAndStart();
   });
 
-  // -------------------------
-  // Stage display helpers
-  // -------------------------
-  function showIdentityStage() {
-    if (stageIdentity) stageIdentity.style.display = '';
-    if (stageProjects) stageProjects.style.display = 'none';
-    if (stageThankyou) stageThankyou.style.display = 'none';
-    if (welcomeBlock) welcomeBlock.style.display = '';
-    if (underTitle) underTitle.style.display = '';
-    setStatus('');
-  }
-  function showProjectsStage() {
-    if (stageIdentity) stageIdentity.style.display = 'none';
-    if (stageProjects) stageProjects.style.display = '';
-    if (stageThankyou) stageThankyou.style.display = 'none';
-    if (welcomeBlock) welcomeBlock.style.display = 'none';
-    if (underTitle) underTitle.style.display = 'none';
-  }
-  function showThankyouStage() {
-    if (stageIdentity) stageIdentity.style.display = 'none';
-    if (stageProjects) stageProjects.style.display = 'none';
-    if (stageThankyou) stageThankyou.style.display = '';
-    if (welcomeBlock) welcomeBlock.style.display = 'none';
-    if (underTitle) underTitle.style.display = 'none';
-  }
-
-  // -------------------------
-  // Secure data fetch (replaces CSV)
-  // -------------------------
-  function tryFetchData(callback) {
-    var loaderUrl = DATA_LOADER_URL;
-    if (DATA_SOURCE) {
-      loaderUrl += (loaderUrl.indexOf('?') === -1 ? '?source=' + encodeURIComponent(DATA_SOURCE) : '&source=' + encodeURIComponent(DATA_SOURCE));
-    }
-    console.info('tryFetchData: requesting', loaderUrl);
-
-    fetch(loaderUrl, { cache: 'no-store' })
-      .then(function (r) {
-        console.info('tryFetchData: response status', r.status, r.statusText);
-        if (!r.ok) throw new Error('Data loader returned ' + r.status);
-        return r.json();
-      })
-      .then(function (rows) {
-        console.info('tryFetchData: rows received length=', Array.isArray(rows) ? rows.length : typeof rows);
-        sponsorData = buildSponsorMap(rows || []);
-        window.__sponsorDebug && (window.__sponsorDebug.sponsorData = sponsorData);
-
-        setStatus('Project data loaded securely.', 'green');
-        loadProgress();
-        if (currentEmail && sponsorData[currentEmail]) {
-          showProjectsStage();
-          populateProjectListFor(currentEmail);
-        }
-        if (typeof callback === 'function') callback();
-      })
-      .catch(function (err) {
-        console.error('Data fetch failed', err);
-        setStatus('Project data not found. Please try again later.', 'red');
-        if (typeof callback === 'function') callback();
-      });
-  }
-
-  // -------------------------
-  // Boot
-  // -------------------------
-  showIdentityStage();
-  tryFetchData();
-
-  // Debug helper
-  window.__sponsorDebug = {
-    sponsorData: sponsorData,
-    stagedRatings: stagedRatings,
-    completedProjects: completedProjects,
-    reloadData: function (cb) { tryFetchData(cb); }
-  };
-
-  window.__submitCurrentProject = submitCurrentProject;
 })();
 
 
