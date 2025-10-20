@@ -1,520 +1,89 @@
 /* ------------------------
-   Consolidated styles.css
+   Cleaned / consolidated styles
+   - Rubric/table layout tuned so descriptors fit inside the card
+   - Project list card, footer, responsive tweaks
    ------------------------ */
 
 :root{
-  --accent-1: #ffda7b;    /* warm gold */
-  --accent-2: #8c1d40;    /* deep maroon */
-  --accent-3: #6fb3d2;    /* soft teal/blue */
-  --bg-left: #fff;
+  --accent-1: #ffda7b;
+  --accent-2: #8c1d40;
   --muted: #6b7280;
   --text: #07122a;
-  --card-radius: 18px;
+  --card-radius: 14px;
   --header-height: 84px;
   --max-card-width: 920px;
 }
 
 /* Reset / base */
 *{box-sizing:border-box}
-html,body{height:100%;margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial;color:var(--text);-webkit-font-smoothing:antialiased}
+html,body{height:100%;margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial;color:var(--text)}
 body{
-  background: linear-gradient(135deg, #fef7e6 0%, #fff6fa 30%, #eef8ff 60%, #f3f6ff 100%);
-  background-attachment: fixed;
-  -webkit-font-smoothing:antialiased;
-  text-rendering: optimizeLegibility;
+  background: linear-gradient(135deg,#fef7e6 0%,#fff6fa 30%,#eef8ff 60%,#f3f6ff 100%);
 }
 
 /* Header */
 .site-header{
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: var(--header-height);
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  background: linear-gradient(180deg, rgba(255,255,255,0.92), rgba(255,255,255,0.86));
-  border-bottom: 1px solid rgba(11,18,32,0.06);
-  z-index: 1000;
-  padding-left: 28px;
-  box-shadow: 0 6px 20px rgba(7,18,40,0.04);
-}
-.header-inner{
-  width: 100%;
-  max-width: calc(var(--max-card-width) + 96px);
-  display:flex;
-  align-items:center;
-  gap: 12px;
-}
-.site-logo{
-  width: 260px;
-  max-height: 64px;
-  height: auto;
-  object-fit: contain;
-  display:block;
+  position: fixed; top:0; left:0; right:0; height:var(--header-height);
+  display:flex; align-items:center; padding-left:28px;
+  background:linear-gradient(180deg,rgba(255,255,255,0.92),rgba(255,255,255,0.86));
+  border-bottom:1px solid rgba(11,18,32,0.06); z-index:1000;
 }
 
-/* Page layout / content wrapper */
-.center-wrapper{
-  min-height: calc(100vh - var(--header-height));
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  padding: 32px;
-  padding-top: calc(var(--header-height) + 32px);
-}
-.content-inner{
-  width: 100%;
-  max-width: var(--max-card-width);
-  display:flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 18px;
-  padding: 0 12px;
-}
+/* Page wrapper */
+.center-wrapper{ min-height: calc(100vh - var(--header-height)); padding: 32px; padding-top: calc(var(--header-height) + 32px); display:flex; justify-content:center; }
+.content-inner{ width:100%; max-width:var(--max-card-width); padding:0 12px; display:flex; flex-direction:column; gap:16px; }
 
-/* WELCOME block (large, top) */
-.welcome-block{ margin: 0; padding: 0; }
-.welcome-title{
-  font-size: 2.4rem;      /* large */
-  font-weight: 800;
-  margin: 0 0 6px 0;
-  color: var(--text);
-  line-height: 1;
-}
+/* Card */
+.card{ background:#fff; border-radius:var(--card-radius); padding:18px; box-shadow:0 16px 40px rgba(11,18,40,0.06); border:1px solid rgba(10,12,30,0.03); }
 
-/* Title (stays visible) */
-.form-title{
-  margin: 0 0 6px 0;
-  font-size: 1.6rem;
-  font-weight: 700;
-  color: var(--accent-2);
-  letter-spacing: 0.1px;
-  text-align: left;
-}
+/* Titles */
+.welcome-title{ font-size:2.2rem; margin:0; font-weight:800; }
+.form-title{ font-size:1.5rem; color:var(--accent-2); margin:0 0 6px; font-weight:700; }
+.under-title{ color:var(--muted); margin:0 0 8px; }
 
-/* Instruction under title (only identity page) */
-.under-title{
-  margin-top: 0;
-  margin-bottom: 6px;
-  color: var(--muted);
-  font-size: 1rem;
-}
-
-/* Card container */
-.card{
-  width: 100%;
-  background: var(--bg-left);
-  border-radius: var(--card-radius);
-  padding: 30px;
-  box-shadow: 0 22px 50px rgba(11,18,40,0.08);
-  border:1px solid rgba(10,12,30,0.03);
-}
-
-/* Sections inside the card */
-.section{
-  padding:16px;
-  border-radius:10px;
-  background: linear-gradient(180deg, rgba(255,255,255,1), rgba(250,250,252,1));
-  margin-bottom:14px;
-  border:1px solid #f0f3f6;
-}
-.section + .section{ margin-top:6px; }
-.section-title{ margin:0 0 8px; font-weight:700; color:var(--accent-2) }
-
-/* Hide the static comment placeholder when empty; JS will show it when it injects content */
-.section.section-comment {
-  display: none;
-}
-
-/* Inner card container for the Projects instructions */
-.instructions-card {
-  width: 100%;
-  background: #ffffff;
-  border-radius: 14px;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.05);
-  border: 1px solid rgba(0, 0, 0, 0.05);
-  padding: 16px 18px;
-  margin-bottom: 40px !important;
-}
-
-.section.section-projects .section-title::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 1px;
-  background: rgba(0, 0, 0, 0.08);
-}
-.section.section-projects .section-title {
-  margin-top: 28px;
-  padding-top: 16px;
-  position: relative;
-}
-
-/* Adjust the inner text spacing */
-.instructions-card .projects-instructions {
-  background: none;
-  border: none;
-  padding: 0;
-  margin: 0;
-}
-
-
-/* Projects instructions styling */
-.projects-instructions {
-  margin: 8px 0 14px 20px;
-  padding: 12px 14px;
-  border-radius: 10px;
-  background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(250,250,252,0.98));
-  border: 1px solid rgba(226,232,240,0.6);
-  color: #17324d;
-  font-size: 0.98rem;
-  line-height: 1.45;
-}
-
-.projects-instructions p { margin: 0 0 8px 0; }
-.projects-instructions ol { margin: 0 0 0 18px; padding: 0; }
-.projects-instructions li { margin-bottom: 6px; }
-
-
-
-
-/* small helper for the visually-hidden tip (if you use .sr-only elsewhere, keep consistent) */
-.sr-only {
-  position: absolute !important;
-  width: 1px !important;
-  height: 1px !important;
-  padding: 0 !important;
-  margin: -1px !important;
-  overflow: hidden !important;
-  clip: rect(0, 0, 0, 0) !important;
-  white-space: nowrap !important;
-  border: 0 !important;
-}
-
-
-/* Inputs and labels */
-.form-row{ margin-bottom:14px; display:flex; flex-direction:column; width:100% }
-label{ font-weight:700; font-size:0.98rem; color:#28334a; margin-bottom:8px }
-input[type="text"], input[type="email"], select, textarea{
-  padding:14px;
-  border-radius:10px;
-  border:1px solid #e6edf8;
-  font-size:1rem;
-  outline:none;
-  width:100%;
-  background:#fff;
-  color:var(--text);
-}
-input:focus, select:focus, textarea:focus{
-  box-shadow:0 10px 28px rgba(111,179,210,0.08);
-  border-color:rgba(111,179,210,0.18);
-}
-
-/* Buttons */
-.btn{
-  border:0;
-  border-radius:10px;
-  cursor:pointer;
-  font-weight:700;
-  transition:all .14s ease;
-  padding:12px 16px;
-  font-size:1.02rem;
-}
-.btn-primary{
-  background: linear-gradient(90deg, var(--accent-2), #a22b51 60%, var(--accent-1));
-  color:#fff;
-  padding:14px 22px;
-  font-size:1.04rem;
-  box-shadow:0 12px 30px rgba(140,29,64,0.12);
-}
-.btn-primary:hover{ filter:brightness(1.03); transform:translateY(-3px); }
-.btn-outline{
-  background:transparent;
-  border:2px solid rgba(140,29,64,0.12);
-  color:var(--accent-2);
-  padding:10px 16px;
-  font-size:1.02rem;
-  border-radius:10px;
-}
-.btn-outline:hover{ background:rgba(140,29,64,0.04); transform:translateY(-2px); }
-
-/* Project list */
+/* Project list card (wrapper) */
+.project-list-card{ background:#fff; border-radius:12px; padding:16px; box-shadow:0 14px 36px rgba(12,18,30,0.06); border:1px solid rgba(10,12,30,0.03); margin-bottom:18px; }
 .project-list{ list-style:none; padding:0; margin:6px 0 0; display:flex; flex-direction:column; gap:12px; }
 .project-item{ background:#fff; border:1px solid #eef2f7; padding:14px 16px; border-radius:12px; cursor:pointer; display:flex; align-items:center; justify-content:space-between; transition:all .14s ease; }
-.project-item:hover{ transform:translateY(-4px); box-shadow:0 14px 36px rgba(12,18,30,0.06); background:linear-gradient(90deg, rgba(140,29,64,0.04), rgba(255,198,39,0.03)); }
-.project-item.active{ background:linear-gradient(90deg, rgba(140,29,64,0.12), rgba(255,198,39,0.06)); box-shadow:0 16px 40px rgba(140,29,64,0.10); border-color:rgba(140,29,64,0.18); }
-.project-item.completed{ opacity:0.6; background:#f5f6f8; transform:none; box-shadow:none; cursor:default; }
-.project-item .meta{ color:var(--muted); font-weight:600; margin-left:8px; font-size:0.9rem; }
+.project-item.active{ box-shadow:0 16px 40px rgba(140,29,64,0.10); border-color:rgba(140,29,64,0.12); }
 
-/* Matrix table (ratings) */
+/* Actions & buttons */
+.btn{ border:0; border-radius:10px; cursor:pointer; font-weight:700; padding:12px 16px; }
+.btn-primary{ background: linear-gradient(90deg,var(--accent-2),#a22b51 60%,var(--accent-1)); color:#fff; box-shadow:0 12px 30px rgba(140,29,64,0.12); }
+.btn-outline{ background:transparent; border:2px solid rgba(140,29,64,0.12); color:var(--accent-2); padding:10px 16px; }
 
-.matrix-container{ margin-top:10px; padding-top:8px }
-.matrix-description{ font-weight:600; color:#2b3b51; margin-bottom:12px }
-.current-project-header{ font-weight:700; margin:10px 0 12px; color:#223; font-size:1.05rem }
-.matrix-table{ width:100%; border-collapse:collapse; margin-top:8px; table-layout:fixed; }
-.matrix-table thead th{ padding:12px; border-bottom:1px solid #eef2f7; text-align:center; font-weight:700; color:#475569; font-size:0.95rem; }
-.matrix-table tbody td{ padding:12px 14px; border-bottom:1px solid #f1f5f9; vertical-align:middle; font-size:0.95rem; }
-.matrix-table td:first-child{ text-align:left; width:40%; padding-left:18px; font-weight:600; }
-.rating-row{ display:flex; justify-content:center; gap:18px; align-items:center; }
-.matrix-table input[type="radio"]{ width:18px; height:18px; }
+/* Footer (persistent small) */
+.footer{ margin-top:18px; text-align:center; color:var(--muted); font-size:0.9rem; }
 
+/* -------------------------
+   Rubric / matrix styles
+   predictable layout to avoid overflow
+   ------------------------- */
 
-/* Comment area */
-.project-comment-wrap{ margin-top:18px }
-.project-comment-wrap textarea#project-comment{ font-size:0.95rem; resize:vertical; min-height:100px; padding:12px; border-radius:8px; border:1px solid #e6edf8; width:100%; font-family:inherit; background:#fff; color:#0b2540; }
-.project-comment-wrap label{ display:block; margin-bottom:8px; color:#475569 }
+.rubric-card { width:100%; max-width:1180px; margin:0 auto 18px; padding:18px; box-sizing:border-box; border-radius:12px; }
+.rubric-scrollwrap { overflow-x:auto; -webkit-overflow-scrolling:touch; padding-bottom:6px; }
 
-/* Status and actions */
-.form-status{ margin-top:12px; font-weight:700; color:var(--muted) }
-.actions{ display:flex; gap:12px; margin-top:18px; justify-content:flex-end }
-.actions-space-between{ display:flex; align-items:center; justify-content:space-between; gap:12px }
+/* Core table layout: fixed so we can set widths */
+.matrix-table, .rubric-table { width:100%; border-collapse:collapse; table-layout:fixed; font-size:15px; }
+.matrix-table thead th, .rubric-table thead th { padding:10px 8px; text-align:center; font-weight:700; color:#475569; vertical-align:bottom; }
+.matrix-table tbody td, .rubric-table tbody td { padding:12px 10px; vertical-align:middle; border-top:1px solid rgba(10,12,30,0.04); }
 
-/* Footer */
-.footer{ margin-top:18px; text-align:center; color:var(--muted); font-size:0.9rem }
+/* Column helpers (applied by JS when table is created) */
+.col-student { text-align:left !important; padding-left:18px !important; width:30% !important; word-break:break-word; font-weight:600; }
+.col-descriptor { width:14% !important; font-weight:600 !important; white-space:normal !important; line-height:1.1; padding:8px 10px !important; text-align:center; }
+.col-scale { text-align:center !important; padding:8px 4px !important; }
 
-/* Helpers */
-.hidden{ display:none !important }
-
-/* Responsive */
-@media (max-width:980px){
-  .site-header{ padding-left:16px; height:72px }
-  .site-logo{ width:180px; max-height:48px }
-  .center-wrapper{ padding:20px; padding-top: calc(var(--header-height) + 20px) }
-  .content-inner{ padding: 0 8px }
-  .welcome-title{ font-size:1.6rem }
-  .form-title{ font-size:1.25rem }
-  .card{ padding:20px }
-  .btn{ font-size:1rem; padding:10px 14px }
-  .btn-primary{ padding:12px 18px }
-  .matrix-table thead th{ font-size:0.85rem }
-  .matrix-table tbody td{ font-size:0.9rem; padding:10px 12px }
-}
-
-
-/* Minimal additions for descriptor columns, sticky instructions, and collapsible comment panels */
-
-/* Make the instructions block sticky while evaluating (keeps your .projects-instructions styling) */
-.sticky-instructions {
-  position: sticky;
-  top: 0;
-  z-index: 40;
-  background: inherit; /* preserve look */
-  padding-top: 8px;
-  padding-bottom: 8px;
-}
-
-/* Rubric table descriptor columns */
-.rubric-table { width: 100%; border-collapse: collapse; margin-top: 12px; }
-.rubric-table th, .rubric-table td { border: none; padding: 6px 8px; text-align: center; }
-.rubric-table th.descriptor-left, .rubric-table th.descriptor-right { font-weight: 600; font-size: 0.9rem; text-align: center; background: transparent; }
-.rubric-table td.descriptor-left-cell, .rubric-table td.descriptor-right-cell { width: 10%; }
-
-/* Keep numeric columns compact */
-.rubric-table th.rating-col, .rubric-table td.rating-cell { width: 6%; }
-
-/* Collapsible comments */
-.comment-card { margin-top: 12px; padding: 12px; }
-.collapsible-toggle { background: none; border: none; font-weight: 600; cursor: pointer; font-size: 1rem; text-align:left; width:100%; }
-.comment-body { margin-top: 8px; transition: max-height 0.18s ease; overflow: hidden; }
-.comment-body.collapsed { display: none; }
-.comment-label { display:block; margin-top:8px; font-weight:600; font-size:0.9rem; }
-.comment-shared, .comment-instructor { width:100%; box-sizing:border-box; padding:8px; margin-top:6px; border-radius:6px; border:1px solid rgba(0,0,0,0.08); }
-
-/* small hint */
-.comment-hint { margin-top:6px; font-size:0.85rem; color: rgba(0,0,0,0.6); }
-
-/* responsive: hide descriptor texts on very narrow screens to keep layout usable */
-@media (max-width:760px) {
-  .rubric-table th.descriptor-left, .rubric-table th.descriptor-right, .rubric-table td.descriptor-left-cell, .rubric-table td.descriptor-right-cell { display:none; }
-  .rubric-table th.rating-col, .rubric-table td.rating-cell { width: calc(100% / 7); }
-}
-
-/* ---------- Persistent footer ---------- */
-.site-footer-fixed {
-  position: fixed;
-  right: 18px;
-  bottom: 14px;
-  z-index: 9999;
-  font-size: 12px;
-  color: #6b6f77;
-  background: rgba(255,255,255,0.95);
-  padding: 8px 12px;
-  border-radius: 8px;
-  box-shadow: 0 6px 18px rgba(11,18,40,0.06);
-  border: 1px solid rgba(10,12,30,0.04);
-}
-
-/* slightly reduce footprint on small screens */
-@media (max-width: 720px) {
-  .site-footer-fixed { right: 10px; left: 10px; text-align:center; }
-}
-
-/* ---------- Hide submit button only on the identity/intro stage ---------- */
-/* This hides the button with class .submit-project-btn when inside the identity stage.
-   If your identity section uses a different element id/class, see HTML step below. */
-[data-stage="identity"] .submit-project-btn,
-.stage-identity .submit-project-btn { display:none !important; }
-
-/* ---------- Project List card wrapper ---------- */
-.project-list-card {
-  background: #fff;
-  border-radius: 12px;
-  padding: 18px;
-  box-shadow: 0 16px 40px rgba(11,18,40,0.06);
-  border: 1px solid rgba(10,12,30,0.03);
-  margin-bottom: 22px;
-}
-
-.project-list-card h2 { margin-top: 0; margin-bottom: 10px; }
-
-/* list items */
-.project-list-item {
-  background: transparent;
-  border-radius: 8px;
-  padding: 14px 18px;
-  margin-bottom: 12px;
-  border: 1px solid rgba(10,12,30,0.06);
-  cursor: pointer;
-}
-.project-list-item.selected {
-  background: #fff6f4;
-  border-color: rgba(210,80,80,0.14);
-  box-shadow: 0 8px 26px rgba(210,80,80,0.06);
-}
-
-/* ---------- Larger gap between project header & matrix ---------- */
-.rubric-stage { margin-top: 26px; padding-top: 20px; }
-#rubric-container { margin-top: 28px; }
-
-/* ---------- Matrix / rubric table adjustments ---------- */
-.rubric-table { width:100%; border-collapse: collapse; font-size: 15px; }
-.rubric-table th, .rubric-table td { padding: 12px 8px; vertical-align: middle; }
-.rubric-table thead th { font-weight: 700; color: #1f2937; }
-
-/* left descriptor column and right descriptor widths */
-.rubric-table thead th:first-child,
-.rubric-table tbody td:first-child { width: 12%; text-align: left; font-weight:600; }
-.rubric-table thead th:last-child,
-.rubric-table tbody td:last-child { width: 12%; text-align: right; font-weight:600; }
-
-/* center the numeric columns (1..7) */
-.rubric-table thead th.scale, .rubric-table td.scale { text-align: center; width: auto; }
-
-/* row separators and subtle hover */
-.rubric-table tbody tr { border-top: 1px solid rgba(10,12,30,0.04); }
-.rubric-table tbody tr:hover { background: rgba(250,250,252,0.5); }
-
-/* radio inputs centered in their cells */
-.rubric-table td .radio-cell { display:flex; justify-content:center; align-items:center; height:40px; }
-
-/* responsive tweaks */
-@media (max-width: 880px) {
-  .rubric-table thead th:first-child,
-  .rubric-table thead th:last-child { display:block; width: 22%; font-size:13px; }
-  .rubric-table td { padding: 10px 6px; }
-}
-
-/* RUBRIC: safer layout so descriptors sit inside the card and columns don't overflow */
-.rubric-card {
-  max-width: 1180px;         /* widen rubric card a bit; increase if needed */
-  margin-left: auto;
-  margin-right: auto;
-  padding: 22px;
-  box-sizing: border-box;
-}
-
-/* make table use fixed layout so column widths are predictable */
-.rubric-table {
-  table-layout: fixed;
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 15px;
-}
-
-/* Student column left-justified and with comfortable width */
-.rubric-table th.col-student,
-.rubric-table td.col-student {
-  text-align: left;
-  padding-left: 18px;
-  width: 28%;              /* larger width for student names */
-  white-space: normal;
-  word-break: break-word;
-}
-
-/* Descriptor columns (left & right) */
-.rubric-table th.col-descriptor,
-.rubric-table td.col-descriptor {
-  width: 12%;
-  font-weight: 600;
-  white-space: normal;
-  line-height: 1.1;
-  word-wrap: break-word;
-  padding: 8px 10px;
-}
-
-/* Numeric scale columns (1..7) */
-.rubric-table th.col-scale,
-.rubric-table td.col-scale {
-  width: calc((100% - 28% - 24%) / 7); /* remaining space divided by 7 */
-  text-align: center;
-  padding: 10px 4px;
-}
-
-/* Center radio inputs vertically and horizontally */
-.rubric-table td .radio-cell {
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  height:44px;
-}
-
-/* Prevent header text from overflowing the card: force wrap and ellipsis safety */
-.rubric-table thead th, .rubric-table tbody td {
-  overflow-wrap: anywhere;
-}
-
-/* Reduce padding slightly on smaller screens and allow horizontal scroll if necessary */
-@media (max-width: 980px) {
-  .rubric-card { max-width: 940px; padding: 14px; }
-  .rubric-table th.col-student, .rubric-table td.col-student { width: 34%; }
-  .rubric-table th.col-descriptor, .rubric-table td.col-descriptor { width: 14%; }
-}
-
-/* If still too tight on very small screens, allow the rubric to scroll horizontally */
-.rubric-scrollwrap {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-}
-
-/* ---------- Rubric layout fixes (paste at end of styles.css) ---------- */
-.rubric-card { max-width: 1180px; margin: 0 auto; padding: 20px; box-sizing: border-box; }
-.rubric-scrollwrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-
-/* Table layout */
-.rubric-table { width:100%; border-collapse: collapse; table-layout: fixed; font-size: 15px; }
-.rubric-table thead th { font-weight:700; padding: 10px 8px; color:#1f2937; vertical-align: bottom; }
-.rubric-table tbody td { padding: 12px 8px; vertical-align: middle; border-top: 1px solid rgba(10,12,30,0.04); }
-
-/* Column widths & alignment */
-.col-student { text-align: left !important; padding-left: 18px !important; width: 30% !important; white-space: normal; word-break: break-word; }
-.col-descriptor { width: 14% !important; font-weight:600 !important; white-space: normal; line-height:1.1; padding: 8px 10px !important; }
-.col-scale { text-align:center !important; padding: 8px 4px !important; }
-
-/* radio centering wrapper */
+/* Radio wrapper */
 .radio-cell { display:flex; align-items:center; justify-content:center; height:44px; }
+.matrix-table input[type="radio"]{ transform:scale(1.05); }
 
-/* prevent descriptor overflow */
-.rubric-table thead th, .rubric-table tbody td { overflow-wrap: anywhere; }
-
-/* responsive tweaks */
-@media (max-width: 980px) {
-  .rubric-card { max-width: 940px; padding: 12px; }
-  .col-student { width: 36% !important; }
-  .col-descriptor { width: 14% !important; }
-  .col-scale { padding: 6px 3px !important; }
+/* Responsive: allow horizontal scrolling instead of overflow on narrow screens */
+@media (max-width:980px){
+  .rubric-card{ max-width:940px; padding:12px; }
+  .col-student{ width:36% !important; }
+  .col-descriptor{ width:14% !important; }
 }
+
+/* Small utility */
+.hidden{ display:none !important; }
 
