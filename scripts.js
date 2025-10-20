@@ -3,8 +3,8 @@
   'use strict';
 
   // ---------- CONFIG - update these to your workers ----------
-  var ENDPOINT_URL = 'https://your-endpoint.example.com/';      // POST submissions here
-  var DATA_LOADER_URL = 'https://your-data-loader.example.com/';// GET sponsor/project/student data
+  var ENDPOINT_URL = 'https://csehybridsponsors.sbecerr7.workers.dev';      // POST submissions here
+  var DATA_LOADER_URL = 'https://data-loader.sbecerr7.workers.dev';// GET sponsor/project/student data
   var STORAGE_KEY = 'sponsor_progress_v1';
 
   // ---------- RUBRIC ----------
