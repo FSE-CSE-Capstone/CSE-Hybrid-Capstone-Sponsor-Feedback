@@ -489,3 +489,32 @@ input:focus, select:focus, textarea:focus{
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
 }
+
+/* ---------- Rubric layout fixes (paste at end of styles.css) ---------- */
+.rubric-card { max-width: 1180px; margin: 0 auto; padding: 20px; box-sizing: border-box; }
+.rubric-scrollwrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+/* Table layout */
+.rubric-table { width:100%; border-collapse: collapse; table-layout: fixed; font-size: 15px; }
+.rubric-table thead th { font-weight:700; padding: 10px 8px; color:#1f2937; vertical-align: bottom; }
+.rubric-table tbody td { padding: 12px 8px; vertical-align: middle; border-top: 1px solid rgba(10,12,30,0.04); }
+
+/* Column widths & alignment */
+.col-student { text-align: left !important; padding-left: 18px !important; width: 30% !important; white-space: normal; word-break: break-word; }
+.col-descriptor { width: 14% !important; font-weight:600 !important; white-space: normal; line-height:1.1; padding: 8px 10px !important; }
+.col-scale { text-align:center !important; padding: 8px 4px !important; }
+
+/* radio centering wrapper */
+.radio-cell { display:flex; align-items:center; justify-content:center; height:44px; }
+
+/* prevent descriptor overflow */
+.rubric-table thead th, .rubric-table tbody td { overflow-wrap: anywhere; }
+
+/* responsive tweaks */
+@media (max-width: 980px) {
+  .rubric-card { max-width: 940px; padding: 12px; }
+  .col-student { width: 36% !important; }
+  .col-descriptor { width: 14% !important; }
+  .col-scale { padding: 6px 3px !important; }
+}
+
