@@ -1,23 +1,14 @@
-// scripts.js — full updated client logic with descriptor columns, collapsible per-student comment panels,
-// localStorage draft saving (sponsor_progress_v1), team row, and payload format compatible with your hybrid-worker.
-// Assumptions: your page defines DATA_LOADER_URL, ENDPOINT_URL, STORAGE_KEY (sponsor_progress_v1), and RUBRIC.
-// If any of those are missing the defaults will be used below.
-
+// Full updated scripts.js (HYBRID site)
+// - multi-email parsing, reliable comment section creation, remove empty placeholder cards
 (function () {
   'use strict';
 
-  // ---------- CONFIG (keeps your existing variables if present) ----------
-  var DATA_LOADER_URL = (typeof DATA_LOADER_URL !== 'undefined') ? DATA_LOADER_URL : '';
-  var ENDPOINT_URL = (typeof ENDPOINT_URL !== 'undefined') ? ENDPOINT_URL : '';
-  var STORAGE_KEY = (typeof STORAGE_KEY !== 'undefined') ? STORAGE_KEY : 'sponsor_progress_v1';
-  // Use the RUBRIC array already on the page if present (user requested existing rubric)
-  var RUBRIC = (typeof RUBRIC !== 'undefined' && Array.isArray(RUBRIC) && RUBRIC.length) ? RUBRIC : [
-    { title: "Effort", description: "" },
-    { title: "Meetings", description: "" },
-    { title: "Understanding", description: "" },
-    { title: "Quality", description: "" },
-    { title: "communication", description: "" }
-  ];
+  // --- Configuration (Cloudflare Workers endpoints) ---
+  var ENDPOINT_URL = 'https://csehybridsponsors.sbecerr7.workers.dev/';  // POST submissions here
+  var DATA_LOADER_URL = 'https://data-loader.sbecerr7.workers.dev/';    // HYBRID worker URL (reads hybrid sheet)
+  var STORAGE_KEY = 'sponsor_progress_v1';
+  var DATA_SOURCE = ''; // blank for hybrid
+
 
   // Descriptor texts (confirmed by user)
   var LEFT_DESCRIPTOR = "Far Below Expectations (Fail)";
