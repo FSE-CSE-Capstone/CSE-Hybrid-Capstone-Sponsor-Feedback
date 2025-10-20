@@ -959,3 +959,156 @@ document.addEventListener('DOMContentLoaded', function () {
   });
 });
 
+/* ---------- rubic-layout-transformer: reorder headers & apply classes ---------- */
+(function(){
+  function transformTable(table) {
+    if (!table || table._rubricTransformed) return;
+    try {
+      // wrap in rubric-card + scroll wrapper if needed
+      var parent = table.parentElement;
+      if (!parent.classList.contains('rubric-card')) {
+        var wrapper = document.createElement('div');
+        wrapper.className = 'rubric-card rubric-scrollwrap';
+        parent.insertBefore(wrapper, table);
+        wrapper.appendChild(table);
+        parent = wrapper;
+      }
+
+      table.classList.add('rubric-table');
+
+      // header row
+      var thead = table.querySelector('thead');
+      if (!thead) {
+        // If there's no thead, try to create one from the first row
+        var firstRow = table.querySelector('tr');
+        if (firstRow) {
+          var newThead = document.createElement('thead');
+          newThead.appendChild(firstRow.cloneNode(true));
+          table.insertBefore(newThead, table.firstChild);
+          // remove original firstRow from tbody (if duplicate)
+        }
+        thead = table.querySelector('thead');
+        if (!thead) return;
+      }
+      var headerRow = thead.querySelector('tr');
+      if (!headerRow) return;
+      var ths = Array.from(headerRow.children);
+
+      // Find indexes
+      var idxStudent = ths.findIndex(th => /student/i.test(th.textContent));
+      var idxFar = ths.findIndex(th => /far\s*below|fail/i.test(th.textContent));
+      var idxEx = ths.findIndex(th => /exceed/i.test(th.textContent));
+
+      // If student not found, assume first or create one
+      if (idxStudent === -1) {
+        // try common label positions
+        idxStudent = 0;
+      }
+
+      // Move student header to first if not already
+      if (idxStudent > 0) {
+        headerRow.insertBefore(ths[idxStudent], headerRow.firstChild);
+        ths = Array.from(headerRow.children);
+      }
+
+      // Ensure Far descriptor is immediately after Student (index 1)
+      idxFar = Array.from(headerRow.children).findIndex(th => /far\s*below|fail/i.test(th.textContent));
+      if (idxFar > 1) {
+        var farTH = headerRow.children[idxFar];
+        headerRow.insertBefore(farTH, headerRow.children[1]);
+      } else if (idxFar === -1) {
+        // If not found, create an empty descriptor header (so columns align)
+        var farH = document.createElement('th');
+        farH.textContent = 'Far Below\nExpectations\n(Fail)';
+        headerRow.insertBefore(farH, headerRow.children[1] || null);
+      }
+
+      // Ensure Exceeds descriptor is last
+      idxEx = Array.from(headerRow.children).findIndex(th => /exceed/i.test(th.textContent));
+      if (idxEx !== -1 && idxEx !== headerRow.children.length - 1) {
+        var exTH = headerRow.children[idxEx];
+        headerRow.appendChild(exTH);
+      } else if (idxEx === -1) {
+        var exH = document.createElement('th');
+        exH.textContent = 'Exceeds\nExpectations\n(A+)';
+        headerRow.appendChild(exH);
+      }
+
+      // Recompute header children, add classes
+      var newTHs = Array.from(headerRow.children);
+      if (newTHs[0]) newTHs[0].classList.add('col-student');
+      if (newTHs[1]) newTHs[1].classList.add('col-descriptor');
+      if (newTHs[newTHs.length - 1]) newTHs[newTHs.length - 1].classList.add('col-descriptor');
+      for (var i = 2; i < newTHs.length - 1; i++) {
+        newTHs[i].classList.add('col-scale');
+      }
+
+      // Apply classes to tbody cells and wrap radio inputs
+      var tbody = table.querySelector('tbody');
+      if (tbody) {
+        var rows = Array.from(tbody.querySelectorAll('tr'));
+        rows.forEach(function(row){
+          var cells = Array.from(row.children);
+          if (cells[0]) cells[0].classList.add('col-student');
+          if (cells[1]) cells[1].classList.add('col-descriptor');
+          if (cells[cells.length - 1]) cells[cells.length - 1].classList.add('col-descriptor');
+          for (var j = 2; j < cells.length - 1; j++) {
+            if (cells[j]) cells[j].classList.add('col-scale');
+            // wrap inputs in .radio-cell if not already
+            if (cells[j] && !cells[j].querySelector('.radio-cell')) {
+              var hasInput = cells[j].querySelector('input[type="radio"], input[type="checkbox"]');
+              if (hasInput) {
+                var rc = document.createElement('div');
+                rc.className = 'radio-cell';
+                // move all child nodes into rc
+                while (cells[j].firstChild) rc.appendChild(cells[j].firstChild);
+                cells[j].appendChild(rc);
+              }
+            }
+          }
+        });
+      }
+
+      table._rubricTransformed = true;
+    } catch (err) {
+      console.warn('rubric transform error', err);
+    }
+  }
+
+  // Run once right away for existing tables
+  document.querySelectorAll('table').forEach(function(t){
+    // pick only likely rubric tables: those containing radio inputs and at least 8 columns
+    try {
+      var radios = t.querySelector('input[type="radio"], input[type="checkbox"]');
+      if (radios) transformTable(t);
+    } catch(e){}
+  });
+
+  // Observe for dynamically added tables (handles your generator)
+  var mo = new MutationObserver(function(muts){
+    muts.forEach(function(mut){
+      mut.addedNodes.forEach(function(node){
+        if (!node) return;
+        if (node.nodeType !== 1) return;
+        if (node.tagName === 'TABLE') {
+          // likely new table
+          transformTable(node);
+        } else {
+          // search for tables inside added subtree
+          var found = node.querySelectorAll ? node.querySelectorAll('table') : [];
+          found.forEach(function(tt){ transformTable(tt); });
+        }
+      });
+    });
+  });
+  mo.observe(document.body, { childList: true, subtree: true });
+
+  // safety: also run transform on click of project selection (in case your UI generates table on click)
+  document.addEventListener('click', function(){
+    document.querySelectorAll('table').forEach(function(t){
+      if (t && t.querySelector('input[type="radio"]')) transformTable(t);
+    });
+  });
+
+})();
+
