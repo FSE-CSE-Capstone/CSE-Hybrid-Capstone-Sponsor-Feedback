@@ -809,6 +809,54 @@
 })();
 
 
+// --- small UI fixes: hide first-page submit, inject footer, wrap project list if missing ---
+document.addEventListener('DOMContentLoaded', function () {
+  // Hide the "Submit ratings for project" button on the identity/intro page
+  var allButtons = Array.from(document.querySelectorAll('button'));
+  allButtons.forEach(function(btn){
+    if (btn.textContent && btn.textContent.trim() === 'Submit ratings for project') {
+      var identityStage = document.querySelector('[data-stage="identity"]') || document.querySelector('.stage-identity');
+      if (identityStage && identityStage.contains(btn)) {
+        btn.style.display = 'none';
+      }
+      // also attempt hiding if the btn is top-level but page is identity
+      if (!identityStage) {
+        // if your site uses a visible-stage class on body or similar, toggle here:
+        if (document.body.classList.contains('stage-identity') || document.querySelector('.stage-identity')) {
+          btn.style.display = 'none';
+        }
+      }
+    }
+  });
+
+  // Inject persistent footer (if not present)
+  if (!document.querySelector('.site-footer-fixed')) {
+    var footer = document.createElement('div');
+    footer.className = 'site-footer-fixed';
+    footer.textContent = 'Built for your course. Data saved to Google Sheets.';
+    document.body.appendChild(footer);
+  }
+
+  // Wrap project-list in a card if not already wrapped
+  var projectList = document.getElementById('project-list');
+  if (projectList && !projectList.closest('.project-list-card')) {
+    var wrapper = document.createElement('section');
+    wrapper.className = 'project-list-card';
+    // Move the header if there's an h2 right before projectList
+    var possibleHeading = projectList.previousElementSibling;
+    if (possibleHeading && possibleHeading.tagName === 'H2') {
+      wrapper.appendChild(possibleHeading);
+    }
+    projectList.parentNode.insertBefore(wrapper, projectList);
+    wrapper.appendChild(projectList);
+  }
+
+  // Optional: add a bit more vertical space above the matrix container (if it exists)
+  var rubricContainer = document.getElementById('rubric-container') || document.querySelector('.rubric-stage');
+  if (rubricContainer) {
+    rubricContainer.style.marginTop = rubricContainer.style.marginTop || '28px';
+  }
+});
 
 
 
