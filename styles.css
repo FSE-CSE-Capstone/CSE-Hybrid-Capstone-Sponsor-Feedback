@@ -22,11 +22,25 @@ body{
 }
 
 /* Header */
-.site-header{
-  position: fixed; top:0; left:0; right:0; height:var(--header-height);
-  display:flex; align-items:center; padding-left:28px;
-  background:linear-gradient(180deg,rgba(255,255,255,0.92),rgba(255,255,255,0.86));
-  border-bottom:1px solid rgba(11,18,32,0.06); z-index:1000;
+.site-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 72px; /* slightly smaller height */
+  display: flex;
+  align-items: center;
+  padding-left: 20px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.95), rgba(255,255,255,0.88));
+  border-bottom: 1px solid rgba(11,18,32,0.06);
+  z-index: 1000;
+}
+
+.site-logo {
+  max-height: 44px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
 }
 
 /* Page wrapper */
