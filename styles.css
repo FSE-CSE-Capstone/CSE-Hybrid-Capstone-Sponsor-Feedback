@@ -417,3 +417,75 @@ input:focus, select:focus, textarea:focus{
   .rubric-table thead th:last-child { display:block; width: 22%; font-size:13px; }
   .rubric-table td { padding: 10px 6px; }
 }
+
+/* RUBRIC: safer layout so descriptors sit inside the card and columns don't overflow */
+.rubric-card {
+  max-width: 1180px;         /* widen rubric card a bit; increase if needed */
+  margin-left: auto;
+  margin-right: auto;
+  padding: 22px;
+  box-sizing: border-box;
+}
+
+/* make table use fixed layout so column widths are predictable */
+.rubric-table {
+  table-layout: fixed;
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 15px;
+}
+
+/* Student column left-justified and with comfortable width */
+.rubric-table th.col-student,
+.rubric-table td.col-student {
+  text-align: left;
+  padding-left: 18px;
+  width: 28%;              /* larger width for student names */
+  white-space: normal;
+  word-break: break-word;
+}
+
+/* Descriptor columns (left & right) */
+.rubric-table th.col-descriptor,
+.rubric-table td.col-descriptor {
+  width: 12%;
+  font-weight: 600;
+  white-space: normal;
+  line-height: 1.1;
+  word-wrap: break-word;
+  padding: 8px 10px;
+}
+
+/* Numeric scale columns (1..7) */
+.rubric-table th.col-scale,
+.rubric-table td.col-scale {
+  width: calc((100% - 28% - 24%) / 7); /* remaining space divided by 7 */
+  text-align: center;
+  padding: 10px 4px;
+}
+
+/* Center radio inputs vertically and horizontally */
+.rubric-table td .radio-cell {
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  height:44px;
+}
+
+/* Prevent header text from overflowing the card: force wrap and ellipsis safety */
+.rubric-table thead th, .rubric-table tbody td {
+  overflow-wrap: anywhere;
+}
+
+/* Reduce padding slightly on smaller screens and allow horizontal scroll if necessary */
+@media (max-width: 980px) {
+  .rubric-card { max-width: 940px; padding: 14px; }
+  .rubric-table th.col-student, .rubric-table td.col-student { width: 34%; }
+  .rubric-table th.col-descriptor, .rubric-table td.col-descriptor { width: 14%; }
+}
+
+/* If still too tight on very small screens, allow the rubric to scroll horizontally */
+.rubric-scrollwrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
