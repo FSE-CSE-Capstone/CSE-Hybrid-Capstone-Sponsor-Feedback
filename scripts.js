@@ -859,4 +859,103 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 
+document.addEventListener('DOMContentLoaded', function () {
+  // find all rubric tables on the page
+  var tables = document.querySelectorAll('.rubric-table');
+  tables.forEach(function (table) {
+    try {
+      // 1) Ensure the table is wrapped in .rubric-card and .rubric-scrollwrap
+      var card = table.closest('.rubric-card');
+      if (!card) {
+        // create a wrapper div with class rubric-card and wrap the table's top-level container
+        var container = table.parentElement;
+        var wrapper = document.createElement('div');
+        wrapper.className = 'rubric-card rubric-scrollwrap';
+        container.insertBefore(wrapper, table);
+        wrapper.appendChild(table);
+        card = wrapper;
+      } else {
+        // ensure scrollwrap present
+        if (!card.classList.contains('rubric-scrollwrap')) card.classList.add('rubric-scrollwrap');
+      }
+
+      // 2) Normalize the header cells: we want order:
+      //    [Student] [Far Below descriptor] [1] [2] .. [7] [Exceeds descriptor]
+      var thead = table.querySelector('thead');
+      if (!thead) return;
+      var headerRow = thead.querySelector('tr');
+      if (!headerRow) return;
+
+      // extract header cells text to locate target columns
+      var ths = Array.from(headerRow.children);
+      var idxStudent = ths.findIndex(function(th){ return /student/i.test(th.textContent); });
+      var idxFar = ths.findIndex(function(th){ return /far\s*below|fail/i.test(th.textContent); });
+      var idxExceeds = ths.findIndex(function(th){ return /exceed/i.test(th.textContent); });
+
+      // If Student is not first column, move student TH to be first
+      if (idxStudent > 0) {
+        headerRow.insertBefore(ths[idxStudent], headerRow.firstChild);
+        // recompute ths
+        ths = Array.from(headerRow.children);
+      }
+
+      // ensure Far descriptor is second column (after Student)
+      // find updated index of Far header
+      idxFar = Array.from(headerRow.children).findIndex(function(th){ return /far\s*below|fail/i.test(th.textContent); });
+      if (idxFar !== 1 && idxFar !== -1) {
+        var farTH = headerRow.children[idxFar];
+        headerRow.insertBefore(farTH, headerRow.children[1]);
+      }
+
+      // ensure Exceeds descriptor is last column
+      idxExceeds = Array.from(headerRow.children).findIndex(function(th){ return /exceed/i.test(th.textContent); });
+      if (idxExceeds !== -1 && idxExceeds !== headerRow.children.length - 1) {
+        var excTH = headerRow.children[idxExceeds];
+        headerRow.appendChild(excTH);
+      }
+
+      // 3) Add classes to header cells for CSS widths/alignments
+      var newTHs = Array.from(headerRow.children);
+      // student -> col-student
+      if (newTHs[0]) newTHs[0].classList.add('col-student');
+      // second should be descriptor
+      if (newTHs[1]) newTHs[1].classList.add('col-descriptor');
+      // last should be descriptor
+      if (newTHs[newTHs.length - 1]) newTHs[newTHs.length - 1].classList.add('col-descriptor');
+
+      // Mark numeric columns with col-scale
+      for (var i = 2; i < newTHs.length - 1; i++) {
+        newTHs[i].classList.add('col-scale');
+      }
+
+      // 4) Add classes to tbody td cells by column index to match header classes
+      var tbody = table.querySelector('tbody');
+      if (tbody) {
+        var rows = Array.from(tbody.querySelectorAll('tr'));
+        rows.forEach(function (row) {
+          var cells = Array.from(row.children);
+          if (cells[0]) cells[0].classList.add('col-student');
+          if (cells[1]) cells[1].classList.add('col-descriptor');
+          if (cells[cells.length - 1]) cells[cells.length - 1].classList.add('col-descriptor');
+          for (var j = 2; j < cells.length - 1; j++) {
+            if (cells[j]) cells[j].classList.add('col-scale');
+            // center radio inputs (wrap them in .radio-cell if necessary)
+            var input = cells[j].querySelector('input[type="radio"], input[type="checkbox"]');
+            if (input && !cells[j].querySelector('.radio-cell')) {
+              var rc = document.createElement('div');
+              rc.className = 'radio-cell';
+              // move input into rc, keep label if exists
+              // append all child nodes into rc
+              while (cells[j].firstChild) rc.appendChild(cells[j].firstChild);
+              cells[j].appendChild(rc);
+            }
+          }
+        });
+      }
+    } catch (e) {
+      // fail silently but log for debugging
+      console.warn('rubric-layout helper error', e);
+    }
+  });
+});
 
