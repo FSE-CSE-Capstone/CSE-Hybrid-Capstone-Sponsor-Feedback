@@ -1,14 +1,13 @@
-// scripts.js — full implementation: Option 1 descriptor columns + per-student collapsible comments
+// scripts.js — hybrid UI: descriptor columns + per-student collapsible comments + draft autosave
 (function () {
   'use strict';
 
-  // ---------- CONFIG - update these to your workers ----------
-  var ENDPOINT_URL = 'https://csehybridsponsors.sbecerr7.workers.dev';      // POST submissions here
-  var DATA_LOADER_URL = 'https://data-loader.sbecerr7.workers.dev';// GET sponsor/project/student data
+  // -------------- CONFIG --------------
+  var ENDPOINT_URL = 'https://your-endpoint.example.com/';      // <-- change to your submission worker URL
+  var DATA_LOADER_URL = 'https://your-data-loader.example.com/';// <-- change to your data-loader URL
   var STORAGE_KEY = 'sponsor_progress_v1';
 
-  // ---------- RUBRIC ----------
-  // Replace these rubric items if you load them dynamically elsewhere.
+  // -------------- RUBRIC (fallback if not provided by server) --------------
   var RUBRIC = [
     {
       title: "Student has contributed an appropriate amount of development effort towards this project",
@@ -32,7 +31,7 @@
     }
   ];
 
-  // ---------- DOM refs ----------
+  // -------------- DOM refs --------------
   var stageIdentity = document.getElementById('stage-identity');
   var stageProjects = document.getElementById('stage-projects');
   var stageThankyou = document.getElementById('stage-thankyou');
@@ -50,16 +49,16 @@
   var formStatus = document.getElementById('form-status');
   var submitStatus = document.getElementById('submit-status');
 
-  // ---------- STATE ----------
-  var sponsorData = {};     // { email: { projects: { projectName: [student1,student2,...] } } }
+  // -------------- State --------------
+  var sponsorData = {};     // { email: { projects: { name: [students...] } } }
   var currentEmail = '';
   var currentName = '';
   var currentProject = '';
   var sponsorProjects = {};
-  var completedProjects = {}; // map of completed project names
-  var stagedRatings = {};     // stagedRatings[project][rowIndex][criterionIndex] and _comment_shared/_comment_instructor
+  var completedProjects = {};
+  var stagedRatings = {}; // stagedRatings[project][rowIndex][criterionIndex], _comment_shared/_comment_instructor
 
-  // ---------- HELPERS ----------
+  // -------------- Helpers --------------
   function setStatus(msg, color) {
     if (!formStatus) return;
     formStatus.textContent = msg || '';
@@ -69,11 +68,6 @@
     if (!submitStatus) return;
     submitStatus.textContent = msg || '';
     submitStatus.style.color = color || '';
-  }
-  function escapeHtml(s) {
-    return String(s || '').replace(/[&<>"']/g, function (m) {
-      return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]);
-    });
   }
 
   function saveProgress() {
@@ -107,7 +101,7 @@
     }
   }
 
-  // Build sponsor map from array rows returned by data-loader
+  // Build sponsor map from rows returned by data-loader
   function buildSponsorMap(rows) {
     var map = {};
     if (!Array.isArray(rows)) return map;
@@ -125,7 +119,7 @@
     return map;
   }
 
-  // ---------- PROJECT LIST UI ----------
+  // -------------- Project list UI --------------
   function populateProjectListFor(email) {
     if (!projectListEl) return;
     projectListEl.innerHTML = '';
@@ -160,12 +154,11 @@
     setStatus('');
   }
 
-  // ---------- MATRIX RENDERING ----------
+  // -------------- Matrix rendering --------------
   function loadProjectIntoMatrix(projectName, students) {
     currentProject = projectName || '';
     if (!matrixContainer) return;
 
-    // clear
     matrixContainer.innerHTML = '';
     studentCommentsWrapper.innerHTML = '';
     if (currentProjectHeader) currentProjectHeader.textContent = currentProject || '';
@@ -173,10 +166,8 @@
 
     if (!students) students = [];
 
-    // ensure staged container exists
     if (!stagedRatings[currentProject]) stagedRatings[currentProject] = {};
 
-    // for each rubric criterion create a card with a table
     RUBRIC.forEach(function (crit, cIdx) {
       var card = document.createElement('div');
       card.className = 'matrix-card';
@@ -201,18 +192,18 @@
       var thName = document.createElement('th'); thName.textContent = 'Student';
       trHead.appendChild(thName);
 
-      // left descriptor column (Far Below)
+      // left descriptor column header (Far Below)
       var thDescLeft = document.createElement('th'); thDescLeft.className = 'col-descriptor';
       thDescLeft.innerHTML = '<div>Far Below Expectations (Fail)</div>';
       trHead.appendChild(thDescLeft);
 
-      // number columns 1..7
+      // numeric columns 1..7
       for (var k = 1; k <= 7; k++) {
         var th = document.createElement('th'); th.className = 'col-num'; th.textContent = String(k);
         trHead.appendChild(th);
       }
 
-      // right descriptor column (Exceeds)
+      // right descriptor column header (Exceeds)
       var thDescRight = document.createElement('th'); thDescRight.className = 'col-descriptor';
       thDescRight.style.textAlign = 'right';
       thDescRight.innerHTML = '<div>Exceeds Expectations (A+)</div>';
@@ -223,7 +214,6 @@
 
       var tbody = document.createElement('tbody');
 
-      // render student rows
       students.forEach(function (studentName, sIdx) {
         var tr = document.createElement('tr');
         tr.setAttribute('data-student-index', String(sIdx));
@@ -232,7 +222,7 @@
         tdName.textContent = studentName;
         tr.appendChild(tdName);
 
-        // left descriptor cell (blank in body rows)
+        // left descriptor empty cell
         var tdDescLeft = document.createElement('td'); tdDescLeft.className = 'col-descriptor'; tdDescLeft.innerHTML = '';
         tr.appendChild(tdDescLeft);
 
@@ -244,7 +234,6 @@
           input.value = String(score);
           input.id = 'rating-' + cIdx + '-' + sIdx + '-' + score;
 
-          // pre-check if staged
           var stagedVal = (stagedRatings[currentProject] && stagedRatings[currentProject][sIdx] && stagedRatings[currentProject][sIdx][cIdx]) || null;
           if (stagedVal && String(stagedVal) === String(score)) input.checked = true;
 
@@ -252,14 +241,13 @@
           tr.appendChild(td);
         }
 
-        // right descriptor cell blank in body
         var tdDescRight = document.createElement('td'); tdDescRight.className = 'col-descriptor'; tdDescRight.style.textAlign = 'right'; tdDescRight.innerHTML = '';
         tr.appendChild(tdDescRight);
 
         tbody.appendChild(tr);
       });
 
-      // team row (index = students.length)
+      // team row
       var teamIdx = students.length;
       var trTeam = document.createElement('tr');
       trTeam.className = 'team-row';
@@ -280,7 +268,6 @@
         inputT.value = String(ts);
         inputT.id = 'rating-' + cIdx + '-team-' + ts;
 
-        // staged team value
         var stagedTeamVal = (stagedRatings[currentProject] && stagedRatings[currentProject][teamIdx] && stagedRatings[currentProject][teamIdx][cIdx]) || null;
         if (stagedTeamVal && String(stagedTeamVal) === String(ts)) inputT.checked = true;
 
@@ -298,20 +285,19 @@
       matrixContainer.appendChild(card);
     });
 
-    // Build the per-student collapsible comment UI
+    // build per-student comment panels
     buildPerStudentCommentPanels(currentProject, students);
 
-    // Wire event listeners for autosave (ratings will bubble 'change' events)
+    // wire rating changes to autosave (use delegation)
     matrixContainer.removeEventListener && matrixContainer.removeEventListener('change', handleDraftSave);
     matrixContainer.addEventListener('change', handleDraftSave);
   }
 
-  // ---------- Per-student collapsible comment panels ----------
+  // -------------- Per-student collapsible panels --------------
   function buildPerStudentCommentPanels(projectKey, students) {
     if (!studentCommentsWrapper) return;
     studentCommentsWrapper.innerHTML = '';
 
-    // Title above the add comment section
     var title = document.createElement('div');
     title.className = 'comment-title';
     title.textContent = 'Add your additional comments';
@@ -324,57 +310,32 @@
       item.className = 'student-comment-item';
       item.setAttribute('data-student-index', String(sIdx));
 
-      var header = document.createElement('div');
-      header.className = 'student-comment-header';
-
-      var name = document.createElement('div');
-      name.className = 'student-comment-name';
-      name.textContent = studentName;
-
-      var toggleBtn = document.createElement('button');
-      toggleBtn.type = 'button';
-      toggleBtn.className = 'toggle-comment-btn';
-      toggleBtn.innerHTML = '<span class="chev">▾</span> Add comment';
-
-      header.appendChild(name);
-      header.appendChild(toggleBtn);
+      var header = document.createElement('div'); header.className = 'student-comment-header';
+      var name = document.createElement('div'); name.className = 'student-comment-name'; name.textContent = studentName;
+      var toggleBtn = document.createElement('button'); toggleBtn.type = 'button'; toggleBtn.className = 'toggle-comment-btn'; toggleBtn.innerHTML = '<span class="chev">▾</span> Add comment';
+      header.appendChild(name); header.appendChild(toggleBtn);
       item.appendChild(header);
 
-      var body = document.createElement('div');
-      body.className = 'student-comment-body';
+      var body = document.createElement('div'); body.className = 'student-comment-body';
 
-      // Shared-with-student textarea
-      var sharedLabel = document.createElement('label');
-      sharedLabel.textContent = 'Comments to be SHARED WITH THE STUDENT';
-      body.appendChild(sharedLabel);
-
-      var sharedTa = document.createElement('textarea');
-      sharedTa.id = 'student-' + currentProject + '-shared-' + sIdx;
-      sharedTa.placeholder = 'Comments to share with the student';
+      var sharedLabel = document.createElement('label'); sharedLabel.textContent = 'Comments to be SHARED WITH THE STUDENT';
+      var sharedTa = document.createElement('textarea'); sharedTa.id = 'student-' + projectKey + '-shared-' + sIdx; sharedTa.placeholder = 'Comments to share with the student';
       sharedTa.value = (stagedRatings[projectKey] && stagedRatings[projectKey][sIdx] && stagedRatings[projectKey][sIdx]._comment_shared) ? stagedRatings[projectKey][sIdx]._comment_shared : '';
-      body.appendChild(sharedTa);
+      body.appendChild(sharedLabel); body.appendChild(sharedTa);
 
-      // Instructor-only textarea
-      var instrLabel = document.createElement('label');
-      instrLabel.style.marginTop = '8px';
-      instrLabel.textContent = 'Comments to be SHARED ONLY WITH THE INSTRUCTOR';
-      body.appendChild(instrLabel);
-
-      var instrTa = document.createElement('textarea');
-      instrTa.id = 'student-' + currentProject + '-instr-' + sIdx;
-      instrTa.placeholder = 'Private comments for instructor';
+      var instrLabel = document.createElement('label'); instrLabel.style.marginTop = '8px'; instrLabel.textContent = 'Comments to be SHARED ONLY WITH THE INSTRUCTOR';
+      var instrTa = document.createElement('textarea'); instrTa.id = 'student-' + projectKey + '-instr-' + sIdx; instrTa.placeholder = 'Private comments for instructor';
       instrTa.value = (stagedRatings[projectKey] && stagedRatings[projectKey][sIdx] && stagedRatings[projectKey][sIdx]._comment_instructor) ? stagedRatings[projectKey][sIdx]._comment_instructor : '';
-      body.appendChild(instrTa);
+      body.appendChild(instrLabel); body.appendChild(instrTa);
 
       item.appendChild(body);
 
-      // Toggle
       header.addEventListener('click', function () {
         var isOpen = item.classList.toggle('open');
         body.style.display = isOpen ? 'block' : 'none';
       });
 
-      // Save per-student textarea input to stagedRatings
+      // save inputs into stagedRatings
       sharedTa.addEventListener('input', function () {
         if (!stagedRatings[projectKey]) stagedRatings[projectKey] = {};
         if (!stagedRatings[projectKey][sIdx]) stagedRatings[projectKey][sIdx] = {};
@@ -391,7 +352,7 @@
       studentCommentsWrapper.appendChild(item);
     });
 
-    // Team comment block (index = students.length)
+    // Team item
     var teamIdx = students.length;
     var teamItem = document.createElement('div');
     teamItem.className = 'student-comment-item';
@@ -406,12 +367,15 @@
     var teamBody = document.createElement('div'); teamBody.className = 'student-comment-body';
 
     var teamSharedLabel = document.createElement('label'); teamSharedLabel.textContent = 'Comments to be SHARED WITH THE STUDENT';
-    var teamSharedTa = document.createElement('textarea'); teamSharedTa.id = 'student-' + currentProject + '-shared-team'; teamSharedTa.placeholder = 'Comments to share with the team-level evaluation';
-    var teamInstrLabel = document.createElement('label'); teamInstrLabel.style.marginTop = '8px'; teamInstrLabel.textContent = 'Comments to be SHARED ONLY WITH THE INSTRUCTOR';
-    var teamInstrTa = document.createElement('textarea'); teamInstrTa.id = 'student-' + currentProject + '-instr-team'; teamInstrTa.placeholder = 'Private comments for instructor (team-level)';
-
+    var teamSharedTa = document.createElement('textarea'); teamSharedTa.id = 'student-' + projectKey + '-shared-team'; teamSharedTa.placeholder = 'Comments to share with the team-level evaluation';
+    teamSharedTa.value = (stagedRatings[projectKey] && stagedRatings[projectKey][teamIdx] && stagedRatings[projectKey][teamIdx]._comment_shared) ? stagedRatings[projectKey][teamIdx]._comment_shared : '';
     teamBody.appendChild(teamSharedLabel); teamBody.appendChild(teamSharedTa);
+
+    var teamInstrLabel = document.createElement('label'); teamInstrLabel.style.marginTop = '8px'; teamInstrLabel.textContent = 'Comments to be SHARED ONLY WITH THE INSTRUCTOR';
+    var teamInstrTa = document.createElement('textarea'); teamInstrTa.id = 'student-' + projectKey + '-instr-team'; teamInstrTa.placeholder = 'Private comments for instructor (team-level)';
+    teamInstrTa.value = (stagedRatings[projectKey] && stagedRatings[projectKey][teamIdx] && stagedRatings[projectKey][teamIdx]._comment_instructor) ? stagedRatings[projectKey][teamIdx]._comment_instructor : '';
     teamBody.appendChild(teamInstrLabel); teamBody.appendChild(teamInstrTa);
+
     teamItem.appendChild(teamBody);
 
     teamHeader.addEventListener('click', function () {
@@ -435,13 +399,13 @@
     studentCommentsWrapper.appendChild(teamItem);
   }
 
-  // ---------- Draft save handler (ratings + per-student comments) ----------
+  // -------------- Draft saving for ratings + ensure comments exist --------------
   function handleDraftSave() {
     if (!currentProject) return;
     if (!sponsorProjects[currentProject]) return;
 
     var students = sponsorProjects[currentProject] || [];
-    var totalRows = students.length + 1; // includes team row at end
+    var totalRows = students.length + 1; // includes team
     if (!stagedRatings[currentProject]) stagedRatings[currentProject] = {};
 
     for (var r = 0; r < totalRows; r++) {
@@ -451,8 +415,7 @@
         if (sel) stagedRatings[currentProject][r][c] = parseInt(sel.value, 10);
         else stagedRatings[currentProject][r][c] = stagedRatings[currentProject][r][c] || null;
       }
-
-      // per-row comments are saved when textareas emit input events (already wired), but ensure fields exist
+      // comments saved by textarea input handlers; ensure keys exist
       stagedRatings[currentProject][r]._comment_shared = (stagedRatings[currentProject][r] && stagedRatings[currentProject][r]._comment_shared) || '';
       stagedRatings[currentProject][r]._comment_instructor = (stagedRatings[currentProject][r] && stagedRatings[currentProject][r]._comment_instructor) || '';
     }
@@ -460,7 +423,7 @@
     saveProgress();
   }
 
-  // ---------- Submit ---------- 
+  // -------------- Submit --------------
   function submitCurrentProject() {
     if (!currentProject) { setSubmitStatus('No project selected.', 'red'); return; }
     if (!sponsorProjects[currentProject] || sponsorProjects[currentProject].length === 0) { setSubmitStatus('No students found for this project.', 'red'); return; }
@@ -478,27 +441,24 @@
         ratingMap[RUBRIC[c].title] = sel ? parseInt(sel.value, 10) : null;
       }
 
-      // collect per-row comments (from stagedRatings if present)
+      // fetch comments from stagedRatings if available (fallback to DOM)
       var commentShared = '';
-      var commentInstr = '';
+      var commentInstructor = '';
       if (stagedRatings[currentProject] && stagedRatings[currentProject][r]) {
         commentShared = stagedRatings[currentProject][r]._comment_shared || '';
-        commentInstr = stagedRatings[currentProject][r]._comment_instructor || '';
+        commentInstructor = stagedRatings[currentProject][r]._comment_instructor || '';
       } else {
-        // attempt to read DOM fields as fallback
-        var sharedElId = 'student-' + currentProject + '-shared-' + (isTeam ? 'team' : r);
-        var instrElId = 'student-' + currentProject + '-instr-' + (isTeam ? 'team' : r);
-        var sharedEl = document.getElementById(sharedElId);
-        var instrEl = document.getElementById(instrElId);
+        var sharedEl = document.getElementById('student-' + currentProject + '-shared-' + (isTeam ? 'team' : r));
+        var instrEl = document.getElementById('student-' + currentProject + '-instr-' + (isTeam ? 'team' : r));
         commentShared = sharedEl ? sharedEl.value : '';
-        commentInstr = instrEl ? instrEl.value : '';
+        commentInstructor = instrEl ? instrEl.value : '';
       }
 
       responses.push({
         student: studentLabel,
         ratings: ratingMap,
         commentShared: commentShared,
-        commentInstructor: commentInstr,
+        commentInstructor: commentInstructor,
         isTeam: isTeam
       });
     }
@@ -526,13 +486,11 @@
       return resp.json().catch(function () { return {}; });
     }).then(function (res) {
       setSubmitStatus('Submission saved — thank you!', 'green');
-
-      // mark completed & clear staged for this project
       completedProjects[currentProject] = true;
       if (stagedRatings && stagedRatings[currentProject]) delete stagedRatings[currentProject];
       saveProgress();
 
-      // Update UI project list
+      // mark project completed in UI
       try {
         var li = projectListEl.querySelector('li[data-project="' + CSS.escape(currentProject) + '"]');
         if (li) {
@@ -542,7 +500,6 @@
         }
       } catch (e) {}
 
-      // clear matrix/comment UI
       matrixContainer.innerHTML = '';
       studentCommentsWrapper.innerHTML = '';
       if (currentProjectHeader) currentProjectHeader.textContent = '';
@@ -558,7 +515,7 @@
     });
   }
 
-  // Check if all sponsor's projects completed
+  // -------------- Misc helpers --------------
   function hasCompletedAllProjects() {
     if (!currentEmail) return false;
     var entry = sponsorData[currentEmail] || {};
@@ -568,7 +525,6 @@
     return true;
   }
 
-  // ---------- Identity flow & data load ----------
   function onIdentitySubmit() {
     var name = nameInput ? nameInput.value.trim() : '';
     var email = emailInput ? (emailInput.value || '').toLowerCase().trim() : '';
@@ -598,6 +554,7 @@
     }
   }
 
+  // -------------- Data fetching (with local fallback) --------------
   function fetchData(callback) {
     fetch(DATA_LOADER_URL, { cache: 'no-store' })
       .then(function (r) {
@@ -610,13 +567,19 @@
         if (typeof callback === 'function') callback();
       })
       .catch(function (err) {
-        console.error('Data fetch failed', err);
-        setStatus('Project data could not be loaded. Please try again later.', 'red');
+        // fallback sample data (so UI can be tested locally)
+        console.warn('Data fetch failed, falling back to sample data:', err);
+        var sampleRows = [
+          { sponsorEmail: 'sponsor@example.com', project: 'Project A', student: 'Alice Johnson' },
+          { sponsorEmail: 'sponsor@example.com', project: 'Project A', student: 'Bob Smith' },
+          { sponsorEmail: 'sponsor@example.com', project: 'Project B', student: 'Carlos Gomez' }
+        ];
+        sponsorData = buildSponsorMap(sampleRows);
+        loadProgress();
         if (typeof callback === 'function') callback();
       });
   }
 
-  // ---------- Stage helpers ----------
   function showIdentityStage() {
     if (stageIdentity) stageIdentity.style.display = '';
     if (stageProjects) stageProjects.style.display = 'none';
@@ -636,7 +599,7 @@
     setStatus('');
   }
 
-  // ---------- Events ----------
+  // -------------- Events --------------
   identitySubmit && identitySubmit.addEventListener('click', onIdentitySubmit);
   backToIdentity && backToIdentity.addEventListener('click', function () { showIdentityStage(); });
   submitProjectBtn && submitProjectBtn.addEventListener('click', submitCurrentProject);
@@ -650,18 +613,15 @@
     showIdentityStage();
   });
 
-  // autosave ratings on change
   matrixContainer && matrixContainer.addEventListener('change', handleDraftSave);
-  // save on unload
   window.addEventListener('beforeunload', saveProgress);
 
-  // ---------- Boot ----------
+  // -------------- Boot --------------
   loadProgress();
   showIdentityStage();
-  // attempt to fetch data so project list is ready after identity input
   fetchData();
 
-  // expose debug helpers
+  // debug
   window.__sponsorDebug = {
     sponsorData: sponsorData,
     stagedRatings: stagedRatings,
