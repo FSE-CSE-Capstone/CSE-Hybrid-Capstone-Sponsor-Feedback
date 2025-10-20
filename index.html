@@ -3,118 +3,96 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>CSE Capstone Sponsor Feedback Survey</title>
-
-  <link rel="stylesheet" href="styles.css">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <title>CS/ CSE Capstone Project Sponsor Feedback</title>
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <!-- Fixed header with left-aligned logo -->
-  <header class="site-header" role="banner" aria-label="Site header">
-    <div class="header-inner">
-      <img src="logo.png" alt="CSE Capstone logo" class="site-logo" />
-    </div>
-  </header>
+  <div class="page">
+    <header class="site-header">
+      <h1 class="site-title">CS/ CSE Capstone Project Sponsor Feedback</h1>
+      <div id="under-title" class="subtitle">Please submit one copy of this form for EACH STUDENT on your project team.</div>
+    </header>
 
-  <!-- Main content -->
-  <main class="center-wrapper" role="main">
-    <div class="content-inner">
+    <main class="main">
+      <!-- STAGE 1: Identity -->
+      <section id="stage-identity" class="card section">
+        <h2 class="section-title">Identify yourself</h2>
 
-      <!-- WELCOME block: ONLY visible on identity (first) page -->
-      <div class="welcome-block" id="welcome-block">
-        <h1 class="welcome-title">Hello, <span class="accent">welcome!</span></h1>
-      </div>
+        <label for="fullName" class="label">Full name</label>
+        <input id="fullName" class="text" type="text" placeholder="Your full name" autocomplete="name" />
 
-      <!-- FORM TITLE: stays visible across all pages -->
-      <h2 class="form-title">CSE Capstone Sponsor Feedback Survey</h2>
+        <label for="email" class="label">Email</label>
+        <input id="email" class="text" type="email" placeholder="you@example.com" autocomplete="email" />
 
-      <!-- Instruction under title: only on first page (identity). We'll toggle via JS -->
-      <p id="under-title" class="lead under-title">Enter your name and email to continue.</p>
-
-      <!-- Card (form) -->
-      <section class="card" aria-labelledby="projects-heading-outside">
-
-        <!-- STAGE 1: Identity (inputs; greeting/lead are outside and controlled separately) -->
-        <div id="stage-identity" class="stage">
-          <div class="form-row">
-            <label for="fullName">Your name</label>
-            <input id="fullName" name="fullName" type="text" placeholder="Jane Doe" />
-          </div>
-
-          <div class="form-row">
-            <label for="email">Your email</label>
-            <input id="email" name="email" type="email" placeholder="you@example.com" />
-          </div>
-
-          <div class="actions">
-            <button id="identitySubmit" class="btn btn-primary" type="button">Continue</button>
-          </div>
+        <div class="actions">
+          <button id="identitySubmit" class="btn btn-primary" type="button">Continue</button>
         </div>
 
-        <!-- STAGE 2: Projects + Matrix (hidden initially) -->
-        <div id="stage-projects" class="stage" style="display:none;">
-          <!-- PROJECT LIST SECTION -->
-      <div class="section section-projects" aria-labelledby="projects-heading">
+        <div id="form-status" class="form-status" aria-live="polite"></div>
+      </section>
 
-  <!-- Instructions as its own inner card -->
-  <div class="instructions-card">
-    <div id="projects-instructions" class="projects-instructions" aria-live="polite">
-      <p><strong>Please follow these steps to evaluate students:</strong></p>
-      <ol>
-        <li>Select the project you are evaluating from the list.</li>
-        <li>For each student, choose the rating that best reflects their performance.</li>
-        <li>Use the comment box below to provide any additional feedback — this is optional but helpful.</li>
-        <li>When finished, click <strong>Submit ratings for project</strong>. Use <strong>Back</strong> to return to the previous screen if needed.</li>
-      </ol>
-      
-    </div>
-  </div>
+      <!-- STAGE 2: Projects + Matrix -->
+      <section id="stage-projects" class="section" style="display:none;">
+        <div class="card">
 
-  <!-- Title and project list below the instructions card -->
-  <h3 id="projects-heading" class="section-title">Project List</h3>
-  <ul id="project-list" class="project-list" aria-live="polite"></ul>
-</div>
-
-
-
-
-          <!-- MATRIX SECTION -->
-          <div class="section section-matrix" aria-live="polite">
-            <div id="matrix-info" class="matrix-info" style="display:none;">
-              <div class="current-project-header" id="current-project-header"></div>
-              <div class="matrix-description">Please evaluate the students on Communication</div>
-            </div>
-            <div id="matrix-container" class="matrix-container"></div>
+          <!-- Persistent instruction block (sticky) -->
+          <div class="persistent-instructions" role="region" aria-label="Evaluation instructions">
+            <p><strong>Please submit one copy of this form for EACH STUDENT on your project team.</strong></p>
+            <p>Reviews are due December 1st.</p>
+            <p>If you would prefer to provide <strong>GENERAL FEEDBACK FOR THE TEAM</strong> as a whole, leave the name of the student you are evaluating empty.</p>
+            <p>Please note that ratings are used for student grades, and should be scaled from 1 to 7 :</p>
+            <ul>
+              <li>1 - Far Below Expectations (Fail) = 50%</li>
+              <li>2 - Quite a Bit Below Expectations = 60%</li>
+              <li>3 - Somewhat Below Expectations = 70%</li>
+              <li>4 - Meets Expectations = 80%</li>
+              <li>5 - Somewhat Above Expectations = 90%</li>
+              <li>6 - Quite a Bit Above Expectations = 100%</li>
+              <li>7 - Exceeds Expectations (A+) = 110%</li>
+            </ul>
+            <p>Please reference this evaluation rubric: <a href="http://links.asu.edu/Sponsor_Rubric" target="_blank" rel="noopener">http://links.asu.edu/Sponsor_Rubric</a></p>
           </div>
 
-          <!-- COMMENT SECTION -->
-        
+          <!-- Project list -->
+          <div class="projects-column">
+            <h3 class="section-title">Select a project</h3>
+            <ul id="project-list" class="project-list" aria-live="polite"></ul>
+          </div>
 
-          <div class="form-status" id="form-status" aria-live="polite"></div>
-
-          <div class="actions actions-space-between">
-            <div>
-              <button id="backToIdentity" class="btn btn-outline" type="button">Back</button>
+          <!-- Matrix / Ratings -->
+          <div id="matrix-panel" class="matrix-panel">
+            <div id="matrix-info" class="matrix-header" style="display:none;">
+              <div id="current-project-header" class="current-project-header"></div>
+              <div class="matrix-subtitle">Please evaluate the students using the rubric below (scale 1–7).</div>
             </div>
-            <div>
+
+            <div id="matrix-container" class="matrix-container"></div>
+
+            <!-- Per-student collapsible comments -->
+            <div id="student-comments-wrapper" class="student-comments-wrapper"></div>
+
+            <div class="actions actions-space-between">
+              <button id="backToIdentity" class="btn btn-outline" type="button">Back</button>
               <button id="submitProject" class="btn btn-primary" type="button">Submit ratings for project</button>
             </div>
-          </div>
-        </div>
 
-        <!-- STAGE 3: Thank you -->
-        <div id="stage-thankyou" class="stage" style="display:none;text-align:center;padding:36px;">
-          <h2>Thank you — your evaluations have been submitted.</h2>
-          <p class="lead">We appreciate your time and feedback.</p>
-          <div style="margin-top:20px;display:flex;justify-content:center;gap:12px;">
-            <button id="finishStartOver" class="btn btn-outline" type="button">Start Over</button>
+            <div id="submit-status" class="submit-status" aria-live="polite"></div>
           </div>
+
         </div>
       </section>
 
-      <footer class="footer"><small>Built for your course. Data saved to Google Sheets.</small></footer>
-    </div>
-  </main>
+      <!-- STAGE 3: Thank you -->
+      <section id="stage-thankyou" class="card section" style="display:none;">
+        <h2 class="section-title">Thank you</h2>
+        <p>Your ratings have been recorded. We appreciate your time.</p>
+        <div class="actions">
+          <button id="finishStartOver" class="btn btn-outline">Start over</button>
+        </div>
+      </section>
+
+    </main>
+  </div>
 
   <script src="scripts.js"></script>
 </body>
