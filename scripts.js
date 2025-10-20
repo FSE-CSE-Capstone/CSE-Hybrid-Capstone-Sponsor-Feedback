@@ -3,8 +3,8 @@
   'use strict';
 
   // -------------- CONFIG --------------
-  var ENDPOINT_URL = 'https://your-endpoint.example.com/';      // <-- change to your submission worker URL
-  var DATA_LOADER_URL = 'https://your-data-loader.example.com/';// <-- change to your data-loader URL
+  var ENDPOINT_URL = 'https://csehybridsponsors.sbecerr7.workers.dev/';      // <-- change to your submission worker URL
+  var DATA_LOADER_URL = 'https://data-loader.sbecerr7.workers.dev/';// <-- change to your data-loader URL
   var STORAGE_KEY = 'sponsor_progress_v1';
 
   // -------------- RUBRIC (fallback if not provided by server) --------------
