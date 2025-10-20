@@ -333,3 +333,87 @@ input:focus, select:focus, textarea:focus{
   .rubric-table th.rating-col, .rubric-table td.rating-cell { width: calc(100% / 7); }
 }
 
+/* ---------- Persistent footer ---------- */
+.site-footer-fixed {
+  position: fixed;
+  right: 18px;
+  bottom: 14px;
+  z-index: 9999;
+  font-size: 12px;
+  color: #6b6f77;
+  background: rgba(255,255,255,0.95);
+  padding: 8px 12px;
+  border-radius: 8px;
+  box-shadow: 0 6px 18px rgba(11,18,40,0.06);
+  border: 1px solid rgba(10,12,30,0.04);
+}
+
+/* slightly reduce footprint on small screens */
+@media (max-width: 720px) {
+  .site-footer-fixed { right: 10px; left: 10px; text-align:center; }
+}
+
+/* ---------- Hide submit button only on the identity/intro stage ---------- */
+/* This hides the button with class .submit-project-btn when inside the identity stage.
+   If your identity section uses a different element id/class, see HTML step below. */
+[data-stage="identity"] .submit-project-btn,
+.stage-identity .submit-project-btn { display:none !important; }
+
+/* ---------- Project List card wrapper ---------- */
+.project-list-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 18px;
+  box-shadow: 0 16px 40px rgba(11,18,40,0.06);
+  border: 1px solid rgba(10,12,30,0.03);
+  margin-bottom: 22px;
+}
+
+.project-list-card h2 { margin-top: 0; margin-bottom: 10px; }
+
+/* list items */
+.project-list-item {
+  background: transparent;
+  border-radius: 8px;
+  padding: 14px 18px;
+  margin-bottom: 12px;
+  border: 1px solid rgba(10,12,30,0.06);
+  cursor: pointer;
+}
+.project-list-item.selected {
+  background: #fff6f4;
+  border-color: rgba(210,80,80,0.14);
+  box-shadow: 0 8px 26px rgba(210,80,80,0.06);
+}
+
+/* ---------- Larger gap between project header & matrix ---------- */
+.rubric-stage { margin-top: 26px; padding-top: 20px; }
+#rubric-container { margin-top: 28px; }
+
+/* ---------- Matrix / rubric table adjustments ---------- */
+.rubric-table { width:100%; border-collapse: collapse; font-size: 15px; }
+.rubric-table th, .rubric-table td { padding: 12px 8px; vertical-align: middle; }
+.rubric-table thead th { font-weight: 700; color: #1f2937; }
+
+/* left descriptor column and right descriptor widths */
+.rubric-table thead th:first-child,
+.rubric-table tbody td:first-child { width: 12%; text-align: left; font-weight:600; }
+.rubric-table thead th:last-child,
+.rubric-table tbody td:last-child { width: 12%; text-align: right; font-weight:600; }
+
+/* center the numeric columns (1..7) */
+.rubric-table thead th.scale, .rubric-table td.scale { text-align: center; width: auto; }
+
+/* row separators and subtle hover */
+.rubric-table tbody tr { border-top: 1px solid rgba(10,12,30,0.04); }
+.rubric-table tbody tr:hover { background: rgba(250,250,252,0.5); }
+
+/* radio inputs centered in their cells */
+.rubric-table td .radio-cell { display:flex; justify-content:center; align-items:center; height:40px; }
+
+/* responsive tweaks */
+@media (max-width: 880px) {
+  .rubric-table thead th:first-child,
+  .rubric-table thead th:last-child { display:block; width: 22%; font-size:13px; }
+  .rubric-table td { padding: 10px 6px; }
+}
