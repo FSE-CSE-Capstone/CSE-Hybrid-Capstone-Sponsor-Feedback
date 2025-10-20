@@ -1,15 +1,13 @@
 /* scripts.clean.js — cleaned and refactored from your original scripts.js
    Keeps endpoints and behavior identical; optimized DOM access & table build.
    Source files reviewed: original scripts.js variants. */
-(function () {
+(function(){
   'use strict';
 
-  // --- Configuration (Cloudflare Workers endpoints) ---
-  var ENDPOINT_URL = 'https://csehybridsponsors.sbecerr7.workers.dev/';  // POST submissions here
-  var DATA_LOADER_URL = 'https://data-loader.sbecerr7.workers.dev/';    // HYBRID worker URL (reads hybrid sheet)
-  var STORAGE_KEY = 'sponsor_progress_v1';
-  var DATA_SOURCE = ''; // blank for hybrid
-
+  // ---------- CONFIG ----------
+  const ENDPOINT_URL = 'https://csehybridsponsors.sbecerr7.workers.dev/';
+  const DATA_LOADER_URL = 'https://data-loader.sbecerr7.workers.dev/';
+  const STORAGE_KEY = 'sponsor_progress_v1';
 
   // ---------- RUBRIC ----------
   const RUBRIC = [
