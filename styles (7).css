@@ -294,4 +294,41 @@ input:focus, select:focus, textarea:focus{
   .matrix-table tbody td{ font-size:0.9rem; padding:10px 12px }
 }
 
+/* Minimal additions for descriptor columns, sticky instructions, and collapsible comment panels */
+
+/* Make the instructions block sticky while evaluating (keeps your .projects-instructions styling) */
+.sticky-instructions {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: inherit; /* preserve look */
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
+/* Rubric table descriptor columns */
+.rubric-table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+.rubric-table th, .rubric-table td { border: none; padding: 6px 8px; text-align: center; }
+.rubric-table th.descriptor-left, .rubric-table th.descriptor-right { font-weight: 600; font-size: 0.9rem; text-align: center; background: transparent; }
+.rubric-table td.descriptor-left-cell, .rubric-table td.descriptor-right-cell { width: 10%; }
+
+/* Keep numeric columns compact */
+.rubric-table th.rating-col, .rubric-table td.rating-cell { width: 6%; }
+
+/* Collapsible comments */
+.comment-card { margin-top: 12px; padding: 12px; }
+.collapsible-toggle { background: none; border: none; font-weight: 600; cursor: pointer; font-size: 1rem; text-align:left; width:100%; }
+.comment-body { margin-top: 8px; transition: max-height 0.18s ease; overflow: hidden; }
+.comment-body.collapsed { display: none; }
+.comment-label { display:block; margin-top:8px; font-weight:600; font-size:0.9rem; }
+.comment-shared, .comment-instructor { width:100%; box-sizing:border-box; padding:8px; margin-top:6px; border-radius:6px; border:1px solid rgba(0,0,0,0.08); }
+
+/* small hint */
+.comment-hint { margin-top:6px; font-size:0.85rem; color: rgba(0,0,0,0.6); }
+
+/* responsive: hide descriptor texts on very narrow screens to keep layout usable */
+@media (max-width:760px) {
+  .rubric-table th.descriptor-left, .rubric-table th.descriptor-right, .rubric-table td.descriptor-left-cell, .rubric-table td.descriptor-right-cell { display:none; }
+  .rubric-table th.rating-col, .rubric-table td.rating-cell { width: calc(100% / 7); }
+}
 
