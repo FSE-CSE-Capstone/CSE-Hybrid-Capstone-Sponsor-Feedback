@@ -108,5 +108,3 @@ body{background:var(--bg);color:var(--text);line-height:1.45;}
   .matrix-table th, .matrix-table td{padding:6px;}
   .student-comment-body textarea{min-height:64px;}
 }
-
-
