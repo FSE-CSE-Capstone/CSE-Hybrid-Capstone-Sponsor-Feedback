@@ -311,44 +311,116 @@
       critDesc.style.fontWeight = '400'; critDesc.style.fontSize = '14px'; critDesc.style.lineHeight = '1.3'; critDesc.style.margin = '0 0 12px 0';
       critWrap.appendChild(critDesc);
 
-      var table = document.createElement('table'); table.className = 'matrix-table'; table.style.width = '100%'; table.style.borderCollapse = 'collapse';
-      var thead = document.createElement('thead'); var trHead = document.createElement('tr');
+           // create table
+      var table = document.createElement('table');
+      table.className = 'matrix-table';
+      table.style.width = '100%';
+      table.style.borderCollapse = 'collapse';
 
-      var thName = document.createElement('th'); thName.textContent = 'Student'; thName.style.textAlign = 'left'; thName.style.padding = '8px';
+      // thead
+      var thead = document.createElement('thead');
+      var trHead = document.createElement('tr');
+
+      // Student header (leftmost)
+      var thName = document.createElement('th');
+      thName.textContent = 'Student';
+      thName.style.textAlign = 'left';
+      thName.style.padding = '8px';
       trHead.appendChild(thName);
 
-      for (var k = 1; k <= 7; k++) {
-        var th = document.createElement('th'); th.textContent = String(k); th.style.padding = '8px'; th.style.textAlign = 'center'; trHead.appendChild(th);
-      }
-      thead.appendChild(trHead); table.appendChild(thead);
+      // LEFT descriptor header (Far Below Expectations)
+      var thLeftDesc = document.createElement('th');
+      thLeftDesc.textContent = 'Far Below\nExpectations\n(Fail)';
+      thLeftDesc.style.whiteSpace = 'normal';
+      thLeftDesc.style.padding = '8px';
+      thLeftDesc.style.textAlign = 'center';
+      trHead.appendChild(thLeftDesc);
 
+      // Numeric headers 1..7
+      for (var k = 1; k <= 7; k++) {
+        var th = document.createElement('th');
+        th.textContent = String(k);
+        th.style.padding = '8px';
+        th.style.textAlign = 'center';
+        trHead.appendChild(th);
+      }
+
+      // RIGHT descriptor header (Exceeds Expectations)
+      var thRightDesc = document.createElement('th');
+      thRightDesc.textContent = 'Exceeds\nExpectations\n(A+)';
+      thRightDesc.style.whiteSpace = 'normal';
+      thRightDesc.style.padding = '8px';
+      thRightDesc.style.textAlign = 'center';
+      trHead.appendChild(thRightDesc);
+
+      thead.appendChild(trHead);
+      table.appendChild(thead);
+
+      // tbody
       var tbody = document.createElement('tbody');
 
       students.forEach(function (studentName, sIdx) {
         var tr = document.createElement('tr');
-        var tdName = document.createElement('td'); tdName.textContent = studentName; tdName.style.padding = '8px 10px'; tdName.style.verticalAlign = 'middle';
+
+        // Student name cell (left-justified)
+        var tdName = document.createElement('td');
+        tdName.textContent = studentName;
+        tdName.style.padding = '8px 10px';
+        tdName.style.verticalAlign = 'middle';
+        tdName.style.textAlign = 'left';
         tr.appendChild(tdName);
 
+        // LEFT descriptor cell (no radio buttons)
+        var tdLeft = document.createElement('td');
+        tdLeft.className = 'col-descriptor'; // styling hook
+        tdLeft.style.padding = '8px';
+        tr.appendChild(tdLeft);
+
+        // Radio cells for scores 1..7 ONLY
         for (var score = 1; score <= 7; score++) {
-          var td = document.createElement('td'); td.style.textAlign = 'center'; td.style.padding = '8px';
-          var input = document.createElement('input'); input.type = 'radio'; input.name = 'rating-' + cIdx + '-' + sIdx; input.value = String(score);
+          var td = document.createElement('td');
+          td.style.textAlign = 'center';
+          td.style.padding = '8px';
+
+          var input = document.createElement('input');
+          input.type = 'radio';
+          input.name = 'rating-' + cIdx + '-' + sIdx;
+          input.value = String(score);
           input.id = 'rating-' + cIdx + '-' + sIdx + '-' + score;
 
           var stagedForProject = stagedRatings[currentProject] || {};
           var stagedForStudent = stagedForProject[sIdx] || {};
-          if (stagedForStudent[cIdx] && String(stagedForStudent[cIdx]) === String(score)) input.checked = true;
+          if (stagedForStudent[cIdx] && String(stagedForStudent[cIdx]) === String(score)) {
+            input.checked = true;
+          }
 
-          var label = document.createElement('label'); label.setAttribute('for', input.id); label.style.cursor = 'pointer'; label.style.display = 'inline-block'; label.style.padding = '2px';
+          var label = document.createElement('label');
+          label.setAttribute('for', input.id);
+          label.style.cursor = 'pointer';
+          label.style.display = 'inline-block';
+          label.style.padding = '2px';
           label.appendChild(input);
-          td.appendChild(label); tr.appendChild(td);
+
+          td.appendChild(label);
+          tr.appendChild(td);
         }
+
+        // RIGHT descriptor cell (no radio buttons)
+        var tdRight = document.createElement('td');
+        tdRight.className = 'col-descriptor'; // styling hook
+        tdRight.style.padding = '8px';
+        tr.appendChild(tdRight);
 
         tbody.appendChild(tr);
       });
 
-      table.appendChild(tbody); critWrap.appendChild(table); card.appendChild(critWrap); tempContainer.appendChild(card);
-    });
+      table.appendChild(tbody);
+      critWrap.appendChild(table);
+      card.appendChild(critWrap);
+      tempContainer.appendChild(card);
 
+
+   
     // Replace matrixContainer children with built content
     while (matrixContainer.firstChild) matrixContainer.removeChild(matrixContainer.firstChild);
     while (tempContainer.firstChild) matrixContainer.appendChild(tempContainer.firstChild);
