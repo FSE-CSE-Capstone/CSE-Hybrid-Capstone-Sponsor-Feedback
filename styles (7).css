@@ -294,6 +294,7 @@ input:focus, select:focus, textarea:focus{
   .matrix-table tbody td{ font-size:0.9rem; padding:10px 12px }
 }
 
+
 /* Minimal additions for descriptor columns, sticky instructions, and collapsible comment panels */
 
 /* Make the instructions block sticky while evaluating (keeps your .projects-instructions styling) */
