@@ -264,10 +264,14 @@
       trHead.appendChild(thName);
 
       // left descriptor (no radios)
-      var thLeftDesc = document.createElement('th'); thLeftDesc.textContent = 'Far Below\nExpectations\n(Fail)';
-      thLeftDesc.style.whiteSpace = 'normal'; thLeftDesc.style.padding = '8px'; thLeftDesc.style.textAlign = 'center';
-      trHead.appendChild(thLeftDesc);
-
+     var thLeftDesc = document.createElement('th');
+thLeftDesc.className = 'header-descriptor'; // new class for precise CSS styling
+thLeftDesc.textContent = 'Far Below Expectations (Fail)';
+thLeftDesc.title = 'Far Below Expectations (Fail)'; // tooltip for full text
+thLeftDesc.style.padding = '8px';
+thLeftDesc.style.textAlign = 'center';
+trHead.appendChild(thLeftDesc);
+      
       // numeric headers 1..7
       for (var k = 1; k <= 7; k++) {
         var th = document.createElement('th'); th.textContent = String(k); th.style.padding = '8px'; th.style.textAlign = 'center';
@@ -275,11 +279,16 @@
       }
 
       // right descriptor
-      var thRightDesc = document.createElement('th'); thRightDesc.textContent = 'Exceeds\nExpectations\n(A+)';
-      thRightDesc.style.whiteSpace = 'normal'; thRightDesc.style.padding = '8px'; thRightDesc.style.textAlign = 'center';
-      trHead.appendChild(thRightDesc);
+     var thRightDesc = document.createElement('th');
+thRightDesc.className = 'header-descriptor';
+thRightDesc.textContent = 'Exceeds Expectations (A+)';
+thRightDesc.title = 'Exceeds Expectations (A+)';
+thRightDesc.style.padding = '8px';
+thRightDesc.style.textAlign = 'center';
+trHead.appendChild(thRightDesc);
 
-      thead.appendChild(trHead); table.appendChild(thead);
+thead.appendChild(trHead);
+table.appendChild(thead);
 
       // tbody - student rows
       var tbody = document.createElement('tbody');
