@@ -418,9 +418,18 @@ function loadProjectIntoMatrix(projectName, students) {
     while (matrixContainer.firstChild) matrixContainer.removeChild(matrixContainer.firstChild);
     while (tempContainer.firstChild) matrixContainer.appendChild(tempContainer.firstChild);
   }
+  
+  // Render per-student comment section under matrix
+  renderCommentSection(projectName, students);
 
    // Create the detailed comment section AFTER the matrix (per-student public/private + group)
 (function(){
+  // remove old comment area if present
+  var oldComment = document.querySelector('.section.section-comment');
+  if (oldComment && oldComment.parentNode) oldComment.parentNode.removeChild(oldComment);
+
+  // Create the detailed comment section (call when students are known)
+function renderCommentSection(projectName, students) {
   // remove old comment area if present
   var oldComment = document.querySelector('.section.section-comment');
   if (oldComment && oldComment.parentNode) oldComment.parentNode.removeChild(oldComment);
@@ -529,11 +538,10 @@ function loadProjectIntoMatrix(projectName, students) {
     });
 
     // pre-fill from stagedRatings if present
-    var staged = stagedRatings[currentProject] && stagedRatings[currentProject]._studentComments || {};
+    var staged = (stagedRatings[projectName] && stagedRatings[projectName]._studentComments) || {};
     if (staged && staged[studentName]) {
       if (staged[studentName].public) taPublic.value = staged[studentName].public;
       if (staged[studentName].private) taPrivate.value = staged[studentName].private;
-      // if either exists, show expanded by default
       if ((staged[studentName].public && staged[studentName].public.length) || (staged[studentName].private && staged[studentName].private.length)) {
         content.style.display = 'block';
         toggleBtn.textContent = '▴ Hide comment';
@@ -544,15 +552,13 @@ function loadProjectIntoMatrix(projectName, students) {
   }
 
   // create per-student panels
-  var studentsList = sponsorProjects[currentProject] || [];
-  for (var si = 0; si < studentsList.length; si++) {
-    // student name may be a string; ensure unique id index mapping
-    var studentName = studentsList[si];
+  for (var si = 0; si < (students || []).length; si++) {
+    var studentName = students[si];
     var panel = buildStudentPanel(studentName, si);
     commentSec.appendChild(panel);
   }
 
-  // Group-level comment (public + private)
+  // Group-level comment panel
   var groupWrap = document.createElement('div');
   groupWrap.className = 'student-comment-panel';
   groupWrap.style.border = '1px solid rgba(10,12,30,0.05)';
@@ -583,7 +589,6 @@ function loadProjectIntoMatrix(projectName, students) {
   groupToggle.style.border = '1px solid rgba(10,12,30,0.06)';
   groupToggle.style.borderRadius = '6px';
   groupHeader.appendChild(groupToggle);
-
   groupWrap.appendChild(groupHeader);
 
   var groupContent = document.createElement('div');
@@ -603,7 +608,6 @@ function loadProjectIntoMatrix(projectName, students) {
   taGroup.style.boxSizing = 'border-box';
   groupContent.appendChild(taGroup);
 
-  // optional private group textarea
   var groupLblPrivate = document.createElement('div');
   groupLblPrivate.textContent = 'Private comments about the group (instructor only)';
   groupLblPrivate.style.margin = '8px 0 4px 0';
@@ -619,7 +623,6 @@ function loadProjectIntoMatrix(projectName, students) {
   groupContent.appendChild(taGroupPrivate);
 
   groupWrap.appendChild(groupContent);
-
   groupToggle.addEventListener('click', function () {
     if (groupContent.style.display === 'none') {
       groupContent.style.display = 'block';
@@ -630,8 +633,7 @@ function loadProjectIntoMatrix(projectName, students) {
     }
   });
 
-  // prefill group comments if staged
-  var stagedGroup = stagedRatings[currentProject] && stagedRatings[currentProject]._groupComments || {};
+  var stagedGroup = (stagedRatings[projectName] && stagedRatings[projectName]._groupComments) || {};
   if (stagedGroup) {
     if (stagedGroup.public) taGroup.value = stagedGroup.public;
     if (stagedGroup.private) taGroupPrivate.value = stagedGroup.private;
@@ -643,20 +645,15 @@ function loadProjectIntoMatrix(projectName, students) {
 
   commentSec.appendChild(groupWrap);
 
-  // attach to DOM right after matrixContainer
+  // attach below matrixContainer
   if (matrixContainer && matrixContainer.parentNode) {
     if (matrixContainer.nextSibling) matrixContainer.parentNode.insertBefore(commentSec, matrixContainer.nextSibling);
     else matrixContainer.parentNode.appendChild(commentSec);
   } else {
     document.body.appendChild(commentSec);
   }
+}
 
-  // expose for save handler discovery
-  window.__lastCommentSectionForProject = { project: currentProject, el: commentSec };
-})();
-
-    // tidy up remaining placeholders
-    removeEmptyPlaceholderCards();
 
     // Attach event listeners (avoid duplicates)
     try {
