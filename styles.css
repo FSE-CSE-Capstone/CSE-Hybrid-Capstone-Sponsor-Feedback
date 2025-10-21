@@ -529,3 +529,21 @@ input:focus, select:focus, textarea:focus{
   .header-descriptor { max-width: 160px !important; font-size: 0.9rem; }
   .matrix-table th, .matrix-table td { padding: 6px 6px !important; }
 }
+
+.matrix-table { table-layout: fixed; width: 100%; border-collapse: collapse; }
+
+/* Allow descriptor headers to wrap */
+.header-descriptor, .matrix-table thead th:nth-child(2), .matrix-table thead th:last-child {
+  white-space: normal;           /* allow multi-line */
+  overflow-wrap: break-word;
+  word-break: break-word;
+  text-align: center;
+  padding: 8px 12px;
+  line-height: 1.15;
+}
+
+/* Ensure student column cells left align */
+.matrix-table td:first-child, .matrix-table thead th:first-child { text-align:left; padding-left:18px; font-weight:600; }
+
+/* Keep numeric columns compact but visible */
+.matrix-table thead th:nth-child(n+3):nth-child(-n+9) { text-align:center; }
