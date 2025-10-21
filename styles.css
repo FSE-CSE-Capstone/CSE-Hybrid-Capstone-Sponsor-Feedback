@@ -1,11 +1,8 @@
-/* ------------------------
-   Consolidated styles.css
-   ------------------------ */
-
+/* Consolidated styles.css (duplicates removed, rules consolidated) */
 :root{
-  --accent-1: #ffda7b;    /* warm gold */
-  --accent-2: #8c1d40;    /* deep maroon */
-  --accent-3: #6fb3d2;    /* soft teal/blue */
+  --accent-1: #ffda7b;
+  --accent-2: #8c1d40;
+  --accent-3: #6fb3d2;
   --bg-left: #fff;
   --muted: #6b7280;
   --text: #07122a;
@@ -20,227 +17,45 @@ html,body{height:100%;margin:0;font-family:Inter,system-ui,-apple-system,Segoe U
 body{
   background: linear-gradient(135deg, #fef7e6 0%, #fff6fa 30%, #eef8ff 60%, #f3f6ff 100%);
   background-attachment: fixed;
-  -webkit-font-smoothing:antialiased;
   text-rendering: optimizeLegibility;
 }
 
 /* Header */
 .site-header{
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: var(--header-height);
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
+  position: fixed; top: 0; left: 0; right: 0;
+  height: var(--header-height); display: flex; align-items: center; justify-content: flex-start;
   background: linear-gradient(180deg, rgba(255,255,255,0.92), rgba(255,255,255,0.86));
-  border-bottom: 1px solid rgba(11,18,32,0.06);
-  z-index: 1000;
-  padding-left: 28px;
+  border-bottom: 1px solid rgba(11,18,32,0.06); z-index: 1000; padding-left: 28px;
   box-shadow: 0 6px 20px rgba(7,18,40,0.04);
 }
-.header-inner{
-  width: 100%;
-  max-width: calc(var(--max-card-width) + 96px);
-  display:flex;
-  align-items:center;
-  gap: 12px;
-}
-.site-logo{
-  width: 260px;
-  max-height: 64px;
-  height: auto;
-  object-fit: contain;
-  display:block;
-}
+.header-inner{ width:100%; max-width: calc(var(--max-card-width) + 96px); display:flex; align-items:center; gap:12px; }
+.site-logo{ max-height: 64px; height:auto; object-fit:contain; display:block; }
 
-/* Page layout / content wrapper */
-.center-wrapper{
-  min-height: calc(100vh - var(--header-height));
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  padding: 32px;
-  padding-top: calc(var(--header-height) + 32px);
-}
-.content-inner{
-  width: 100%;
-  max-width: var(--max-card-width);
-  display:flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 18px;
-  padding: 0 12px;
-}
+/* Layout */
+.center-wrapper{ min-height: calc(100vh - var(--header-height)); display:flex; align-items:center; justify-content:center; padding:32px; padding-top: calc(var(--header-height) + 32px); }
+.content-inner{ width:100%; max-width:var(--max-card-width); display:flex; flex-direction:column; gap:18px; padding:0 12px; align-items:flex-start; }
 
-/* WELCOME block (large, top) */
-.welcome-block{ margin: 0; padding: 0; }
-.welcome-title{
-  font-size: 2.4rem;      /* large */
-  font-weight: 800;
-  margin: 0 0 6px 0;
-  color: var(--text);
-  line-height: 1;
-}
-
-/* Title (stays visible) */
-.form-title{
-  margin: 0 0 6px 0;
-  font-size: 1.6rem;
-  font-weight: 700;
-  color: var(--accent-2);
-  letter-spacing: 0.1px;
-  text-align: left;
-}
-
-/* Instruction under title (only identity page) */
-.under-title{
-  margin-top: 0;
-  margin-bottom: 6px;
-  color: var(--muted);
-  font-size: 1rem;
-}
-
-/* Card container */
-.card{
-  width: 100%;
-  background: var(--bg-left);
-  border-radius: var(--card-radius);
-  padding: 30px;
-  box-shadow: 0 22px 50px rgba(11,18,40,0.08);
-  border:1px solid rgba(10,12,30,0.03);
-}
-
-/* Sections inside the card */
-.section{
-  padding:16px;
-  border-radius:10px;
-  background: linear-gradient(180deg, rgba(255,255,255,1), rgba(250,250,252,1));
-  margin-bottom:14px;
-  border:1px solid #f0f3f6;
-}
+/* Card / sections */
+.card{ width:100%; background:var(--bg-left); border-radius:var(--card-radius); padding:30px; box-shadow:0 22px 50px rgba(11,18,40,0.08); border:1px solid rgba(10,12,30,0.03); }
+.section{ padding:16px; border-radius:10px; background: linear-gradient(180deg, #fff, #fafafc); margin-bottom:14px; border:1px solid #f0f3f6; }
 .section + .section{ margin-top:6px; }
-.section-title{ margin:0 0 8px; font-weight:700; color:var(--accent-2) }
+.section-title{ margin:0 0 8px; font-weight:700; color:var(--accent-2); }
 
-/* Hide the static comment placeholder when empty; JS will show it when it injects content */
-.section.section-comment {
-  display: none;
-}
+/* Titles */
+.welcome-title{ font-size:2.4rem; font-weight:800; margin:0 0 6px 0; color:var(--text); line-height:1; }
+.form-title{ margin:0 0 6px 0; font-size:1.6rem; font-weight:700; color:var(--accent-2); letter-spacing:0.1px; }
 
-/* Inner card container for the Projects instructions */
-.instructions-card {
-  width: 100%;
-  background: #ffffff;
-  border-radius: 14px;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.05);
-  border: 1px solid rgba(0, 0, 0, 0.05);
-  padding: 16px 18px;
-  margin-bottom: 40px !important;
-}
-
-.section.section-projects .section-title::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 1px;
-  background: rgba(0, 0, 0, 0.08);
-}
-.section.section-projects .section-title {
-  margin-top: 28px;
-  padding-top: 16px;
-  position: relative;
-}
-
-/* Adjust the inner text spacing */
-.instructions-card .projects-instructions {
-  background: none;
-  border: none;
-  padding: 0;
-  margin: 0;
-}
-
-
-/* Projects instructions styling */
-.projects-instructions {
-  margin: 8px 0 14px 20px;
-  padding: 12px 14px;
-  border-radius: 10px;
-  background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(250,250,252,0.98));
-  border: 1px solid rgba(226,232,240,0.6);
-  color: #17324d;
-  font-size: 0.98rem;
-  line-height: 1.45;
-}
-
-.projects-instructions p { margin: 0 0 8px 0; }
-.projects-instructions ol { margin: 0 0 0 18px; padding: 0; }
-.projects-instructions li { margin-bottom: 6px; }
-
-
-
-
-/* small helper for the visually-hidden tip (if you use .sr-only elsewhere, keep consistent) */
-.sr-only {
-  position: absolute !important;
-  width: 1px !important;
-  height: 1px !important;
-  padding: 0 !important;
-  margin: -1px !important;
-  overflow: hidden !important;
-  clip: rect(0, 0, 0, 0) !important;
-  white-space: nowrap !important;
-  border: 0 !important;
-}
-
-
-/* Inputs and labels */
+/* Inputs & buttons */
 .form-row{ margin-bottom:14px; display:flex; flex-direction:column; width:100% }
 label{ font-weight:700; font-size:0.98rem; color:#28334a; margin-bottom:8px }
 input[type="text"], input[type="email"], select, textarea{
-  padding:14px;
-  border-radius:10px;
-  border:1px solid #e6edf8;
-  font-size:1rem;
-  outline:none;
-  width:100%;
-  background:#fff;
-  color:var(--text);
+  padding:14px; border-radius:10px; border:1px solid #e6edf8; font-size:1rem; outline:none; width:100%; background:#fff; color:var(--text);
 }
-input:focus, select:focus, textarea:focus{
-  box-shadow:0 10px 28px rgba(111,179,210,0.08);
-  border-color:rgba(111,179,210,0.18);
-}
+input:focus, select:focus, textarea:focus{ box-shadow:0 10px 28px rgba(111,179,210,0.08); border-color:rgba(111,179,210,0.18); }
 
-/* Buttons */
-.btn{
-  border:0;
-  border-radius:10px;
-  cursor:pointer;
-  font-weight:700;
-  transition:all .14s ease;
-  padding:12px 16px;
-  font-size:1.02rem;
-}
-.btn-primary{
-  background: linear-gradient(90deg, var(--accent-2), #a22b51 60%, var(--accent-1));
-  color:#fff;
-  padding:14px 22px;
-  font-size:1.04rem;
-  box-shadow:0 12px 30px rgba(140,29,64,0.12);
-}
-.btn-primary:hover{ filter:brightness(1.03); transform:translateY(-3px); }
-.btn-outline{
-  background:transparent;
-  border:2px solid rgba(140,29,64,0.12);
-  color:var(--accent-2);
-  padding:10px 16px;
-  font-size:1.02rem;
-  border-radius:10px;
-}
-.btn-outline:hover{ background:rgba(140,29,64,0.04); transform:translateY(-2px); }
+.btn{ border:0; border-radius:10px; cursor:pointer; font-weight:700; transition:all .14s ease; padding:12px 16px; font-size:1.02rem; }
+.btn-primary{ background: linear-gradient(90deg, var(--accent-2), #a22b51 60%, var(--accent-1)); color:#fff; padding:14px 22px; box-shadow:0 12px 30px rgba(140,29,64,0.12); }
+.btn-outline{ background:transparent; border:2px solid rgba(140,29,64,0.12); color:var(--accent-2); padding:10px 16px; }
 
 /* Project list */
 .project-list{ list-style:none; padding:0; margin:6px 0 0; display:flex; flex-direction:column; gap:12px; }
@@ -250,446 +65,63 @@ input:focus, select:focus, textarea:focus{
 .project-item.completed{ opacity:0.6; background:#f5f6f8; transform:none; box-shadow:none; cursor:default; }
 .project-item .meta{ color:var(--muted); font-weight:600; margin-left:8px; font-size:0.9rem; }
 
-/* Matrix table (ratings) */
-
+/* Matrix / rubric */
 .matrix-container{ margin-top:10px; padding-top:8px }
-.matrix-description{ font-weight:600; color:#2b3b51; margin-bottom:12px }
 .current-project-header{ font-weight:700; margin:10px 0 12px; color:#223; font-size:1.05rem }
-.matrix-table{ width:100%; border-collapse:collapse; margin-top:8px; table-layout:fixed; }
+.matrix-table{ width:100%; border-collapse:collapse; table-layout:fixed !important; margin-top:8px; font-size:15px; }
 .matrix-table thead th{ padding:12px; border-bottom:1px solid #eef2f7; text-align:center; font-weight:700; color:#475569; font-size:0.95rem; }
 .matrix-table tbody td{ padding:12px 14px; border-bottom:1px solid #f1f5f9; vertical-align:middle; font-size:0.95rem; }
 .matrix-table td:first-child{ text-align:left; width:40%; padding-left:18px; font-weight:600; }
-.rating-row{ display:flex; justify-content:center; gap:18px; align-items:center; }
-.matrix-table input[type="radio"]{ width:18px; height:18px; }
+.matrix-table input[type="radio"]{ width:18px; height:18px; transform: scale(1.05); }
 
+/* Descriptor headers */
+.header-descriptor{
+  white-space: normal; overflow-wrap: break-word; word-break: break-word; text-align:center; padding:8px 12px; line-height:1.15;
+  max-width:260px; min-width:120px;
+}
+.header-descriptor .hd-line{ font-weight:700; display:block; }
+.header-descriptor .hd-sub{ display:block; font-weight:600; font-size:0.92em; color:#475569; }
 
-/* Comment area */
-.project-comment-wrap{ margin-top:18px }
-.project-comment-wrap textarea#project-comment{ font-size:0.95rem; resize:vertical; min-height:100px; padding:12px; border-radius:8px; border:1px solid #e6edf8; width:100%; font-family:inherit; background:#fff; color:#0b2540; }
-.project-comment-wrap label{ display:block; margin-bottom:8px; color:#475569 }
+/* Column classes */
+.col-student{ text-align:left !important; padding-left:18px !important; width:36% !important; min-width:140px !important; word-break:break-word; font-weight:600; }
+.col-descriptor{ width:14% !important; font-weight:600 !important; padding:8px 10px !important; text-align:center !important; }
 
-/* Status and actions */
+/* Comments area */
+.student-comment-panel{ margin-bottom:10px; }
+.student-comment-panel .comment-toggle{ float:right; }
+.student-comment-panel textarea{ border:1px solid #e6eef6; border-radius:6px; resize:vertical; font-family:inherit; }
+.btn-mini{ font-size:0.85rem; padding:6px 8px; }
+
+/* Status / actions / misc */
 .form-status{ margin-top:12px; font-weight:700; color:var(--muted) }
 .actions{ display:flex; gap:12px; margin-top:18px; justify-content:flex-end }
-.actions-space-between{ display:flex; align-items:center; justify-content:space-between; gap:12px }
-
-/* Footer */
-.footer{ margin-top:18px; text-align:center; color:var(--muted); font-size:0.9rem }
-
-/* Helpers */
-.hidden{ display:none !important }
 
 /* Responsive */
 @media (max-width:980px){
   .site-header{ padding-left:16px; height:72px }
   .site-logo{ width:180px; max-height:48px }
   .center-wrapper{ padding:20px; padding-top: calc(var(--header-height) + 20px) }
-  .content-inner{ padding: 0 8px }
   .welcome-title{ font-size:1.6rem }
   .form-title{ font-size:1.25rem }
   .card{ padding:20px }
   .btn{ font-size:1rem; padding:10px 14px }
-  .btn-primary{ padding:12px 18px }
   .matrix-table thead th{ font-size:0.85rem }
   .matrix-table tbody td{ font-size:0.9rem; padding:10px 12px }
+  .col-student{ width:48% !important; }
+  .header-descriptor{ max-width:200px !important; font-size:0.95rem; padding:6px 8px !important; }
 }
 
-/* ---------- UI fixes appended (do not remove other rules) ---------- */
-
-/* Limit logo size in header */
-.site-logo {
-  max-height: 48px;
-  height: auto;
-  width: auto;
-  object-fit: contain;
+/* Narrow screens */
+@media (max-width:640px){
+  .col-student{ width:60% !important; min-width:140px !important; }
+  .matrix-table th, .matrix-table td{ padding:6px 6px !important; }
+  .header-descriptor{ max-width:160px !important; font-size:0.9rem; }
 }
 
-/* Keep one centered footer (this styles the footer element that's in the HTML) */
-.footer {
-  text-align: center;
-  color: #6b7280;
-  font-size: 0.9rem;
-  margin-top: 18px;
-  padding: 10px 0 22px;
-}
+/* Accessibility helper */
+.sr-only{ position:absolute !important; width:1px !important; height:1px !important; padding:0 !important; margin:-1px !important; overflow:hidden !important; clip:rect(0,0,0,0) !important; white-space:nowrap !important; border:0 !important; }
 
-/* Project list card wrapper (if you wrap via HTML or JS) */
-.project-list-card {
-  background: #fff;
-  border-radius: 12px;
-  padding: 16px;
-  box-shadow: 0 14px 36px rgba(12,18,30,0.06);
-  border: 1px solid rgba(10,12,30,0.03);
-  margin-bottom: 18px;
-}
-.project-item { padding: 12px 14px; border-radius: 10px; border:1px solid #eef2f7; margin-bottom:10px; cursor:pointer; }
-.project-item.selected { box-shadow:0 12px 28px rgba(140,29,64,0.06); border-color:rgba(140,29,64,0.12); }
+/* Keep matrix container scrollable when needed */
+#matrix-container, .rubric-scrollwrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 
-/* Space above rubric/matrix when a project is selected */
-.rubric-stage { margin-top: 26px; padding-top: 20px; }
-#matrix-container { margin-top: 28px; }
-
-/* Rubric/table layout: keep descriptors inside the card and left-justify student names */
-.rubric-card { max-width: 1180px; margin: 0 auto 18px; padding: 18px; box-sizing: border-box; border-radius: 12px; }
-.rubric-scrollwrap { overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom:6px; }
-
-/* fixed layout for predictable columns */
-.rubric-table, .matrix-table { width:100%; border-collapse: collapse; table-layout: fixed; font-size:15px; }
-.rubric-table thead th { font-weight:700; padding:10px 8px; text-align:center; color:#475569; vertical-align:bottom; }
-.rubric-table tbody td { padding:12px 10px; vertical-align:middle; border-top:1px solid rgba(10,12,30,0.04); }
-
-/* Column classes (applied by JS transformer) */
-.col-student { text-align:left !important; padding-left:18px !important; width:30% !important; word-break:break-word; font-weight:600; }
-.col-descriptor { width:14% !important; font-weight:600 !important; white-space:normal !important; line-height:1.1; padding:8px 10px !important; text-align:center; }
-.col-scale { text-align:center !important; padding:8px 4px !important; }
-
-/* radio centering */
-.radio-cell { display:flex; align-items:center; justify-content:center; height:44px; }
-.matrix-table input[type="radio"], .rubric-table input[type="radio"] { transform: scale(1.05); }
-
-/* responsive fallback: allow horizontal scroll instead of overflowing card */
-@media (max-width:980px) {
-  .rubric-card { max-width:940px; padding:12px; }
-  .col-student { width:36% !important; }
-  .col-descriptor { width:14% !important; }
-}
-
-/* per-student comment panels */
-.student-comment-panel { margin-bottom:10px; }
-.student-comment-panel .comment-toggle { float: right; }
-.student-comment-panel textarea { border: 1px solid #e6eef6; border-radius:6px; resize: vertical; font-family: inherit; }
-.btn-mini { font-size: 0.85rem; padding: 6px 8px; }
-
-
-
-/* ---------- Make descriptor titles fully visible (no ellipsis), responsive ---------- */
-
-/* ---------- Descriptor wrap + contained table (paste at end of styles.css) ---------- */
-
-/* Use fixed table layout so columns respect widths and descriptor cells can wrap */
-.matrix-table,
-.rubric-table {
-  table-layout: fixed !important;
-  width: 100% !important;
-  border-collapse: collapse;
-  box-sizing: border-box;
-}
-
-/* Wider student column but bounded so descriptors get room to wrap */
-.matrix-table thead th:first-child,
-.rubric-table thead th:first-child,
-.matrix-table td:first-child,
-.rubric-table td:first-child,
-.col-student {
-  width: 44% !important;
-  min-width: 180px !important;
-  max-width: 48% !important;
-  text-align: left !important;
-  padding-left: 18px !important;
-  font-weight: 600;
-  box-sizing: border-box;
-  overflow: hidden;
-}
-
-/* Descriptor header cells: allow wrapping but keep content inside card */
-.header-descriptor,
-.matrix-table thead th:nth-child(2),
-.matrix-table thead th:last-child,
-.rubric-table thead th:nth-child(2),
-.rubric-table thead th:last-child {
-  white-space: normal !important;        /* allow multi-line wrapping */
-  overflow-wrap: break-word !important;  /* break long tokens */
-  word-break: break-word !important;
-  text-overflow: clip !important;
-  max-width: 220px !important;           /* bound width so they don't push layout */
-  min-width: 100px !important;
-  padding: 10px 12px !important;
-  text-align: center !important;
-  line-height: 1.15;
-  box-sizing: border-box;
-}
-
-/* Numeric score columns stay narrow and centered */
-.matrix-table thead th:nth-child(n+3):nth-child(-n+9),
-.rubric-table thead th:nth-child(n+3):nth-child(-n+9),
-.matrix-table tbody td:nth-child(n+3):nth-child(-n+9) {
-  min-width: 36px !important;
-  max-width: 48px !important;
-  padding: 8px 6px !important;
-  text-align: center !important;
-  box-sizing: border-box;
-}
-
-/* Ensure container scroll on small screens instead of content escaping the card */
-#matrix-container,
-.rubric-scrollwrap {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-}
-
-/* Slight responsive adjustments */
-@media (max-width: 980px) {
-  .matrix-table thead th:first-child,
-  .col-student { width: 50% !important; min-width: 140px !important; }
-  .header-descriptor { max-width: 180px !important; font-size: 0.95rem; padding: 8px 10px !important; }
-  .matrix-table thead th:nth-child(n+3):nth-child(-n+9) { min-width: 30px !important; }
-}
-
-@media (max-width: 640px) {
-  .matrix-table thead th:first-child,
-  .col-student { width: 60% !important; min-width: 140px !important; }
-  .header-descriptor { max-width: 160px !important; font-size: 0.9rem; }
-  .matrix-table th, .matrix-table td { padding: 6px 6px !important; }
-}
-
-/* ---------- Header styling to match desired look ---------- */
-
-/* keep table predictable and let header cells wrap cleanly */
-.matrix-table,
-.rubric-table {
-  table-layout: fixed; /* stable column sizing */
-  width: 100%;
-  border-collapse: collapse;
-  box-sizing: border-box;
-}
-
-/* Student column: left aligned and wider (tweak percentages as needed) */
-.matrix-table thead th:first-child,
-.rubric-table thead th:first-child,
-.matrix-table td:first-child,
-.rubric-table td:first-child,
-.col-student {
-  width: 36% !important;       /* name column width - adjust between 34-42% if needed */
-  min-width: 180px !important;
-  text-align: left !important;
-  padding-left: 18px !important;
-  font-weight: 600;
-  box-sizing: border-box;
-  overflow: hidden;
-}
-
-/* Descriptor header style (two stacked lines inside th) */
-.header-descriptor {
-  padding: 8px 12px !important;
-  text-align: center !important;
-  box-sizing: border-box;
-  vertical-align: middle;
-  /* allow wrapping */
-  white-space: normal !important;
-  overflow-wrap: break-word !important;
-  word-break: break-word !important;
-  /* bound width so the descriptor does not push the whole table */
-  max-width: 260px !important;   /* desktop: gives space for two lines */
-  min-width: 120px !important;
-  line-height: 1.1;
-}
-
-/* small styling for the two parts created by JS (optional but neat) */
-.header-descriptor .hd-line {
-  font-weight: 700;
-  display: block;
-}
-.header-descriptor .hd-sub {
-  display: block;
-  font-weight: 600;
-  font-size: 0.92em;
-  color: #475569; /* matches your header color */
-}
-
-/* Keep numeric score columns narrow and centered */
-.matrix-table thead th:nth-child(n+3):nth-child(-n+9),
-.rubric-table thead th:nth-child(n+3):nth-child(-n+9),
-.matrix-table tbody td:nth-child(n+3):nth-child(-n+9) {
-  width: auto;
-  min-width: 36px !important;
-  max-width: 48px !important;
-  padding: 8px 6px !important;
-  text-align: center !important;
-  box-sizing: border-box;
-}
-
-/* container behavior on small viewports */
-#matrix-container,
-.rubric-scrollwrap {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-}
-
-/* responsive tweaks */
-@media (max-width: 980px) {
-  .matrix-table thead th:first-child,
-  .col-student { width: 48% !important; min-width: 140px !important; }
-  .header-descriptor { max-width: 200px !important; font-size: 0.95rem; padding: 6px 8px !important; }
-  .matrix-table thead th:nth-child(n+3):nth-child(-n+9) { min-width: 30px !important; }
-}
-
-@media (max-width: 640px) {
-  .matrix-table thead th:first-child,
-  .col-student { width: 60% !important; min-width: 140px !important; }
-  .header-descriptor { max-width: 160px !important; font-size: 0.9rem; }
-  .matrix-table th, .matrix-table td { padding: 6px 6px !important; }
-}
-
-.matrix-table { table-layout: fixed; width: 100%; border-collapse: collapse; }
-
-/* Allow descriptor headers to wrap */
-.header-descriptor, .matrix-table thead th:nth-child(2), .matrix-table thead th:last-child {
-  white-space: normal;           /* allow multi-line */
-  overflow-wrap: break-word;
-  word-break: break-word;
-  text-align: center;
-  padding: 8px 12px;
-  line-height: 1.15;
-}
-
-/* Ensure student column cells left align */
-.matrix-table td:first-child, .matrix-table thead th:first-child { text-align:left; padding-left:18px; font-weight:600; }
-
-/* Keep numeric columns compact but visible */
-.matrix-table thead th:nth-child(n+3):nth-child(-n+9) { text-align:center; }
-
-/* ---------- Force colgroup widths + make headers wrap safely ---------- */
-
-/* Make sure fixed table layout is active so colgroup widths are used */
-.matrix-table {
-  table-layout: fixed !important;
-  width: 100% !important;
-  box-sizing: border-box;
-}
-
-/* Ensure header descriptor cells wrap inside their column (no overflow, no single-letter stacks) */
-.matrix-table thead th.header-descriptor,
-.matrix-table thead th:nth-child(2),
-.matrix-table thead th:last-child {
-  white-space: normal !important;       /* allow multi-line wrapping */
-  overflow-wrap: break-word !important;
-  word-break: break-word !important;
-  text-overflow: clip !important;
-  box-sizing: border-box !important;
-  padding: 8px 12px !important;
-  line-height: 1.15 !important;
-  vertical-align: middle !important;
-}
-
-/* make sure the Student column remains left-aligned and uses the col width */
-.matrix-table thead th:first-child,
-.matrix-table tbody td:first-child {
-  text-align: left !important;
-  padding-left: 18px !important;
-  font-weight: 600 !important;
-  box-sizing: border-box !important;
-}
-
-/* numeric columns keep small but visible size */
-.matrix-table thead th:nth-child(n+3):nth-child(-n+9),
-.matrix-table tbody td:nth-child(n+3):nth-child(-n+9) {
-  text-align: center !important;
-  min-width: 36px !important;
-  box-sizing: border-box !important;
-}
-
-/* keep container scrollable on very narrow viewports */
-#matrix-container, .rubric-scrollwrap {
-  overflow-x: auto !important;
-  -webkit-overflow-scrolling: touch !important;
-}
-
-/* ---------- Force right descriptor column to reserve space and wrap ---------- */
-
-/* If colgroup exists, ensure its last <col> keeps width; if not, this still helps */
-.matrix-table col:last-child {
-  width: 10% !important;         /* reserve ~10% for right descriptor */
-  min-width: 110px !important;
-  box-sizing: border-box !important;
-}
-
-/* Explicitly target the right header cell and allow wrapping inside it */
-.matrix-table thead th:last-child.header-descriptor,
-.matrix-table thead th:last-child {
-  white-space: normal !important;        /* allow multi-line wrapping */
-  overflow-wrap: break-word !important;
-  word-break: break-word !important;
-  min-width: 110px !important;           /* ensure it has breathing room */
-  max-width: 220px !important;           /* prevents pushing other columns */
-  padding: 8px 12px !important;
-  text-align: center !important;
-  line-height: 1.15 !important;
-  box-sizing: border-box !important;
-}
-
-/* Also ensure the numeric columns remain compact */
-.matrix-table thead th:nth-child(n+3):nth-child(-n+9),
-.matrix-table tbody td:nth-child(n+3):nth-child(-n+9) {
-  min-width: 36px !important;
-  padding: 8px 6px !important;
-  text-align: center !important;
-}
-
-/* ===== FORCE descriptor layout (append to end of styles.css) ===== */
-
-/* ensure colgroup widths are honored */
-.matrix-table {
-  table-layout: fixed !important;
-  width: 100% !important;
-  box-sizing: border-box !important;
-}
-
-/* explicitly size last <col> in case another rule overrides inline styles */
-.matrix-table col:last-child {
-  width: 12% !important;
-  min-width: 110px !important;
-  box-sizing: border-box !important;
-}
-
-/* and force the second <col> (left descriptor) too */
-.matrix-table col:nth-child(2) {
-  width: 12% !important;
-  min-width: 110px !important;
-  box-sizing: border-box !important;
-}
-
-/* Student column styling (first col) */
-.matrix-table thead th:first-child,
-.matrix-table tbody td:first-child {
-  text-align: left !important;
-  padding-left: 18px !important;
-  font-weight: 600 !important;
-  box-sizing: border-box !important;
-}
-
-/* descriptor headers: allow wrapping and prevent letter stacking */
-.matrix-table thead th.header-descriptor,
-.matrix-table thead th.header-descriptor .hd-line,
-.matrix-table thead th.header-descriptor .hd-sub,
-.matrix-table thead th.header-descriptor-right {
-  white-space: normal !important;
-  overflow-wrap: break-word !important;
-  word-break: break-word !important;
-  text-overflow: clip !important;
-  padding: 6px 10px !important;
-  line-height: 1.12 !important;
-  box-sizing: border-box !important;
-}
-
-/* extra-specific target for the rightmost header cell */
-.matrix-table thead th.header-descriptor-right,
-.matrix-table thead th:last-child {
-  min-width: 120px !important;
-  max-width: 220px !important;
-}
-
-/* numeric columns remain narrow but visible */
-.matrix-table thead th:nth-child(n+3):nth-child(-n+9),
-.matrix-table tbody td:nth-child(n+3):nth-child(-n+9) {
-  min-width: 36px !important;
-  padding: 8px 6px !important;
-  text-align: center !important;
-  box-sizing: border-box !important;
-}
-
-/* make container scroll on small screens */
-#matrix-container, .rubric-scrollwrap {
-  overflow-x: auto !important;
-  -webkit-overflow-scrolling: touch !important;
-}
 
