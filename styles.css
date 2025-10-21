@@ -359,3 +359,65 @@ input:focus, select:focus, textarea:focus{
 .student-comment-panel .comment-toggle { float: right; }
 .student-comment-panel textarea { border: 1px solid #e6eef6; border-radius:6px; resize: vertical; font-family: inherit; }
 .btn-mini { font-size: 0.85rem; padding: 6px 8px; }
+
+
+/* ---------- Descriptor no-wrap + student column widen (append) ---------- */
+
+/* Ensure the table uses fixed layout (you already have this in a few places; keep it) */
+.matrix-table,
+.rubric-table {
+  table-layout: fixed !important;
+}
+
+/* Make Student column wider and flexible but bounded */
+.matrix-table td:first-child,
+.rubric-table td:first-child,
+.matrix-table thead th:first-child,
+.rubric-table thead th:first-child,
+.col-student {
+  width: 46% !important;        /* widen student column */
+  min-width: 220px !important;  /* make sure names are readable */
+  text-align: left !important;
+  padding-left: 18px !important;
+  font-weight: 600;
+  overflow: hidden;
+}
+
+/* Descriptor header cells: do NOT wrap, but clip with ellipsis so they never spill out */
+.matrix-table thead th:nth-child(2),
+.matrix-table thead th:last-child,
+.rubric-table thead th:nth-child(2),
+.rubric-table thead th:last-child,
+.header-descriptor {
+  white-space: nowrap !important;         /* keep on one line */
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;    /* show '...' if too long */
+  max-width: 180px !important;           /* prevents them from taking too much space */
+  min-width: 80px !important;
+  padding: 10px 12px !important;
+  text-align: center !important;
+  line-height: 1.15;
+}
+
+/* Keep numeric score columns narrow and centered */
+.matrix-table thead th:nth-child(n+3):nth-child(-n+9),
+.rubric-table thead th:nth-child(n+3):nth-child(-n+9) {
+  width: auto;
+  min-width: 36px !important;
+  max-width: 48px !important;
+  text-align: center !important;
+}
+
+/* Keep table scroll on small screens instead of overflowing */
+#matrix-container,
+.rubric-scrollwrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* small responsive tweak */
+@media (max-width: 980px) {
+  .matrix-table td:first-child,
+  .col-student { width: 48% !important; min-width: 160px !important; }
+  .header-descriptor { max-width: 140px !important; }
+}
