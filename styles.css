@@ -594,3 +594,35 @@ input:focus, select:focus, textarea:focus{
   -webkit-overflow-scrolling: touch !important;
 }
 
+/* ---------- Force right descriptor column to reserve space and wrap ---------- */
+
+/* If colgroup exists, ensure its last <col> keeps width; if not, this still helps */
+.matrix-table col:last-child {
+  width: 10% !important;         /* reserve ~10% for right descriptor */
+  min-width: 110px !important;
+  box-sizing: border-box !important;
+}
+
+/* Explicitly target the right header cell and allow wrapping inside it */
+.matrix-table thead th:last-child.header-descriptor,
+.matrix-table thead th:last-child {
+  white-space: normal !important;        /* allow multi-line wrapping */
+  overflow-wrap: break-word !important;
+  word-break: break-word !important;
+  min-width: 110px !important;           /* ensure it has breathing room */
+  max-width: 220px !important;           /* prevents pushing other columns */
+  padding: 8px 12px !important;
+  text-align: center !important;
+  line-height: 1.15 !important;
+  box-sizing: border-box !important;
+}
+
+/* Also ensure the numeric columns remain compact */
+.matrix-table thead th:nth-child(n+3):nth-child(-n+9),
+.matrix-table tbody td:nth-child(n+3):nth-child(-n+9) {
+  min-width: 36px !important;
+  padding: 8px 6px !important;
+  text-align: center !important;
+}
+
+
