@@ -354,3 +354,8 @@ input:focus, select:focus, textarea:focus{
   .col-descriptor { width:14% !important; }
 }
 
+/* per-student comment panels */
+.student-comment-panel { margin-bottom:10px; }
+.student-comment-panel .comment-toggle { float: right; }
+.student-comment-panel textarea { border: 1px solid #e6eef6; border-radius:6px; resize: vertical; font-family: inherit; }
+.btn-mini { font-size: 0.85rem; padding: 6px 8px; }
