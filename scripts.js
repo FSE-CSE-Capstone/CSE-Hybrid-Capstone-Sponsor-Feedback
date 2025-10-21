@@ -681,6 +681,87 @@
     }, true);
   })();
 
+// --- Robust radio toggle/uncheck support using pointerdown + composedPath ---
+(function () {
+  // find a radio input from an event by walking the event path (works with labels, children, shadow DOM)
+  function findRadioFromEvent(e) {
+    var path = (e.composedPath && e.composedPath()) || e.path || (function () {
+      var p = [];
+      var node = e.target;
+      while (node) { p.push(node); node = node.parentNode; }
+      return p;
+    })();
+
+    for (var i = 0; i < path.length; i++) {
+      var node = path[i];
+      if (!node) continue;
+      if (node.tagName && node.tagName.toLowerCase() === 'input' && node.type === 'radio') return node;
+      if (node.tagName && node.tagName.toLowerCase() === 'label') {
+        var q = node.querySelector && node.querySelector("input[type='radio']");
+        if (q) return q;
+      }
+    }
+    return null;
+  }
+
+  // record checked state before the browser toggles (pointerdown fires before click)
+  document.addEventListener('pointerdown', function (e) {
+    try {
+      var radio = findRadioFromEvent(e);
+      if (!radio) return;
+      radio.dataset.waschecked = radio.checked ? 'true' : 'false';
+    } catch (err) { /* ignore */ }
+  }, true);
+
+  // keyboard support: record before activation (keydown space)
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== ' ' && e.key !== 'Spacebar' && e.key !== 'Enter') return;
+    var active = document.activeElement;
+    if (!active) return;
+    if (active.tagName && active.tagName.toLowerCase() === 'input' && active.type === 'radio') {
+      active.dataset.waschecked = active.checked ? 'true' : 'false';
+    }
+  }, true);
+
+  // click handler: if it was already checked, uncheck and emit change
+  document.addEventListener('click', function (e) {
+    try {
+      var radio = findRadioFromEvent(e);
+      if (!radio) return;
+
+      if (radio.dataset.waschecked === 'true') {
+        // prevent browser from forcing it back to checked in some environments
+        e.preventDefault && e.preventDefault();
+        radio.checked = false;
+        // emit change so other handlers/save logic run
+        radio.dispatchEvent(new Event('change', { bubbles: true }));
+        // clear state for the group
+        var group = document.getElementsByName(radio.name || '');
+        Array.prototype.forEach.call(group, function (r) { r.removeAttribute('data-waschecked'); });
+        return;
+      }
+
+      // otherwise mark this radio for its group so future clicks can uncheck it
+      var siblings = document.getElementsByName(radio.name || '');
+      Array.prototype.forEach.call(siblings, function (r) { r.removeAttribute('data-waschecked'); });
+      radio.dataset.waschecked = radio.checked ? 'true' : 'false';
+    } catch (err) {
+      // swallow unexpected errors to avoid breaking page interactions
+      console.error('radio toggle error', err);
+    }
+  }, true);
+
+  // also handle touchstart for some mobile browsers which may not fire pointerdown early enough
+  document.addEventListener('touchstart', function (e) {
+    try {
+      var radio = findRadioFromEvent(e);
+      if (!radio) return;
+      radio.dataset.waschecked = radio.checked ? 'true' : 'false';
+    } catch (err) {}
+  }, true);
+})();
+
+  
 })();
 
 
