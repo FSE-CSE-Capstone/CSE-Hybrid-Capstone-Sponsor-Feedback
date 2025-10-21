@@ -266,7 +266,7 @@
       // left descriptor (no radios)
      var thLeftDesc = document.createElement('th');
 thLeftDesc.className = 'header-descriptor'; // new class for precise CSS styling
-thLeftDesc.textContent = 'Far Below Expectations (Fail)';
+thLeftDesc.textContent = 'Far Below\nExpectations (Fail)';
 thLeftDesc.title = 'Far Below Expectations (Fail)'; // tooltip for full text
 thLeftDesc.style.padding = '8px';
 thLeftDesc.style.textAlign = 'center';
@@ -281,7 +281,7 @@ trHead.appendChild(thLeftDesc);
       // right descriptor
      var thRightDesc = document.createElement('th');
 thRightDesc.className = 'header-descriptor';
-thRightDesc.textContent = 'Exceeds Expectations (A+)';
+thRightDesc.textContent = 'Exceeds\nExpectations (A+)';
 thRightDesc.title = 'Exceeds Expectations (A+)';
 thRightDesc.style.padding = '8px';
 thRightDesc.style.textAlign = 'center';
