@@ -11,7 +11,7 @@
   --text: #07122a;
   --card-radius: 18px;
   --header-height: 84px;
-  --max-card-width: 920px;
+  --max-card-width: 1180px;
 }
 
 /* Reset / base */
@@ -429,3 +429,22 @@ input:focus, select:focus, textarea:focus{
   .matrix-table th, .matrix-table td { padding: 6px 6px !important; }
 }
 
+/* ---------- Make survey (rubric) cards use full available width ---------- */
+.content-inner,
+.card,
+.matrix-card,
+.rubric-card {
+  max-width: 100% !important;
+  width: 100% !important;
+}
+
+#matrix-container {
+  max-width: 100% !important;
+  width: 100% !important;
+}
+
+/* Prevent the table from squishing too much */
+.matrix-table,
+.rubric-table {
+  width: 100% !important;
+}
