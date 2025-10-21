@@ -255,8 +255,32 @@
       critWrap.appendChild(critDesc);
 
       // table
-      var table = document.createElement('table'); table.className = 'matrix-table';
-      table.style.width = '100%'; table.style.borderCollapse = 'collapse';
+      // create table
+var table = document.createElement('table');
+table.className = 'matrix-table';
+
+// INSERT THIS: explicit column widths via colgroup
+var colgroup = document.createElement('colgroup');
+
+// Student column (left)
+var colStudent = document.createElement('col'); colStudent.style.width = '38%'; colgroup.appendChild(colStudent);
+
+// Left descriptor
+var colLeft = document.createElement('col'); colLeft.style.width = '10%'; colgroup.appendChild(colLeft);
+
+// Numeric columns 1..7
+for (var i = 0; i < 7; i++) {
+  var c = document.createElement('col');
+  c.style.width = '6%'; // adjust small numeric column width
+  colgroup.appendChild(c);
+}
+
+// Right descriptor
+var colRight = document.createElement('col'); colRight.style.width = '10%'; colgroup.appendChild(colRight);
+
+table.appendChild(colgroup);
+// end INSERT
+
 
       // thead
       var thead = document.createElement('thead'); var trHead = document.createElement('tr');
