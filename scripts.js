@@ -760,6 +760,71 @@
     } catch (err) {}
   }, true);
 })();
+  
+// --- Reliable per-radio toggle: attach handlers to each radio (works for dynamic content) ---
+(function () {
+  function attachToggleToRadio(radio) {
+    if (!radio || radio.dataset.toggleAttached === '1') return;
+    radio.dataset.toggleAttached = '1';
+
+    // record state before browser toggles (mousedown / touchstart)
+    radio.addEventListener('mousedown', function () {
+      radio.dataset.waschecked = radio.checked ? 'true' : 'false';
+    });
+    radio.addEventListener('touchstart', function () {
+      radio.dataset.waschecked = radio.checked ? 'true' : 'false';
+    }, { passive: true });
+
+    // keyboard support (space/enter)
+    radio.addEventListener('keydown', function (e) {
+      if (e.key === ' ' || e.key === 'Spacebar' || e.key === 'Enter') {
+        radio.dataset.waschecked = radio.checked ? 'true' : 'false';
+      }
+    });
+
+    // on click: if it was already checked, uncheck and emit change
+    radio.addEventListener('click', function (e) {
+      if (radio.dataset.waschecked === 'true') {
+        // prevent default browser behavior and uncheck
+        e.preventDefault();
+        radio.checked = false;
+        radio.removeAttribute('data-waschecked');
+        radio.dispatchEvent(new Event('change', { bubbles: true }));
+        // clear toggle marker for the group
+        var group = document.getElementsByName(radio.name || '');
+        Array.prototype.forEach.call(group, function (r) { r.removeAttribute('data-waschecked'); });
+        return;
+      }
+      // otherwise update the marker to current checked state
+      radio.dataset.waschecked = radio.checked ? 'true' : 'false';
+    });
+  }
+
+  // Attach to radios already present
+  Array.prototype.forEach.call(document.querySelectorAll("input[type='radio']"), attachToggleToRadio);
+
+  // Watch for newly-added radios (matrix renders dynamically)
+  var observerTarget = document.body; // safe fallback: observe body for new radios
+  var mo = new MutationObserver(function (mutations) {
+    mutations.forEach(function (m) {
+      if (!m.addedNodes) return;
+      m.addedNodes.forEach(function (node) {
+        if (!node) return;
+        if (node.nodeType !== 1) return; // element only
+        if (node.matches && node.matches("input[type='radio']")) {
+          attachToggleToRadio(node);
+        }
+        // also check descendants
+        var radios = node.querySelectorAll && node.querySelectorAll("input[type='radio']");
+        if (radios && radios.length) Array.prototype.forEach.call(radios, attachToggleToRadio);
+      });
+    });
+  });
+  mo.observe(observerTarget, { childList: true, subtree: true });
+
+  // optional: expose a helper on window to attach manually if needed
+  window.__attachRadioToggle = attachToggleToRadio;
+})();
 
   
 })();
