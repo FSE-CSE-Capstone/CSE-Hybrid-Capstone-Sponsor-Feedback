@@ -1,6 +1,8 @@
-// Full corrected scripts.js (replace file wholesale)
-// - Hybrid sponsor UI: data loader, matrix builder, per-student + group comments,
-//   save/load progress, submitPayload compatible with Google Sheets columns
+// scripts.js - updated
+// - renders rubric matrix with an extra "Evaluating group as a whole" row
+// - per-student and group comments
+// - builds payload shape expected by the Cloudflare worker (commentShared/commentInstructor/isTeam)
+// - saves drafts to localStorage
 (function () {
   'use strict';
 
@@ -42,7 +44,7 @@
   var currentName = '';
   var currentProject = '';
   var completedProjects = {};
-  var stagedRatings = {};
+  var stagedRatings = {}; // will hold stagedRatings[currentProject][studentIndex][criterionIndex] and _studentComments & _groupComments
 
   // --- Helpers ---
   function setStatus(msg, color) {
@@ -76,7 +78,6 @@
 
   // -------------------------
   // Robust mapping from data-loader rows to sponsorData
-  // Accepts varied header names, trims values, and supports multiple emails per sponsor cell.
   // -------------------------
   function buildSponsorMap(rows) {
     var map = {};
@@ -173,14 +174,6 @@
       });
     });
 
-    try {
-      var sponsorCount = Object.keys(map).length;
-      var projectCount = Object.keys(map).reduce(function (acc, e) {
-        return acc + Object.keys(map[e].projects || {}).length;
-      }, 0);
-      console.info('buildSponsorMap: mapped', sponsorCount, 'sponsors and', projectCount, 'projects total');
-    } catch (e) {}
-
     return map;
   }
 
@@ -251,16 +244,17 @@
       sponsorProjects[p] = entry.projects[p].slice();
     });
 
-    // remove any leftover empty placeholder cards under the project list
     removeEmptyPlaceholderCards();
     setStatus('');
   }
 
   // -------------------------
-  // Build matrix, comment sections
+  // Matrix + comment rendering
   // -------------------------
   function loadProjectIntoMatrix(projectName, students) {
-    currentProject = projectName || '';
+    if (!projectName) return;
+    currentProject = projectName; // important so saveDraftHandler and submit know which project is active
+
     // remove any old comment section first (we'll re-create it)
     var oldComment = document.querySelector('.section.section-comment');
     if (oldComment && oldComment.parentNode) oldComment.parentNode.removeChild(oldComment);
@@ -355,7 +349,7 @@
       // tbody
       var tbody = document.createElement('tbody');
 
-      // students rows
+      // student rows
       students.forEach(function (studentName, sIdx) {
         var tr = document.createElement('tr');
 
@@ -411,60 +405,58 @@
         tbody.appendChild(tr);
       });
 
-      // Add group-as-a-whole row at bottom (radios named by "-group")
-      var trGroup = document.createElement('tr');
+      // Add team row (Evaluating group as a whole) with index = students.length
+      var teamIdx = students.length;
+      var trTeam = document.createElement('tr');
 
-      var tdGroupName = document.createElement('td');
-      tdGroupName.textContent = 'Evaluating group as a whole';
-      tdGroupName.style.padding = '8px 10px';
-      tdGroupName.style.verticalAlign = 'middle';
-      tdGroupName.style.textAlign = 'left';
-      tdGroupName.style.fontStyle = 'italic';
-      trGroup.appendChild(tdGroupName);
+      var tdTeamName = document.createElement('td');
+      tdTeamName.textContent = 'Evaluating group as a whole';
+      tdTeamName.style.padding = '8px 10px';
+      tdTeamName.style.verticalAlign = 'middle';
+      tdTeamName.style.textAlign = 'left';
+      tdTeamName.style.fontStyle = 'italic';
+      trTeam.appendChild(tdTeamName);
 
-      // left descriptor empty cell for group row
-      var tdGroupLeft = document.createElement('td');
-      tdGroupLeft.className = 'col-descriptor';
-      tdGroupLeft.style.padding = '8px';
-      trGroup.appendChild(tdGroupLeft);
+      var tdTeamLeft = document.createElement('td');
+      tdTeamLeft.className = 'col-descriptor';
+      tdTeamLeft.style.padding = '8px';
+      trTeam.appendChild(tdTeamLeft);
 
-      // group radios for 1..7
-      for (var gScore = 1; gScore <= 7; gScore++) {
-        var tdg = document.createElement('td');
-        tdg.style.textAlign = 'center';
-        tdg.style.padding = '8px';
+      for (var score2 = 1; score2 <= 7; score2++) {
+        var tdT = document.createElement('td');
+        tdT.style.textAlign = 'center';
+        tdT.style.padding = '8px';
 
-        var gin = document.createElement('input');
-        gin.type = 'radio';
-        gin.name = 'rating-' + cIdx + '-group';
-        gin.value = String(gScore);
-        gin.id = 'rating-' + cIdx + '-group-' + gScore;
+        var inputT = document.createElement('input');
+        inputT.type = 'radio';
+        inputT.name = 'rating-' + cIdx + '-' + teamIdx;
+        inputT.value = String(score2);
+        inputT.id = 'rating-' + cIdx + '-' + teamIdx + '-' + score2;
 
-        // pre-check from stagedRatings if available
-        var stagedProj = stagedRatings[currentProject] || {};
-        var stagedGroup = stagedProj._groupRatings || {};
-        if (stagedGroup[cIdx] && String(stagedGroup[cIdx]) === String(gScore)) {
-          gin.checked = true;
+        // restore staged group ratings if present
+        var stagedProject = stagedRatings[currentProject] || {};
+        var stagedGroup = stagedProject._groupRatings || {};
+        if (stagedGroup && typeof stagedGroup[cIdx] !== 'undefined' && String(stagedGroup[cIdx]) === String(score2)) {
+          inputT.checked = true;
         }
 
-        var glabel = document.createElement('label');
-        glabel.setAttribute('for', gin.id);
-        glabel.style.cursor = 'pointer';
-        glabel.style.display = 'inline-block';
-        glabel.style.padding = '2px';
-        glabel.appendChild(gin);
+        var labelT = document.createElement('label');
+        labelT.setAttribute('for', inputT.id);
+        labelT.style.cursor = 'pointer';
+        labelT.style.display = 'inline-block';
+        labelT.style.padding = '2px';
+        labelT.appendChild(inputT);
 
-        tdg.appendChild(glabel);
-        trGroup.appendChild(tdg);
+        tdT.appendChild(labelT);
+        trTeam.appendChild(tdT);
       }
 
-      // right descriptor empty cell for group row
-      var tdGroupRight = document.createElement('td');
-      tdGroupRight.className = 'col-descriptor';
-      tdGroupRight.style.padding = '8px';
-      trGroup.appendChild(tdGroupRight);
+      var tdTeamRight = document.createElement('td');
+      tdTeamRight.className = 'col-descriptor';
+      tdTeamRight.style.padding = '8px';
+      trTeam.appendChild(tdTeamRight);
 
-      tbody.appendChild(trGroup);
+      tbody.appendChild(trTeam);
 
       table.appendChild(tbody);
       critWrap.appendChild(table);
@@ -478,32 +470,30 @@
       while (tempContainer.firstChild) matrixContainer.appendChild(tempContainer.firstChild);
     }
 
-    // After matrix is built, render comment section
+    // Render per-student + group comment section under matrix
     renderCommentSection(projectName, students);
 
     // tidy up remaining placeholders
     removeEmptyPlaceholderCards();
 
-    // Attach event listeners to save drafts (avoid duplicates)
+    // Attach event listeners (avoid duplicates)
     try {
-      if (matrixContainer && matrixContainer.removeEventListener) {
-        matrixContainer.removeEventListener('change', saveDraftHandler);
-        matrixContainer.removeEventListener('input', saveDraftHandler);
-      }
+      matrixContainer.removeEventListener && matrixContainer.removeEventListener('change', saveDraftHandler);
+      matrixContainer.removeEventListener && matrixContainer.removeEventListener('input', saveDraftHandler);
     } catch (e) {}
     if (matrixContainer) {
       matrixContainer.addEventListener('change', saveDraftHandler);
       matrixContainer.addEventListener('input', saveDraftHandler);
     }
 
-    // comment textareas will be wired in renderCommentSection
-    if (typeof updateSectionVisibility === 'function') updateSectionVisibility();
-    if (typeof removeEmptySections === 'function') removeEmptySections();
+    // ensure comment textareas save
+    // those event listeners are wired inside renderCommentSection (below) when elements are created
+
+    if (typeof updateSectionVisibility === 'function') updateSectionVisibility && updateSectionVisibility();
+    if (typeof removeEmptySections === 'function') removeEmptySections && removeEmptySections();
   }
 
-  // -------------------------
-  // Render the detailed comment section (per-student public/private + group)
-  // -------------------------
+  // Create the detailed comment section (per-student public/private + group)
   function renderCommentSection(projectName, students) {
     // remove old comment area if present
     var oldComment = document.querySelector('.section.section-comment');
@@ -623,7 +613,7 @@
         }
       }
 
-      // wire inputs to draft saver
+      // wire save events
       taPublic.addEventListener('input', saveDraftHandler);
       taPrivate.addEventListener('input', saveDraftHandler);
 
@@ -712,8 +702,12 @@
       }
     });
 
-    // prefill group comments from stagedRatings
-    var stagedGroup = (stagedRatings[projectName] && stagedRatings[projectName]._groupComments) || {};
+    // wire save for group comment textareas
+    taGroup.addEventListener('input', saveDraftHandler);
+    taGroupPrivate.addEventListener('input', saveDraftHandler);
+
+    // pre-fill group comments from stagedRatings if present
+    var stagedGroup = (stagedRatings[currentProject] && stagedRatings[currentProject]._groupComments) || {};
     if (stagedGroup) {
       if (stagedGroup.public) taGroup.value = stagedGroup.public;
       if (stagedGroup.private) taGroupPrivate.value = stagedGroup.private;
@@ -722,10 +716,6 @@
         groupToggle.textContent = '▴ Hide comment';
       }
     }
-
-    // wire to draft saver
-    taGroup.addEventListener('input', saveDraftHandler);
-    taGroupPrivate.addEventListener('input', saveDraftHandler);
 
     commentSec.appendChild(groupWrap);
 
@@ -746,12 +736,16 @@
     if (!stagedRatings[currentProject]) stagedRatings[currentProject] = {};
 
     var students = sponsorProjects[currentProject] || [];
+    var teamIdx = students.length;
+
+    // save per-student ratings
     for (var s = 0; s < students.length; s++) {
       if (!stagedRatings[currentProject][s]) stagedRatings[currentProject][s] = {};
       for (var c = 0; c < RUBRIC.length; c++) {
         var sel = document.querySelector('input[name="rating-' + c + '-' + s + '"]:checked');
         if (sel) stagedRatings[currentProject][s][c] = parseInt(sel.value, 10);
       }
+
       // per-student comments
       var sName = students[s];
       var pubEl = document.getElementById('comment-public-' + s);
@@ -762,11 +756,11 @@
       if (privEl) stagedRatings[currentProject]._studentComments[sName].private = privEl.value || '';
     }
 
-    // group ratings
-    stagedRatings[currentProject]._groupRatings = stagedRatings[currentProject]._groupRatings || {};
-    for (var gi = 0; gi < RUBRIC.length; gi++) {
-      var gsel = document.querySelector('input[name="rating-' + gi + '-group"]:checked');
-      stagedRatings[currentProject]._groupRatings[gi] = gsel ? parseInt(gsel.value, 10) : null;
+    // save group-level ratings (per-criterion)
+    if (!stagedRatings[currentProject]._groupRatings) stagedRatings[currentProject]._groupRatings = {};
+    for (var gc = 0; gc < RUBRIC.length; gc++) {
+      var gsel = document.querySelector('input[name="rating-' + gc + '-' + teamIdx + '"]:checked');
+      if (gsel) stagedRatings[currentProject]._groupRatings[gc] = parseInt(gsel.value, 10);
     }
 
     // group comments
@@ -776,7 +770,7 @@
     if (gpPub) stagedRatings[currentProject]._groupComments.public = gpPub.value || '';
     if (gpPriv) stagedRatings[currentProject]._groupComments.private = gpPriv.value || '';
 
-    // Save comment inside general _comment for backwards compatibility
+    // Save comment inside general _comment for backwards compatibility (if you still use project-comment textarea)
     var ta = document.getElementById('project-comment');
     if (ta && ta.value) stagedRatings[currentProject]._comment = ta.value;
 
@@ -791,103 +785,106 @@
     var students = sponsorProjects[currentProject] || [];
     if (!students.length) { setStatus('No students to submit.', 'red'); return; }
 
-    var rows = [];
+    var responses = [];
     var anyStudentRated = false;
+    var anyGroupRating = false;
 
-    // collect student rows
+    // Build per-student rows
     for (var s = 0; s < students.length; s++) {
       var ratingsObj = {};
-      var anyRatingForThisStudent = false;
+      var anyThisStudent = false;
       for (var c = 0; c < RUBRIC.length; c++) {
         var sel = document.querySelector('input[name="rating-' + c + '-' + s + '"]:checked');
-        var val = sel ? parseInt(sel.value, 10) : null;
-        ratingsObj[RUBRIC[c].title] = val;
-        if (val !== null && val !== undefined) anyRatingForThisStudent = true;
+        if (sel) {
+          ratingsObj[RUBRIC[c].title] = parseInt(sel.value, 10);
+          anyThisStudent = true;
+        } else {
+          ratingsObj[RUBRIC[c].title] = null;
+        }
       }
+      if (anyThisStudent) anyStudentRated = true;
 
-      // per-student comments (normalized to sheet column names)
-      var studentComments = { public: '', private: '' };
-      if (stagedRatings[currentProject] && stagedRatings[currentProject]._studentComments && stagedRatings[currentProject]._studentComments[students[s]]) {
-        studentComments = stagedRatings[currentProject]._studentComments[students[s]];
+      // per-student comments from stagedRatings (if available) or from textareas
+      var stagedStuComments = (stagedRatings[currentProject] && stagedRatings[currentProject]._studentComments) || {};
+      var sName = students[s];
+      var publicComment = '';
+      var privateComment = '';
+      if (stagedStuComments && stagedStuComments[sName]) {
+        publicComment = stagedStuComments[sName].public || '';
+        privateComment = stagedStuComments[sName].private || '';
       } else {
         var pubEl = document.getElementById('comment-public-' + s);
         var privEl = document.getElementById('comment-private-' + s);
-        if (pubEl) studentComments.public = pubEl.value || '';
-        if (privEl) studentComments.private = privEl.value || '';
+        if (pubEl) publicComment = pubEl.value || '';
+        if (privEl) privateComment = privEl.value || '';
       }
 
-      if (anyRatingForThisStudent) anyStudentRated = true;
-
-      // row now includes commentShared/commentInstructor and isTeam:false
-      rows.push({
-        student: students[s],
+      responses.push({
+        student: sName,
         ratings: ratingsObj,
-        commentShared: studentComments.public || '',
-        commentInstructor: studentComments.private || '',
+        commentShared: publicComment || '',
+        commentInstructor: privateComment || '',
         isTeam: false
       });
     }
 
-    // collect group ratings (map by criterion index)
+    // collect group ratings and comments (team row index is students.length)
+    var teamIdx = students.length;
     var groupRatings = {};
-    var anyGroupRating = false;
-    for (var gi = 0; gi < RUBRIC.length; gi++) {
-      var gsel = document.querySelector('input[name="rating-' + gi + '-group"]:checked');
-      var gval = gsel ? parseInt(gsel.value, 10) : null;
-      groupRatings[gi] = gval;
-      if (gval !== null && gval !== undefined) anyGroupRating = true;
-    }
-
-    // group comments (normalized)
-    var groupComments = { public: '', private: '' };
-    if (stagedRatings[currentProject] && stagedRatings[currentProject]._groupComments) {
-      groupComments = stagedRatings[currentProject]._groupComments;
-    } else {
-      var gpPub = document.getElementById('comment-group-public');
-      var gpPriv = document.getElementById('comment-group-private');
-      if (gpPub) groupComments.public = gpPub.value || '';
-      if (gpPriv) groupComments.private = gpPriv.value || '';
-    }
-
-    // If sponsor only did group-level (no student ratings), convert to a single group row
-    var hasGroupOnlyData = (!anyStudentRated) && (anyGroupRating || (groupComments && (groupComments.public || groupComments.private)));
-    if (hasGroupOnlyData) {
-      var groupRatingsByTitle = {};
-      for (var t = 0; t < RUBRIC.length; t++) {
-        groupRatingsByTitle[RUBRIC[t].title] = (groupRatings && typeof groupRatings[t] !== 'undefined') ? groupRatings[t] : null;
+    for (var gc2 = 0; gc2 < RUBRIC.length; gc2++) {
+      var gsel2 = document.querySelector('input[name="rating-' + gc2 + '-' + teamIdx + '"]:checked');
+      if (gsel2) {
+        groupRatings[RUBRIC[gc2].title] = parseInt(gsel2.value, 10);
+        anyGroupRating = true;
+      } else {
+        groupRatings[RUBRIC[gc2].title] = null;
       }
-      rows = [{
+    }
+    var stagedGroup = (stagedRatings[currentProject] && stagedRatings[currentProject]._groupComments) || {};
+    var groupPublic = stagedGroup && stagedGroup.public ? stagedGroup.public : (document.getElementById('comment-group-public') ? document.getElementById('comment-group-public').value || '' : '');
+    var groupPrivate = stagedGroup && stagedGroup.private ? stagedGroup.private : (document.getElementById('comment-group-private') ? document.getElementById('comment-group-private').value || '' : '');
+
+    // Determine if sponsor only supplied group info (no student ratings)
+    var hasOnlyGroup = (!anyStudentRated) && (anyGroupRating || (groupPublic && groupPublic.length) || (groupPrivate && groupPrivate.length));
+
+    // If only group is present, replace responses with single group row shaped for worker
+    if (hasOnlyGroup) {
+      responses = [{
         student: 'Evaluating group as a whole',
-        ratings: groupRatingsByTitle,
-        commentShared: groupComments.public || '',
-        commentInstructor: groupComments.private || '',
+        ratings: groupRatings,
+        commentShared: groupPublic || '',
+        commentInstructor: groupPrivate || '',
         isTeam: true
       }];
     } else {
-      // Optionally attach group-level comments to each student row (not required by sheet)
-      // rows.forEach(function(r){ r.groupCommentShared = groupComments.public||''; r.groupCommentInstructor = groupComments.private||''; });
+      // if both students and group have values, include group row as well (appended)
+      var includeGroupRow = (anyGroupRating || (groupPublic && groupPublic.length) || (groupPrivate && groupPrivate.length));
+      if (includeGroupRow) {
+        responses.push({
+          student: 'Evaluating group as a whole',
+          ratings: groupRatings,
+          commentShared: groupPublic || '',
+          commentInstructor: groupPrivate || '',
+          isTeam: true
+        });
+      }
     }
 
-    // If nothing at all provided, stop
-    var anyNonEmpty = rows && rows.length && rows.some(function (r) {
-      if (!r) return false;
-      var rated = Object.keys(r.ratings || {}).some(function (k) { return r.ratings[k] !== null && r.ratings[k] !== undefined; });
-      var cm = (r.commentShared || r.commentInstructor);
-      return rated || cm;
-    });
-    if (!anyNonEmpty) { setStatus('Please provide ratings or comments before submitting.', 'red'); return; }
-
+    // Build payload
     var payload = {
       sponsorName: currentName || (nameInput ? nameInput.value.trim() : ''),
       sponsorEmail: currentEmail || (emailInput ? emailInput.value.trim() : ''),
       project: currentProject,
       rubric: RUBRIC.map(function (r) { return r.title; }),
-      responses: rows,
-      // compatibility fields
-      groupRatings: groupRatings,
-      groupComments: groupComments,
+      responses: responses,
       timestamp: new Date().toISOString()
     };
+
+    // Validate payload.responses
+    if (!Array.isArray(payload.responses) || payload.responses.length === 0) {
+      setStatus('No ratings or comments to submit.', 'red');
+      return;
+    }
 
     setStatus('Submitting...', 'black');
     if (submitProjectBtn) submitProjectBtn.disabled = true;
@@ -905,6 +902,7 @@
       console.log('Saved', data);
       setStatus('Submission saved. Thank you!', 'green');
 
+      // mark as completed and remove staged
       completedProjects[currentProject] = true;
       if (stagedRatings && stagedRatings[currentProject]) delete stagedRatings[currentProject];
       saveProgress();
@@ -1083,7 +1081,6 @@
 
   // 2) Hide the "Submit ratings for project" button on the identity page only
   document.addEventListener('DOMContentLoaded', function () {
-    // hide buttons with exact text inside the identity stage
     var identityStage = document.querySelector('[data-stage="identity"]') || document.getElementById('stage-identity');
     if (identityStage) {
       var btns = Array.from(identityStage.querySelectorAll('button'));
@@ -1101,7 +1098,6 @@
     if (projectList && !projectList.closest('.project-list-card')) {
       var wrapper = document.createElement('section');
       wrapper.className = 'project-list-card';
-      // move possible header before the projectList inside wrapper
       var maybeHeading = projectList.previousElementSibling;
       if (maybeHeading && maybeHeading.tagName === 'H2') wrapper.appendChild(maybeHeading);
       projectList.parentNode.insertBefore(wrapper, projectList);
@@ -1110,11 +1106,9 @@
   });
 
   // 4) Transform any generated rubric tables to ensure header order + apply classes
-  //    This runs on DOMContentLoaded and also watches for dynamically-added tables.
   function transformRubricTable(table) {
     if (!table || table._uiTransformed) return;
     try {
-      // wrap table in rubric-card + scrollwrap if not already
       var parent = table.parentElement;
       if (!parent.classList.contains('rubric-card')) {
         var wrapper = document.createElement('div');
@@ -1126,7 +1120,6 @@
 
       table.classList.add('rubric-table');
 
-      // ensure a thead exists
       var thead = table.querySelector('thead');
       if (!thead) {
         var firstRow = table.querySelector('tr');
@@ -1134,7 +1127,6 @@
           var newThead = document.createElement('thead');
           newThead.appendChild(firstRow.cloneNode(true));
           table.insertBefore(newThead, table.firstChild);
-          // optionally remove original after careful inspection — we leave it to avoid breaking generator
           thead = newThead;
         } else return;
       }
@@ -1143,31 +1135,26 @@
       if (!headerRow) return;
       var ths = Array.from(headerRow.children);
 
-      // find candidate headers
       var idxStudent = ths.findIndex(function(th){ return /student/i.test(th.textContent); });
       var idxFar = ths.findIndex(function(th){ return /far\s*below|fail/i.test(th.textContent); });
       var idxEx = ths.findIndex(function(th){ return /exceed/i.test(th.textContent); });
 
-      // move student to first column if not already
       if (idxStudent > 0) {
         headerRow.insertBefore(ths[idxStudent], headerRow.firstChild);
         ths = Array.from(headerRow.children);
       }
 
-      // ensure Far descriptor is second
       idxFar = Array.from(headerRow.children).findIndex(function(th){ return /far\s*below|fail/i.test(th.textContent); });
       if (idxFar > 1) {
         var farTH = headerRow.children[idxFar];
         headerRow.insertBefore(farTH, headerRow.children[1]);
       } else if (idxFar === -1) {
-        // create empty descriptor header if none exists
         var farH = document.createElement('th');
         farH.textContent = 'Far Below\nExpectations\n(Fail)';
         farH.className = 'col-descriptor';
         headerRow.insertBefore(farH, headerRow.children[1] || null);
       }
 
-      // ensure Exceeds descriptor is last
       idxEx = Array.from(headerRow.children).findIndex(function(th){ return /exceed/i.test(th.textContent); });
       if (idxEx !== -1 && idxEx !== headerRow.children.length - 1) {
         var exTH = headerRow.children[idxEx];
@@ -1179,14 +1166,12 @@
         headerRow.appendChild(exH);
       }
 
-      // recompute and add header classes
       var newTHs = Array.from(headerRow.children);
       if (newTHs[0]) newTHs[0].classList.add('col-student');
       if (newTHs[1]) newTHs[1].classList.add('col-descriptor');
       if (newTHs[newTHs.length - 1]) newTHs[newTHs.length - 1].classList.add('col-descriptor');
       for (var i=2; i<newTHs.length-1; i++) newTHs[i].classList.add('col-scale');
 
-      // apply classes to tbody cells and wrap radio inputs
       var tbody = table.querySelector('tbody');
       if (tbody) {
         Array.from(tbody.querySelectorAll('tr')).forEach(function(row){
@@ -1214,12 +1199,10 @@
     }
   }
 
-  // run on existing tables right away
   document.addEventListener('DOMContentLoaded', function(){
     Array.from(document.querySelectorAll('table')).forEach(function(t){ transformRubricTable(t); });
   });
 
-  // observe for dynamically added tables
   var mo = new MutationObserver(function(mutations){
     mutations.forEach(function(m){
       Array.from(m.addedNodes||[]).forEach(function(node){
@@ -1232,6 +1215,7 @@
   mo.observe(document.body, { childList: true, subtree: true });
 
 })();
+
 
 
 
