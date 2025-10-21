@@ -9,11 +9,11 @@
 
   // Rubric
   var RUBRIC = [
-    { title: "Effort", description: "Development effort should be balanced between all team members; student should commit to a fair amount of development effort on each sprint." },
-    { title: "Meetings", description: "Students are expected to be proactive. Contributions and participation in meetings help ensure the student is aware of project goals." },
-    { title: "Understanding", description: "Students are expected to understand important details of the project and be able to explain it from different stakeholder perspectives." },
-    { title: "Quality", description: "Students should complete assigned work to a high quality: correct, documented, and self-explanatory where appropriate." },
-    { title: "Communication", description: "Students are expected to be in regular communication and maintain professionalism when interacting with the sponsor." }
+    { title: "Student has contributed an appropriate amount of development effort towards this project", description: "Development effort should be balanced between all team members; student should commit to a fair amount of development effort on each sprint." },
+    { title: "Student's level of contribution and participation in meetings:", description: "Students are expected to be proactive. Contributions and participation in meetings help ensure the student is aware of project goals." },
+    { title: "Student's understanding of your project/problem:", description: "Students are expected to understand important details of the project and be able to explain it from different stakeholder perspectives." },
+    { title: "Quality of student's work product:", description: "Students should complete assigned work to a high quality: correct, documented, and self-explanatory where appropriate." },
+    { title: "Quality and frequency of students' communications:", description: "Students are expected to be in regular communication and maintain professionalism when interacting with the sponsor." }
   ];
 
   // DOM refs
