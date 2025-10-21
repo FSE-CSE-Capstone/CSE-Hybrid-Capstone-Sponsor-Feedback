@@ -418,7 +418,6 @@ function loadProjectIntoMatrix(projectName, students) {
     while (matrixContainer.firstChild) matrixContainer.removeChild(matrixContainer.firstChild);
     while (tempContainer.firstChild) matrixContainer.appendChild(tempContainer.firstChild);
   }
-}
 
     // Create the comment section AFTER the matrix
     var commentSec = document.createElement('div');
@@ -769,9 +768,9 @@ function loadProjectIntoMatrix(projectName, students) {
       var ths = Array.from(headerRow.children);
 
       // find candidate headers
-      var idxStudent = ths.findIndex(th => /student/i.test(th.textContent));
-      var idxFar = ths.findIndex(th => /far\s*below|fail/i.test(th.textContent));
-      var idxEx = ths.findIndex(th => /exceed/i.test(th.textContent));
+      var idxStudent = ths.findIndex(function(th){ return /student/i.test(th.textContent); });
+      var idxFar = ths.findIndex(function(th){ return /far\s*below|fail/i.test(th.textContent); });
+      var idxEx = ths.findIndex(function(th){ return /exceed/i.test(th.textContent); });
 
       // move student to first column if not already
       if (idxStudent > 0) {
@@ -780,7 +779,7 @@ function loadProjectIntoMatrix(projectName, students) {
       }
 
       // ensure Far descriptor is second
-      idxFar = Array.from(headerRow.children).findIndex(th => /far\s*below|fail/i.test(th.textContent));
+      idxFar = Array.from(headerRow.children).findIndex(function(th){ return /far\s*below|fail/i.test(th.textContent); });
       if (idxFar > 1) {
         var farTH = headerRow.children[idxFar];
         headerRow.insertBefore(farTH, headerRow.children[1]);
@@ -793,7 +792,7 @@ function loadProjectIntoMatrix(projectName, students) {
       }
 
       // ensure Exceeds descriptor is last
-      idxEx = Array.from(headerRow.children).findIndex(th => /exceed/i.test(th.textContent));
+      idxEx = Array.from(headerRow.children).findIndex(function(th){ return /exceed/i.test(th.textContent); });
       if (idxEx !== -1 && idxEx !== headerRow.children.length - 1) {
         var exTH = headerRow.children[idxEx];
         headerRow.appendChild(exTH);
