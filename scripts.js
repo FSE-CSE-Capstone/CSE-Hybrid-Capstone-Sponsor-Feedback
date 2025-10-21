@@ -1,4 +1,5 @@
 // Sponsor hybrid site script (cleaned & de-duplicated)
+// Paste this entire file over your current scripts.js then hard-refresh the page.
 (function () {
   'use strict';
 
@@ -9,11 +10,11 @@
 
   // Rubric
   var RUBRIC = [
-    { title: "Student has contributed an appropriate amount of development effort towards this project:", description: "Development effort should be balanced between all team members; student should commit to a fair amount of development effort on each sprint." },
-    { title: "Student's level of contribution and participation in meetings:", description: "Students are expected to be proactive. Contributions and participation in meetings help ensure the student is aware of project goals." },
-    { title: "Student's understanding of your project/problem:", description: "Students are expected to understand important details of the project and be able to explain it from different stakeholder perspectives." },
-    { title: "Quality of student's work product:", description: "Students should complete assigned work to a high quality: correct, documented, and self-explanatory where appropriate." },
-    { title: "Quality and frequency of students' communications:", description: "Students are expected to be in regular communication and maintain professionalism when interacting with the sponsor." }
+    { title: "Student has contributed an appropriate amount of development effort towards this project", description: "Development effort should be balanced between all team members; student should commit to a fair amount of development effort on each sprint." },
+    { title: "Meetings", description: "Students are expected to be proactive. Contributions and participation in meetings help ensure the student is aware of project goals." },
+    { title: "Understanding", description: "Students are expected to understand important details of the project and be able to explain it from different stakeholder perspectives." },
+    { title: "Quality", description: "Students should complete assigned work to a high quality: correct, documented, and self-explanatory where appropriate." },
+    { title: "Communication", description: "Students are expected to be in regular communication and maintain professionalism when interacting with the sponsor." }
   ];
 
   // DOM refs
@@ -294,6 +295,11 @@
 
     renderCommentSection(projectName, students);
     attachMatrixListeners();
+
+    // After rendering, attach radio toggle handlers to the newly created radios
+    if (typeof window.__attachRadioToggle === 'function') {
+      Array.prototype.forEach.call(matrixContainer.querySelectorAll("input[type='radio']"), function (r) { window.__attachRadioToggle(r); });
+    }
   }
 
   // Render comment area (per-student & group)
@@ -624,210 +630,102 @@
   window.__sponsorDebug = { sponsorData: sponsorData, stagedRatings: stagedRatings, completedProjects: completedProjects, reloadData: tryFetchData };
   window.__submitCurrentProject = submitCurrentProject;
 
-  // --- Robust radio toggle/uncheck support (works with labels & dynamic inputs) ---
+  // ---------------------------
+  // Single robust radio-toggle implementation
+  // ---------------------------
   (function () {
-    // helper: find the radio input associated with the event target
-    function findRadioForTarget(target) {
-      if (!target) return null;
-      if (target.closest) {
-        var input = target.closest("input[type='radio']");
-        if (input) return input;
-        // If clicking a label (or child), the input will be inside the label (descendant),
-        // so find the nearest ancestor label and then the input inside it.
-        var label = target.closest('label');
-        if (label) {
-          var child = label.querySelector("input[type='radio']");
-          if (child) return child;
+    // Helper: walk composedPath to find a radio input (works with label clicks and for="id" labels)
+    function findRadioFromEvent(e) {
+      var path = (e.composedPath && e.composedPath()) || e.path;
+      if (!path) {
+        // fallback: build a path
+        path = [];
+        var node = e.target;
+        while (node) { path.push(node); node = node.parentNode; }
+      }
+      for (var i = 0; i < path.length; i++) {
+        var n = path[i];
+        if (!n || !n.tagName) continue;
+        var tag = n.tagName.toLowerCase();
+        if (tag === 'input' && n.type === 'radio') return n;
+        if (tag === 'label') {
+          var q = n.querySelector && n.querySelector("input[type='radio']");
+          if (q) return q;
+          // label may reference input via for="" -> find by id
+          var forId = n.getAttribute && n.getAttribute('for');
+          if (forId) {
+            var byId = document.getElementById(forId);
+            if (byId && byId.type === 'radio') return byId;
+          }
         }
       }
       return null;
     }
 
-    // record previous checked state on mousedown (fires before the browser toggles)
-    document.addEventListener('mousedown', function (e) {
-      var radio = findRadioForTarget(e.target);
-      if (!radio) return;
-      radio.dataset.waschecked = radio.checked ? 'true' : 'false';
-    }, true);
+    // record checked state before browser toggles (pointerdown & touchstart)
+    document.addEventListener('pointerdown', function (e) {
+      try {
+        var radio = findRadioFromEvent(e);
+        if (!radio) return;
+        radio.dataset.waschecked = radio.checked ? 'true' : 'false';
+      } catch (err) { /* ignore */ }
+    }, false);
 
-    // handle keyboard activation (spacebar) when radio has focus
-    document.addEventListener('keydown', function (e) {
-      if (e.key !== ' ' && e.key !== 'Spacebar') return;
-      var active = document.activeElement;
-      var radio = active && active.matches && active.matches("input[type='radio']") ? active : null;
-      if (!radio) return;
-      radio.dataset.waschecked = radio.checked ? 'true' : 'false';
-    }, true);
-
-    // on click: if it was checked before, uncheck it and emit change
-    document.addEventListener('click', function (e) {
-      var radio = findRadioForTarget(e.target);
-      if (!radio) return;
-
-      if (radio.dataset.waschecked === 'true') {
-        // stop the default (some browsers may toggle after click), then uncheck
-        e.preventDefault();
-        radio.checked = false;
-        radio.removeAttribute('data-waschecked');
-        // emit change so your saveDraftHandler runs
-        radio.dispatchEvent(new Event('change', { bubbles: true }));
-        return;
-      }
-
-      // otherwise ensure only this radio keeps the marker in its group
-      var group = document.getElementsByName(radio.name || '');
-      Array.prototype.forEach.call(group, function (r) { r.removeAttribute('data-waschecked'); });
-      radio.setAttribute('data-waschecked', radio.checked ? 'true' : 'false');
-    }, true);
-  })();
-
-// --- Robust radio toggle/uncheck support using pointerdown + composedPath ---
-(function () {
-  // find a radio input from an event by walking the event path (works with labels, children, shadow DOM)
-  function findRadioFromEvent(e) {
-    var path = (e.composedPath && e.composedPath()) || e.path || (function () {
-      var p = [];
-      var node = e.target;
-      while (node) { p.push(node); node = node.parentNode; }
-      return p;
-    })();
-
-    for (var i = 0; i < path.length; i++) {
-      var node = path[i];
-      if (!node) continue;
-      if (node.tagName && node.tagName.toLowerCase() === 'input' && node.type === 'radio') return node;
-      if (node.tagName && node.tagName.toLowerCase() === 'label') {
-        var q = node.querySelector && node.querySelector("input[type='radio']");
-        if (q) return q;
-      }
-    }
-    return null;
-  }
-
-  // record checked state before the browser toggles (pointerdown fires before click)
-  document.addEventListener('pointerdown', function (e) {
-    try {
-      var radio = findRadioFromEvent(e);
-      if (!radio) return;
-      radio.dataset.waschecked = radio.checked ? 'true' : 'false';
-    } catch (err) { /* ignore */ }
-  }, true);
-
-  // keyboard support: record before activation (keydown space)
-  document.addEventListener('keydown', function (e) {
-    if (e.key !== ' ' && e.key !== 'Spacebar' && e.key !== 'Enter') return;
-    var active = document.activeElement;
-    if (!active) return;
-    if (active.tagName && active.tagName.toLowerCase() === 'input' && active.type === 'radio') {
-      active.dataset.waschecked = active.checked ? 'true' : 'false';
-    }
-  }, true);
-
-  // click handler: if it was already checked, uncheck and emit change
-  document.addEventListener('click', function (e) {
-    try {
-      var radio = findRadioFromEvent(e);
-      if (!radio) return;
-
-      if (radio.dataset.waschecked === 'true') {
-        // prevent browser from forcing it back to checked in some environments
-        e.preventDefault && e.preventDefault();
-        radio.checked = false;
-        // emit change so other handlers/save logic run
-        radio.dispatchEvent(new Event('change', { bubbles: true }));
-        // clear state for the group
-        var group = document.getElementsByName(radio.name || '');
-        Array.prototype.forEach.call(group, function (r) { r.removeAttribute('data-waschecked'); });
-        return;
-      }
-
-      // otherwise mark this radio for its group so future clicks can uncheck it
-      var siblings = document.getElementsByName(radio.name || '');
-      Array.prototype.forEach.call(siblings, function (r) { r.removeAttribute('data-waschecked'); });
-      radio.dataset.waschecked = radio.checked ? 'true' : 'false';
-    } catch (err) {
-      // swallow unexpected errors to avoid breaking page interactions
-      console.error('radio toggle error', err);
-    }
-  }, true);
-
-  // also handle touchstart for some mobile browsers which may not fire pointerdown early enough
-  document.addEventListener('touchstart', function (e) {
-    try {
-      var radio = findRadioFromEvent(e);
-      if (!radio) return;
-      radio.dataset.waschecked = radio.checked ? 'true' : 'false';
-    } catch (err) {}
-  }, true);
-})();
-  
-// --- Reliable per-radio toggle: attach handlers to each radio (works for dynamic content) ---
-(function () {
-  function attachToggleToRadio(radio) {
-    if (!radio || radio.dataset.toggleAttached === '1') return;
-    radio.dataset.toggleAttached = '1';
-
-    // record state before browser toggles (mousedown / touchstart)
-    radio.addEventListener('mousedown', function () {
-      radio.dataset.waschecked = radio.checked ? 'true' : 'false';
-    });
-    radio.addEventListener('touchstart', function () {
-      radio.dataset.waschecked = radio.checked ? 'true' : 'false';
+    // for some older mobile browsers fallback to touchstart
+    document.addEventListener('touchstart', function (e) {
+      try {
+        var radio = findRadioFromEvent(e);
+        if (!radio) return;
+        radio.dataset.waschecked = radio.checked ? 'true' : 'false';
+      } catch (err) {}
     }, { passive: true });
 
-    // keyboard support (space/enter)
-    radio.addEventListener('keydown', function (e) {
-      if (e.key === ' ' || e.key === 'Spacebar' || e.key === 'Enter') {
-        radio.dataset.waschecked = radio.checked ? 'true' : 'false';
+    // keyboard activation: capture keydown so space/enter recorded before activation
+    document.addEventListener('keydown', function (e) {
+      if (e.key !== ' ' && e.key !== 'Spacebar' && e.key !== 'Enter') return;
+      var active = document.activeElement;
+      if (!active) return;
+      if (active.tagName && active.tagName.toLowerCase() === 'input' && active.type === 'radio') {
+        active.dataset.waschecked = active.checked ? 'true' : 'false';
       }
-    });
+    }, false);
 
-    // on click: if it was already checked, uncheck and emit change
-    radio.addEventListener('click', function (e) {
-      if (radio.dataset.waschecked === 'true') {
-        // prevent default browser behavior and uncheck
-        e.preventDefault();
-        radio.checked = false;
-        radio.removeAttribute('data-waschecked');
-        radio.dispatchEvent(new Event('change', { bubbles: true }));
-        // clear toggle marker for the group
-        var group = document.getElementsByName(radio.name || '');
-        Array.prototype.forEach.call(group, function (r) { r.removeAttribute('data-waschecked'); });
-        return;
-      }
-      // otherwise update the marker to current checked state
-      radio.dataset.waschecked = radio.checked ? 'true' : 'false';
-    });
-  }
+    // click: if it was checked before the interaction, uncheck it now and fire change
+    document.addEventListener('click', function (e) {
+      try {
+        var radio = findRadioFromEvent(e);
+        if (!radio) return;
 
-  // Attach to radios already present
-  Array.prototype.forEach.call(document.querySelectorAll("input[type='radio']"), attachToggleToRadio);
-
-  // Watch for newly-added radios (matrix renders dynamically)
-  var observerTarget = document.body; // safe fallback: observe body for new radios
-  var mo = new MutationObserver(function (mutations) {
-    mutations.forEach(function (m) {
-      if (!m.addedNodes) return;
-      m.addedNodes.forEach(function (node) {
-        if (!node) return;
-        if (node.nodeType !== 1) return; // element only
-        if (node.matches && node.matches("input[type='radio']")) {
-          attachToggleToRadio(node);
+        // If it was checked before pointerdown/keydown, toggle off now
+        if (radio.dataset.waschecked === 'true') {
+          // Use microtask so this runs after browser default toggling when necessary
+          Promise.resolve().then(function () {
+            if (radio.checked) {
+              radio.checked = false;
+              radio.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+            radio.removeAttribute('data-waschecked');
+          });
+          return;
         }
-        // also check descendants
-        var radios = node.querySelectorAll && node.querySelectorAll("input[type='radio']");
-        if (radios && radios.length) Array.prototype.forEach.call(radios, attachToggleToRadio);
-      });
-    });
-  });
-  mo.observe(observerTarget, { childList: true, subtree: true });
 
-  // optional: expose a helper on window to attach manually if needed
-  window.__attachRadioToggle = attachToggleToRadio;
+        // Not previously checked: update marker to current checked state for potential later toggle
+        radio.dataset.waschecked = radio.checked ? 'true' : 'false';
+      } catch (err) {
+        console.error('radio-toggle error', err);
+      }
+    }, false);
+  })();
+
+  // Expose a helper to attach toggles manually if needed (used in loadProjectIntoMatrix)
+  // This helper attaches a toggle marker function to a single radio element (idempotent)
+  window.__attachRadioToggle = function (radio) {
+    try {
+      if (!radio || radio.dataset.toggleAttached === '1') return;
+      radio.dataset.toggleAttached = '1';
+      // no-op: the global listeners handle toggle behavior; this exists in case you want to force a marker
+    } catch (e) { /* ignore */ }
+  };
+
 })();
-
-  
-})();
-
-
 
