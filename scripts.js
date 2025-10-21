@@ -1,4 +1,6 @@
-// scripts.js — consolidated and fixed for Hybrid sponsor feedback
+// Full corrected scripts.js (replace file wholesale)
+// - Hybrid sponsor UI: data loader, matrix builder, per-student + group comments,
+//   save/load progress, submitPayload compatible with Google Sheets columns
 (function () {
   'use strict';
 
@@ -17,7 +19,7 @@
     { title: "Quality and frequency of student's communications", description: "Students are expected to be in regular communication and maintain professionalism when interacting with the sponsor." }
   ];
 
-  // --- DOM nodes (may be null until DOM ready) ---
+  // --- DOM nodes ---
   var stageIdentity = document.getElementById('stage-identity');
   var stageProjects = document.getElementById('stage-projects');
   var stageThankyou = document.getElementById('stage-thankyou');
@@ -40,7 +42,7 @@
   var currentName = '';
   var currentProject = '';
   var completedProjects = {};
-  var stagedRatings = {}; // stagedRatings[project][studentIndex][criterionIndex] = rating, plus _studentComments, _groupComments
+  var stagedRatings = {};
 
   // --- Helpers ---
   function setStatus(msg, color) {
@@ -54,11 +56,12 @@
     return String(s || '').replace(/[&<>"']/g, function (m) { return map[m]; });
   }
 
-  // remove empty placeholder cards that cause display gaps
+  // --- remove empty placeholder cards that cause the "empty card" gap ---
   function removeEmptyPlaceholderCards() {
     if (!projectListEl) return;
     var container = projectListEl.parentNode;
     if (!container) return;
+
     var cards = Array.prototype.slice.call(container.querySelectorAll('.card'));
     cards.forEach(function (c) {
       var hasControls = c.querySelector('input, textarea, select, button, table, label');
@@ -72,26 +75,34 @@
   }
 
   // -------------------------
-  // Data -> sponsor map
+  // Robust mapping from data-loader rows to sponsorData
+  // Accepts varied header names, trims values, and supports multiple emails per sponsor cell.
   // -------------------------
   function buildSponsorMap(rows) {
     var map = {};
     if (!Array.isArray(rows) || rows.length === 0) return map;
+
     var emailRegex = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
 
     function cleanToken(tok) {
       if (!tok) return '';
       tok = tok.replace(/^[\s"'`([{]+|[\s"'`)\]}.,:;]+$/g, '').replace(/\u00A0/g, ' ').trim();
-      if (tok.indexOf('@') !== -1 && tok.indexOf(' ') !== -1) tok = tok.split(' ').join('');
+      if (tok.indexOf('@') !== -1 && tok.indexOf(' ') !== -1) {
+        tok = tok.split(' ').join('');
+      }
       return tok;
     }
 
     rows.forEach(function (rawRow) {
-      var project = '', student = '', sponsorCell = '';
+      var project = '';
+      var student = '';
+      var sponsorCell = '';
+
       Object.keys(rawRow || {}).forEach(function (rawKey) {
         var keyNorm = String(rawKey || '').trim().toLowerCase();
         var rawVal = (rawRow[rawKey] || '').toString();
         var val = rawVal.replace(/\u00A0/g, ' ').trim();
+
         if (!project && (keyNorm === 'project' || keyNorm === 'project name' || keyNorm === 'project_title' || keyNorm === 'group_name' || keyNorm === 'projectname')) {
           project = val;
         } else if (!student && (keyNorm === 'student' || keyNorm === 'student name' || keyNorm === 'students' || keyNorm === 'name' || keyNorm === 'student_name')) {
@@ -116,24 +127,31 @@
 
       if (!sponsorCell || !project || !student) return;
 
+      // Split on common separators first
       var tokens = sponsorCell.split(/[,;\/|]+/);
       var foundEmails = [];
+
       tokens.forEach(function (t) {
         var cleaned = cleanToken(t);
         if (!cleaned) return;
         var m = cleaned.match(emailRegex);
-        if (m && m.length) m.forEach(function (em) { foundEmails.push(em.toLowerCase().trim()); });
-        else {
-          var m2 = t.match(emailRegex);
-          if (m2 && m2.length) m2.forEach(function (em) { foundEmails.push(em.toLowerCase().trim()); });
-          else if (t.indexOf('@') !== -1) {
-            var nospace = t.replace(/\s+/g, '');
-            var m3 = nospace.match(emailRegex);
-            if (m3 && m3.length) m3.forEach(function (em) { foundEmails.push(em.toLowerCase().trim()); });
-          }
+        if (m && m.length) {
+          m.forEach(function (em) { foundEmails.push(em.toLowerCase().trim()); });
+          return;
+        }
+        var m2 = t.match(emailRegex);
+        if (m2 && m2.length) {
+          m2.forEach(function (em) { foundEmails.push(em.toLowerCase().trim()); });
+          return;
+        }
+        if (t.indexOf('@') !== -1) {
+          var nospace = t.replace(/\s+/g, '');
+          var m3 = nospace.match(emailRegex);
+          if (m3 && m3.length) m3.forEach(function (em) { foundEmails.push(em.toLowerCase().trim()); });
         }
       });
 
+      // dedupe & sanity-check
       var uniqueEmails = [];
       foundEmails.forEach(function (em) {
         var e = (em || '').toLowerCase().trim();
@@ -156,8 +174,13 @@
     });
 
     try {
-      console.info('buildSponsorMap: mapped', Object.keys(map).length, 'sponsors');
+      var sponsorCount = Object.keys(map).length;
+      var projectCount = Object.keys(map).reduce(function (acc, e) {
+        return acc + Object.keys(map[e].projects || {}).length;
+      }, 0);
+      console.info('buildSponsorMap: mapped', sponsorCount, 'sponsors and', projectCount, 'projects total');
     } catch (e) {}
+
     return map;
   }
 
@@ -220,7 +243,6 @@
         var act = projectListEl.querySelectorAll('.project-item.active');
         for (var ai = 0; ai < act.length; ai++) act[ai].classList.remove('active');
         li.classList.add('active');
-        currentProject = p;
         loadProjectIntoMatrix(p, entry.projects[p]);
         setStatus('');
       });
@@ -229,26 +251,21 @@
       sponsorProjects[p] = entry.projects[p].slice();
     });
 
+    // remove any leftover empty placeholder cards under the project list
     removeEmptyPlaceholderCards();
     setStatus('');
   }
 
   // -------------------------
-  // Build and render matrix + comment UI
+  // Build matrix, comment sections
   // -------------------------
   function loadProjectIntoMatrix(projectName, students) {
-    if (!matrixContainer) {
-      console.warn('No matrixContainer in DOM');
-      return;
-    }
-
-    // Clear old matrix/comment
+    currentProject = projectName || '';
+    // remove any old comment section first (we'll re-create it)
     var oldComment = document.querySelector('.section.section-comment');
     if (oldComment && oldComment.parentNode) oldComment.parentNode.removeChild(oldComment);
-    var oldHeader = document.querySelector('.current-project-header');
-    if (oldHeader && oldHeader.parentNode) oldHeader.parentNode.removeChild(oldHeader);
 
-    // header/info
+    // create matrix-info header and insert before matrixContainer if possible
     var info = document.createElement('div');
     info.id = 'matrix-info';
     var hdr = document.createElement('div'); hdr.className = 'current-project-header'; hdr.textContent = projectName || '';
@@ -258,19 +275,20 @@
     topDesc.style.display = 'block'; topDesc.style.color = '#0b1228'; topDesc.style.fontWeight = '400';
     topDesc.style.fontSize = '14px'; topDesc.style.marginBottom = '12px';
     info.appendChild(hdr); info.appendChild(topDesc);
-    matrixContainer.parentNode.insertBefore(info, matrixContainer);
+
+    if (matrixContainer && matrixContainer.parentNode) matrixContainer.parentNode.insertBefore(info, matrixContainer);
+    else if (matrixContainer) document.body.insertBefore(info, matrixContainer);
 
     if (!students || !students.length) {
-      matrixContainer.textContent = 'No students found for this project.';
+      if (matrixContainer) matrixContainer.textContent = 'No students found for this project.';
       return;
     }
 
-    // ensure stagedRatings entry
-    if (!stagedRatings[projectName]) stagedRatings[projectName] = {};
+    if (!stagedRatings[currentProject]) stagedRatings[currentProject] = {};
 
-    // Build cards - one card per RUBRIC criterion
     var tempContainer = document.createElement('div');
 
+    // Build one card per rubric criterion
     RUBRIC.forEach(function (crit, cIdx) {
       var card = document.createElement('div');
       card.className = 'card matrix-card';
@@ -285,28 +303,28 @@
       critWrap.appendChild(critTitle);
 
       var critDesc = document.createElement('div'); critDesc.className = 'matrix-criterion-desc';
-      critDesc.textContent = crit.description || '';
-      critDesc.style.display = 'block'; critDesc.style.color = '#0b1228';
+      critDesc.textContent = crit.description || ''; critDesc.style.display = 'block'; critDesc.style.color = '#0b1228';
       critDesc.style.fontWeight = '400'; critDesc.style.fontSize = '14px'; critDesc.style.lineHeight = '1.3'; critDesc.style.margin = '0 0 12px 0';
       critWrap.appendChild(critDesc);
 
-      // table
+      // create table
       var table = document.createElement('table');
       table.className = 'matrix-table';
       table.style.width = '100%';
       table.style.borderCollapse = 'collapse';
 
-      // head
+      // thead setup
       var thead = document.createElement('thead');
       var trHead = document.createElement('tr');
 
+      // Student header (leftmost)
       var thName = document.createElement('th');
       thName.textContent = 'Student';
       thName.style.textAlign = 'left';
       thName.style.padding = '8px';
       trHead.appendChild(thName);
 
-      // left descriptor header (no radios)
+      // LEFT descriptor header (Far Below Expectations)
       var thLeftDesc = document.createElement('th');
       thLeftDesc.textContent = 'Far Below\nExpectations\n(Fail)';
       thLeftDesc.style.whiteSpace = 'normal';
@@ -314,7 +332,7 @@
       thLeftDesc.style.textAlign = 'center';
       trHead.appendChild(thLeftDesc);
 
-      // numeric 1..7 headers (these will line up with radios)
+      // Numeric headers 1..7
       for (var k = 1; k <= 7; k++) {
         var th = document.createElement('th');
         th.textContent = String(k);
@@ -323,7 +341,7 @@
         trHead.appendChild(th);
       }
 
-      // right descriptor header
+      // RIGHT descriptor header (Exceeds Expectations)
       var thRightDesc = document.createElement('th');
       thRightDesc.textContent = 'Exceeds\nExpectations\n(A+)';
       thRightDesc.style.whiteSpace = 'normal';
@@ -334,28 +352,28 @@
       thead.appendChild(trHead);
       table.appendChild(thead);
 
-      // body
+      // tbody
       var tbody = document.createElement('tbody');
 
-      // rows for each student
+      // students rows
       students.forEach(function (studentName, sIdx) {
         var tr = document.createElement('tr');
 
+        // Student name cell (left-justified)
         var tdName = document.createElement('td');
         tdName.textContent = studentName;
-        tdName.style.padding = '12px 10px';
+        tdName.style.padding = '8px 10px';
         tdName.style.verticalAlign = 'middle';
         tdName.style.textAlign = 'left';
-        tdName.style.fontWeight = '600';
         tr.appendChild(tdName);
 
-        // left descriptor cell - empty (no radio)
+        // LEFT descriptor cell (no radio buttons)
         var tdLeft = document.createElement('td');
         tdLeft.className = 'col-descriptor';
         tdLeft.style.padding = '8px';
         tr.appendChild(tdLeft);
 
-        // numeric radio cells (1..7)
+        // Radio cells for scores 1..7 ONLY
         for (var score = 1; score <= 7; score++) {
           var td = document.createElement('td');
           td.style.textAlign = 'center';
@@ -363,12 +381,11 @@
 
           var input = document.createElement('input');
           input.type = 'radio';
-          input.name = 'rating-' + cIdx + '-' + sIdx; // keyed by criterion + student index
+          input.name = 'rating-' + cIdx + '-' + sIdx;
           input.value = String(score);
           input.id = 'rating-' + cIdx + '-' + sIdx + '-' + score;
 
-          // pre-check staged rating if present
-          var stagedForProject = stagedRatings[projectName] || {};
+          var stagedForProject = stagedRatings[currentProject] || {};
           var stagedForStudent = stagedForProject[sIdx] || {};
           if (stagedForStudent[cIdx] && String(stagedForStudent[cIdx]) === String(score)) {
             input.checked = true;
@@ -385,7 +402,7 @@
           tr.appendChild(td);
         }
 
-        // right descriptor cell - empty (no radio)
+        // RIGHT descriptor cell (no radio buttons)
         var tdRight = document.createElement('td');
         tdRight.className = 'col-descriptor';
         tdRight.style.padding = '8px';
@@ -394,51 +411,54 @@
         tbody.appendChild(tr);
       });
 
-      // Add final row: "Evaluating group as a whole"
+      // Add group-as-a-whole row at bottom (radios named by "-group")
       var trGroup = document.createElement('tr');
 
       var tdGroupName = document.createElement('td');
       tdGroupName.textContent = 'Evaluating group as a whole';
-      tdGroupName.style.padding = '12px 10px';
+      tdGroupName.style.padding = '8px 10px';
       tdGroupName.style.verticalAlign = 'middle';
       tdGroupName.style.textAlign = 'left';
-      tdGroupName.style.fontWeight = '600';
+      tdGroupName.style.fontStyle = 'italic';
       trGroup.appendChild(tdGroupName);
 
-      // left descriptor cell (empty)
+      // left descriptor empty cell for group row
       var tdGroupLeft = document.createElement('td');
       tdGroupLeft.className = 'col-descriptor';
       tdGroupLeft.style.padding = '8px';
       trGroup.appendChild(tdGroupLeft);
 
-      // numeric radio cells for group rating: name uses '-group' suffix so they are separate from per-student radios
-      for (var gscore = 1; gscore <= 7; gscore++) {
+      // group radios for 1..7
+      for (var gScore = 1; gScore <= 7; gScore++) {
         var tdg = document.createElement('td');
         tdg.style.textAlign = 'center';
         tdg.style.padding = '8px';
 
-        var inputG = document.createElement('input');
-        inputG.type = 'radio';
-        inputG.name = 'rating-' + cIdx + '-group';
-        inputG.value = String(gscore);
-        inputG.id = 'rating-' + cIdx + '-group-' + gscore;
+        var gin = document.createElement('input');
+        gin.type = 'radio';
+        gin.name = 'rating-' + cIdx + '-group';
+        gin.value = String(gScore);
+        gin.id = 'rating-' + cIdx + '-group-' + gScore;
 
-        // pre-check from staged group ratings if present
-        var stagedGroup = (stagedRatings[projectName] && stagedRatings[projectName]._groupRatings) || {};
-        if (stagedGroup[cIdx] && String(stagedGroup[cIdx]) === String(gscore)) inputG.checked = true;
+        // pre-check from stagedRatings if available
+        var stagedProj = stagedRatings[currentProject] || {};
+        var stagedGroup = stagedProj._groupRatings || {};
+        if (stagedGroup[cIdx] && String(stagedGroup[cIdx]) === String(gScore)) {
+          gin.checked = true;
+        }
 
-        var labelG = document.createElement('label');
-        labelG.setAttribute('for', inputG.id);
-        labelG.style.cursor = 'pointer';
-        labelG.style.display = 'inline-block';
-        labelG.style.padding = '2px';
-        labelG.appendChild(inputG);
+        var glabel = document.createElement('label');
+        glabel.setAttribute('for', gin.id);
+        glabel.style.cursor = 'pointer';
+        glabel.style.display = 'inline-block';
+        glabel.style.padding = '2px';
+        glabel.appendChild(gin);
 
-        tdg.appendChild(labelG);
+        tdg.appendChild(glabel);
         trGroup.appendChild(tdg);
       }
 
-      // right descriptor cell
+      // right descriptor empty cell for group row
       var tdGroupRight = document.createElement('td');
       tdGroupRight.className = 'col-descriptor';
       tdGroupRight.style.padding = '8px';
@@ -452,30 +472,50 @@
       tempContainer.appendChild(card);
     });
 
-    // replace matrixContainer content
-    while (matrixContainer.firstChild) matrixContainer.removeChild(matrixContainer.firstChild);
-    while (tempContainer.firstChild) matrixContainer.appendChild(tempContainer.firstChild);
+    // Replace matrixContainer children with built content
+    if (matrixContainer) {
+      while (matrixContainer.firstChild) matrixContainer.removeChild(matrixContainer.firstChild);
+      while (tempContainer.firstChild) matrixContainer.appendChild(tempContainer.firstChild);
+    }
 
-    // render detailed per-student + group comment UI
+    // After matrix is built, render comment section
     renderCommentSection(projectName, students);
 
-    // attach listeners to save drafts
-    attachMatrixListeners(projectName);
+    // tidy up remaining placeholders
+    removeEmptyPlaceholderCards();
+
+    // Attach event listeners to save drafts (avoid duplicates)
+    try {
+      if (matrixContainer && matrixContainer.removeEventListener) {
+        matrixContainer.removeEventListener('change', saveDraftHandler);
+        matrixContainer.removeEventListener('input', saveDraftHandler);
+      }
+    } catch (e) {}
+    if (matrixContainer) {
+      matrixContainer.addEventListener('change', saveDraftHandler);
+      matrixContainer.addEventListener('input', saveDraftHandler);
+    }
+
+    // comment textareas will be wired in renderCommentSection
+    if (typeof updateSectionVisibility === 'function') updateSectionVisibility();
+    if (typeof removeEmptySections === 'function') removeEmptySections();
   }
 
   // -------------------------
-  // Comment UI renderer (per-student + group)
+  // Render the detailed comment section (per-student public/private + group)
   // -------------------------
   function renderCommentSection(projectName, students) {
-    // remove old comment area
+    // remove old comment area if present
     var oldComment = document.querySelector('.section.section-comment');
     if (oldComment && oldComment.parentNode) oldComment.parentNode.removeChild(oldComment);
 
+    // wrapper section
     var commentSec = document.createElement('div');
     commentSec.className = 'section section-comment';
     commentSec.style.marginTop = '12px';
     commentSec.style.display = 'block';
 
+    // header
     var h = document.createElement('h3');
     h.textContent = 'Add your additional comments';
     h.style.margin = '0 0 12px 0';
@@ -483,7 +523,7 @@
     h.style.fontWeight = '700';
     commentSec.appendChild(h);
 
-    // helper to build per-student panels
+    // helper to build a student comment panel
     function buildStudentPanel(studentName, sIdx) {
       var wrapper = document.createElement('div');
       wrapper.className = 'student-comment-panel';
@@ -494,6 +534,7 @@
       wrapper.style.position = 'relative';
       wrapper.style.background = '#fff';
 
+      // header row (name + toggle)
       var headerRow = document.createElement('div');
       headerRow.style.display = 'flex';
       headerRow.style.justifyContent = 'space-between';
@@ -520,10 +561,12 @@
 
       wrapper.appendChild(headerRow);
 
+      // content (collapsed by default)
       var content = document.createElement('div');
       content.className = 'student-comment-content';
       content.style.display = 'none';
 
+      // Public comment label + textarea
       var lblPublic = document.createElement('div');
       lblPublic.textContent = 'Comments to be SHARED WITH THE STUDENT';
       lblPublic.style.fontSize = '0.9rem';
@@ -540,6 +583,7 @@
       taPublic.style.marginBottom = '8px';
       content.appendChild(taPublic);
 
+      // Private comment label + textarea
       var lblPrivate = document.createElement('div');
       lblPrivate.textContent = 'Comments to be SHARED ONLY WITH THE INSTRUCTOR';
       lblPrivate.style.fontSize = '0.9rem';
@@ -579,17 +623,21 @@
         }
       }
 
+      // wire inputs to draft saver
+      taPublic.addEventListener('input', saveDraftHandler);
+      taPrivate.addEventListener('input', saveDraftHandler);
+
       return wrapper;
     }
 
-    // create panels for each student
+    // create per-student panels
     for (var si = 0; si < (students || []).length; si++) {
       var studentName = students[si];
       var panel = buildStudentPanel(studentName, si);
       commentSec.appendChild(panel);
     }
 
-    // Group-level panel
+    // Group-level comment panel
     var groupWrap = document.createElement('div');
     groupWrap.className = 'student-comment-panel';
     groupWrap.style.border = '1px solid rgba(10,12,30,0.05)';
@@ -664,8 +712,8 @@
       }
     });
 
-    // prefill group comments and show if there is content
-    var stagedGroup = (stagedRatings[currentProject] && stagedRatings[currentProject]._groupComments) || {};
+    // prefill group comments from stagedRatings
+    var stagedGroup = (stagedRatings[projectName] && stagedRatings[projectName]._groupComments) || {};
     if (stagedGroup) {
       if (stagedGroup.public) taGroup.value = stagedGroup.public;
       if (stagedGroup.private) taGroupPrivate.value = stagedGroup.private;
@@ -675,39 +723,19 @@
       }
     }
 
+    // wire to draft saver
+    taGroup.addEventListener('input', saveDraftHandler);
+    taGroupPrivate.addEventListener('input', saveDraftHandler);
+
     commentSec.appendChild(groupWrap);
 
-    // insert commentSec after matrixContainer
+    // attach below matrixContainer
     if (matrixContainer && matrixContainer.parentNode) {
       if (matrixContainer.nextSibling) matrixContainer.parentNode.insertBefore(commentSec, matrixContainer.nextSibling);
       else matrixContainer.parentNode.appendChild(commentSec);
     } else {
       document.body.appendChild(commentSec);
     }
-  }
-
-  // -------------------------
-  // Attach listeners for matrix and comments to save as draft
-  // -------------------------
-  function attachMatrixListeners(projectName) {
-    if (!matrixContainer) return;
-    // remove old listeners if present
-    try {
-      matrixContainer.removeEventListener && matrixContainer.removeEventListener('change', saveDraftHandler);
-      matrixContainer.removeEventListener && matrixContainer.removeEventListener('input', saveDraftHandler);
-    } catch (e) {}
-    matrixContainer.addEventListener('change', saveDraftHandler);
-    matrixContainer.addEventListener('input', saveDraftHandler);
-
-    // per-student and group comment textareas: listen as well
-    // get comment area
-    var commentSec = document.querySelector('.section.section-comment');
-    if (!commentSec) return;
-    // attach delegated listener
-    try {
-      commentSec.removeEventListener && commentSec.removeEventListener('input', saveDraftHandler);
-    } catch (e) {}
-    commentSec.addEventListener('input', saveDraftHandler);
   }
 
   // -------------------------
@@ -718,50 +746,37 @@
     if (!stagedRatings[currentProject]) stagedRatings[currentProject] = {};
 
     var students = sponsorProjects[currentProject] || [];
-    // save per-student ratings
     for (var s = 0; s < students.length; s++) {
       if (!stagedRatings[currentProject][s]) stagedRatings[currentProject][s] = {};
       for (var c = 0; c < RUBRIC.length; c++) {
         var sel = document.querySelector('input[name="rating-' + c + '-' + s + '"]:checked');
         if (sel) stagedRatings[currentProject][s][c] = parseInt(sel.value, 10);
-        else if (typeof stagedRatings[currentProject][s][c] !== 'undefined') {
-          // keep previous value only if present; otherwise nullify explicitly
-          // we set null for unchecked to reflect cleared state
-          stagedRatings[currentProject][s][c] = null;
-        }
       }
       // per-student comments
-      if (!stagedRatings[currentProject]._studentComments) stagedRatings[currentProject]._studentComments = {};
       var sName = students[s];
-      stagedRatings[currentProject]._studentComments[sName] = stagedRatings[currentProject]._studentComments[sName] || { public: '', private: '' };
       var pubEl = document.getElementById('comment-public-' + s);
       var privEl = document.getElementById('comment-private-' + s);
+      if (!stagedRatings[currentProject]._studentComments) stagedRatings[currentProject]._studentComments = stagedRatings[currentProject]._studentComments || {};
+      stagedRatings[currentProject]._studentComments[sName] = stagedRatings[currentProject]._studentComments[sName] || { public: '', private: '' };
       if (pubEl) stagedRatings[currentProject]._studentComments[sName].public = pubEl.value || '';
       if (privEl) stagedRatings[currentProject]._studentComments[sName].private = privEl.value || '';
     }
 
     // group ratings
     stagedRatings[currentProject]._groupRatings = stagedRatings[currentProject]._groupRatings || {};
-    var anyGroup = false;
     for (var gi = 0; gi < RUBRIC.length; gi++) {
       var gsel = document.querySelector('input[name="rating-' + gi + '-group"]:checked');
-      if (gsel) {
-        stagedRatings[currentProject]._groupRatings[gi] = parseInt(gsel.value, 10);
-        anyGroup = true;
-      } else {
-        // set null explicitly if nothing chosen to reflect cleared state
-        stagedRatings[currentProject]._groupRatings[gi] = stagedRatings[currentProject]._groupRatings[gi] || null;
-      }
+      stagedRatings[currentProject]._groupRatings[gi] = gsel ? parseInt(gsel.value, 10) : null;
     }
 
     // group comments
-    stagedRatings[currentProject]._groupComments = stagedRatings[currentProject]._groupComments || { public: '', private: '' };
     var gpPub = document.getElementById('comment-group-public');
     var gpPriv = document.getElementById('comment-group-private');
+    stagedRatings[currentProject]._groupComments = stagedRatings[currentProject]._groupComments || { public: '', private: '' };
     if (gpPub) stagedRatings[currentProject]._groupComments.public = gpPub.value || '';
     if (gpPriv) stagedRatings[currentProject]._groupComments.private = gpPriv.value || '';
 
-    // old single project comment (for backwards compatibility)
+    // Save comment inside general _comment for backwards compatibility
     var ta = document.getElementById('project-comment');
     if (ta && ta.value) stagedRatings[currentProject]._comment = ta.value;
 
@@ -790,7 +805,7 @@
         if (val !== null && val !== undefined) anyRatingForThisStudent = true;
       }
 
-      // per-student comments
+      // per-student comments (normalized to sheet column names)
       var studentComments = { public: '', private: '' };
       if (stagedRatings[currentProject] && stagedRatings[currentProject]._studentComments && stagedRatings[currentProject]._studentComments[students[s]]) {
         studentComments = stagedRatings[currentProject]._studentComments[students[s]];
@@ -803,7 +818,14 @@
 
       if (anyRatingForThisStudent) anyStudentRated = true;
 
-      rows.push({ student: students[s], ratings: ratingsObj, comments: studentComments });
+      // row now includes commentShared/commentInstructor and isTeam:false
+      rows.push({
+        student: students[s],
+        ratings: ratingsObj,
+        commentShared: studentComments.public || '',
+        commentInstructor: studentComments.private || '',
+        isTeam: false
+      });
     }
 
     // collect group ratings (map by criterion index)
@@ -816,7 +838,7 @@
       if (gval !== null && gval !== undefined) anyGroupRating = true;
     }
 
-    // group comments
+    // group comments (normalized)
     var groupComments = { public: '', private: '' };
     if (stagedRatings[currentProject] && stagedRatings[currentProject]._groupComments) {
       groupComments = stagedRatings[currentProject]._groupComments;
@@ -837,15 +859,20 @@
       rows = [{
         student: 'Evaluating group as a whole',
         ratings: groupRatingsByTitle,
-        comments: { public: groupComments.public || '', private: groupComments.private || '' }
+        commentShared: groupComments.public || '',
+        commentInstructor: groupComments.private || '',
+        isTeam: true
       }];
+    } else {
+      // Optionally attach group-level comments to each student row (not required by sheet)
+      // rows.forEach(function(r){ r.groupCommentShared = groupComments.public||''; r.groupCommentInstructor = groupComments.private||''; });
     }
 
     // If nothing at all provided, stop
     var anyNonEmpty = rows && rows.length && rows.some(function (r) {
       if (!r) return false;
       var rated = Object.keys(r.ratings || {}).some(function (k) { return r.ratings[k] !== null && r.ratings[k] !== undefined; });
-      var cm = r.comments && (r.comments.public || r.comments.private);
+      var cm = (r.commentShared || r.commentInstructor);
       return rated || cm;
     });
     if (!anyNonEmpty) { setStatus('Please provide ratings or comments before submitting.', 'red'); return; }
@@ -856,8 +883,9 @@
       project: currentProject,
       rubric: RUBRIC.map(function (r) { return r.title; }),
       responses: rows,
-      groupComments: groupComments,
+      // compatibility fields
       groupRatings: groupRatings,
+      groupComments: groupComments,
       timestamp: new Date().toISOString()
     };
 
@@ -954,47 +982,18 @@
     }
   }
 
-  document.addEventListener('DOMContentLoaded', function () {
-    // Wire up identity submit if DOM ready
-    if (identitySubmit) identitySubmit.addEventListener('click', onIdentitySubmit);
-    if (backToIdentity) backToIdentity.addEventListener('click', function () { showIdentityStage(); });
-    if (submitProjectBtn) submitProjectBtn.addEventListener('click', function () { submitCurrentProject(); });
-    if (finishStartOverBtn) finishStartOverBtn.addEventListener('click', function () {
-      completedProjects = {};
-      stagedRatings = {};
-      saveProgress();
-      currentProject = '';
-      if (matrixContainer) matrixContainer.innerHTML = '';
-      var commentSection = document.querySelector('.section.section-comment');
-      if (commentSection) commentSection.parentNode.removeChild(commentSection);
-      showIdentityStage();
-    });
-
-    // Hide auto footer if present
-    var autoFooter = document.querySelector('.site-footer-fixed');
-    if (autoFooter) autoFooter.parentNode.removeChild(autoFooter);
-
-    // Hide "Submit ratings for project" button on identity stage (if any such button exists)
-    var identityStage = document.querySelector('[data-stage="identity"]') || document.getElementById('stage-identity');
-    if (identityStage) {
-      var btns = Array.from(identityStage.querySelectorAll('button'));
-      btns.forEach(function (b) {
-        if (b.textContent && b.textContent.trim() === 'Submit ratings for project') {
-          b.style.display = 'none';
-        }
-      });
-    }
-
-    // Wrap project list inside a card element
-    var projectList = document.getElementById('project-list');
-    if (projectList && !projectList.closest('.project-list-card')) {
-      var wrapper = document.createElement('section');
-      wrapper.className = 'project-list-card';
-      var maybeHeading = projectList.previousElementSibling;
-      if (maybeHeading && maybeHeading.tagName === 'H2') wrapper.appendChild(maybeHeading);
-      projectList.parentNode.insertBefore(wrapper, projectList);
-      wrapper.appendChild(projectList);
-    }
+  if (identitySubmit) identitySubmit.addEventListener('click', onIdentitySubmit);
+  if (backToIdentity) backToIdentity.addEventListener('click', function () { showIdentityStage(); });
+  if (submitProjectBtn) submitProjectBtn.addEventListener('click', function () { submitCurrentProject(); });
+  if (finishStartOverBtn) finishStartOverBtn.addEventListener('click', function () {
+    completedProjects = {};
+    stagedRatings = {};
+    saveProgress();
+    currentProject = '';
+    if (matrixContainer) matrixContainer.innerHTML = '';
+    var commentSection = document.querySelector('.section.section-comment');
+    if (commentSection) commentSection.parentNode.removeChild(commentSection);
+    showIdentityStage();
   });
 
   // -------------------------
@@ -1024,7 +1023,7 @@
   }
 
   // -------------------------
-  // Secure data fetch
+  // Secure data fetch (replaces CSV)
   // -------------------------
   function tryFetchData(callback) {
     var loaderUrl = DATA_LOADER_URL;
@@ -1065,7 +1064,7 @@
   showIdentityStage();
   tryFetchData();
 
-  // debug helper
+  // Debug helper
   window.__sponsorDebug = {
     sponsorData: sponsorData,
     stagedRatings: stagedRatings,
@@ -1074,120 +1073,163 @@
   };
 
   window.__submitCurrentProject = submitCurrentProject;
+})();
 
-  // -------------------------
-  // Transform any generated rubric tables (last-resort safety)
-  //   - Observes DOM for tables and normalizes header order and classes.
-  // -------------------------
-  (function transformWatcher() {
-    function transformRubricTable(table) {
-      if (!table || table._uiTransformed) return;
-      try {
-        var parent = table.parentElement;
-        if (!parent) return;
-        if (!parent.classList.contains('rubric-card')) {
-          var wrapper = document.createElement('div');
-          wrapper.className = 'rubric-card rubric-scrollwrap';
-          parent.insertBefore(wrapper, table);
-          wrapper.appendChild(table);
-          parent = wrapper;
+// ---------- UI DOM tweaks: hide first-page submit, wrap project list, transform rubric tables ----------
+(function(){
+  // 1) Remove any auto-inserted site-footer-fixed (we will use the HTML footer)
+  var autoFooter = document.querySelector('.site-footer-fixed');
+  if (autoFooter) autoFooter.parentNode.removeChild(autoFooter);
+
+  // 2) Hide the "Submit ratings for project" button on the identity page only
+  document.addEventListener('DOMContentLoaded', function () {
+    // hide buttons with exact text inside the identity stage
+    var identityStage = document.querySelector('[data-stage="identity"]') || document.getElementById('stage-identity');
+    if (identityStage) {
+      var btns = Array.from(identityStage.querySelectorAll('button'));
+      btns.forEach(function(b){
+        if (b.textContent && b.textContent.trim() === 'Submit ratings for project') {
+          b.style.display = 'none';
         }
-        table.classList.add('rubric-table');
+      });
+    }
+  });
 
-        var thead = table.querySelector('thead');
-        if (!thead) {
-          var firstRow = table.querySelector('tr');
-          if (firstRow) {
-            var newThead = document.createElement('thead');
-            newThead.appendChild(firstRow.cloneNode(true));
-            table.insertBefore(newThead, table.firstChild);
-            thead = newThead;
-          } else return;
-        }
+  // 3) Wrap project list in .project-list-card if not already wrapped
+  document.addEventListener('DOMContentLoaded', function () {
+    var projectList = document.getElementById('project-list');
+    if (projectList && !projectList.closest('.project-list-card')) {
+      var wrapper = document.createElement('section');
+      wrapper.className = 'project-list-card';
+      // move possible header before the projectList inside wrapper
+      var maybeHeading = projectList.previousElementSibling;
+      if (maybeHeading && maybeHeading.tagName === 'H2') wrapper.appendChild(maybeHeading);
+      projectList.parentNode.insertBefore(wrapper, projectList);
+      wrapper.appendChild(projectList);
+    }
+  });
 
-        var headerRow = thead.querySelector('tr');
-        if (!headerRow) return;
-        var ths = Array.from(headerRow.children);
+  // 4) Transform any generated rubric tables to ensure header order + apply classes
+  //    This runs on DOMContentLoaded and also watches for dynamically-added tables.
+  function transformRubricTable(table) {
+    if (!table || table._uiTransformed) return;
+    try {
+      // wrap table in rubric-card + scrollwrap if not already
+      var parent = table.parentElement;
+      if (!parent.classList.contains('rubric-card')) {
+        var wrapper = document.createElement('div');
+        wrapper.className = 'rubric-card rubric-scrollwrap';
+        parent.insertBefore(wrapper, table);
+        wrapper.appendChild(table);
+        parent = wrapper;
+      }
 
-        var idxStudent = ths.findIndex(function (th) { return /student/i.test(th.textContent); });
-        var idxFar = ths.findIndex(function (th) { return /far\s*below|fail/i.test(th.textContent); });
-        var idxEx = ths.findIndex(function (th) { return /exceed/i.test(th.textContent); });
+      table.classList.add('rubric-table');
 
-        if (idxStudent > 0) {
-          headerRow.insertBefore(ths[idxStudent], headerRow.firstChild);
-          ths = Array.from(headerRow.children);
-        }
+      // ensure a thead exists
+      var thead = table.querySelector('thead');
+      if (!thead) {
+        var firstRow = table.querySelector('tr');
+        if (firstRow) {
+          var newThead = document.createElement('thead');
+          newThead.appendChild(firstRow.cloneNode(true));
+          table.insertBefore(newThead, table.firstChild);
+          // optionally remove original after careful inspection — we leave it to avoid breaking generator
+          thead = newThead;
+        } else return;
+      }
 
-        idxFar = Array.from(headerRow.children).findIndex(function (th) { return /far\s*below|fail/i.test(th.textContent); });
-        if (idxFar > 1) {
-          var farTH = headerRow.children[idxFar];
-          headerRow.insertBefore(farTH, headerRow.children[1]);
-        } else if (idxFar === -1) {
-          var farH = document.createElement('th');
-          farH.textContent = 'Far Below\nExpectations\n(Fail)';
-          farH.className = 'col-descriptor';
-          headerRow.insertBefore(farH, headerRow.children[1] || null);
-        }
+      var headerRow = thead.querySelector('tr');
+      if (!headerRow) return;
+      var ths = Array.from(headerRow.children);
 
-        idxEx = Array.from(headerRow.children).findIndex(function (th) { return /exceed/i.test(th.textContent); });
-        if (idxEx !== -1 && idxEx !== headerRow.children.length - 1) {
-          var exTH = headerRow.children[idxEx];
-          headerRow.appendChild(exTH);
-        } else if (idxEx === -1) {
-          var exH = document.createElement('th');
-          exH.textContent = 'Exceeds\nExpectations\n(A+)';
-          exH.className = 'col-descriptor';
-          headerRow.appendChild(exH);
-        }
+      // find candidate headers
+      var idxStudent = ths.findIndex(function(th){ return /student/i.test(th.textContent); });
+      var idxFar = ths.findIndex(function(th){ return /far\s*below|fail/i.test(th.textContent); });
+      var idxEx = ths.findIndex(function(th){ return /exceed/i.test(th.textContent); });
 
-        var newTHs = Array.from(headerRow.children);
-        if (newTHs[0]) newTHs[0].classList.add('col-student');
-        if (newTHs[1]) newTHs[1].classList.add('col-descriptor');
-        if (newTHs[newTHs.length - 1]) newTHs[newTHs.length - 1].classList.add('col-descriptor');
-        for (var i = 2; i < newTHs.length - 1; i++) newTHs[i].classList.add('col-scale');
+      // move student to first column if not already
+      if (idxStudent > 0) {
+        headerRow.insertBefore(ths[idxStudent], headerRow.firstChild);
+        ths = Array.from(headerRow.children);
+      }
 
-        var tbody = table.querySelector('tbody');
-        if (tbody) {
-          Array.from(tbody.querySelectorAll('tr')).forEach(function (row) {
-            var cells = Array.from(row.children);
-            if (cells[0]) cells[0].classList.add('col-student');
-            if (cells[1]) cells[1].classList.add('col-descriptor');
-            if (cells[cells.length - 1]) cells[cells.length - 1].classList.add('col-descriptor');
-            for (var j = 2; j < cells.length - 1; j++) {
-              if (cells[j]) cells[j].classList.add('col-scale');
-              if (cells[j] && !cells[j].querySelector('.radio-cell')) {
-                var input = cells[j].querySelector('input[type="radio"], input[type="checkbox"]');
-                if (input) {
-                  var rc = document.createElement('div'); rc.className = 'radio-cell';
-                  while (cells[j].firstChild) rc.appendChild(cells[j].firstChild);
-                  cells[j].appendChild(rc);
-                }
+      // ensure Far descriptor is second
+      idxFar = Array.from(headerRow.children).findIndex(function(th){ return /far\s*below|fail/i.test(th.textContent); });
+      if (idxFar > 1) {
+        var farTH = headerRow.children[idxFar];
+        headerRow.insertBefore(farTH, headerRow.children[1]);
+      } else if (idxFar === -1) {
+        // create empty descriptor header if none exists
+        var farH = document.createElement('th');
+        farH.textContent = 'Far Below\nExpectations\n(Fail)';
+        farH.className = 'col-descriptor';
+        headerRow.insertBefore(farH, headerRow.children[1] || null);
+      }
+
+      // ensure Exceeds descriptor is last
+      idxEx = Array.from(headerRow.children).findIndex(function(th){ return /exceed/i.test(th.textContent); });
+      if (idxEx !== -1 && idxEx !== headerRow.children.length - 1) {
+        var exTH = headerRow.children[idxEx];
+        headerRow.appendChild(exTH);
+      } else if (idxEx === -1) {
+        var exH = document.createElement('th');
+        exH.textContent = 'Exceeds\nExpectations\n(A+)';
+        exH.className = 'col-descriptor';
+        headerRow.appendChild(exH);
+      }
+
+      // recompute and add header classes
+      var newTHs = Array.from(headerRow.children);
+      if (newTHs[0]) newTHs[0].classList.add('col-student');
+      if (newTHs[1]) newTHs[1].classList.add('col-descriptor');
+      if (newTHs[newTHs.length - 1]) newTHs[newTHs.length - 1].classList.add('col-descriptor');
+      for (var i=2; i<newTHs.length-1; i++) newTHs[i].classList.add('col-scale');
+
+      // apply classes to tbody cells and wrap radio inputs
+      var tbody = table.querySelector('tbody');
+      if (tbody) {
+        Array.from(tbody.querySelectorAll('tr')).forEach(function(row){
+          var cells = Array.from(row.children);
+          if (cells[0]) cells[0].classList.add('col-student');
+          if (cells[1]) cells[1].classList.add('col-descriptor');
+          if (cells[cells.length-1]) cells[cells.length-1].classList.add('col-descriptor');
+          for (var j=2;j<cells.length-1;j++){
+            if (cells[j]) cells[j].classList.add('col-scale');
+            if (cells[j] && !cells[j].querySelector('.radio-cell')) {
+              var input = cells[j].querySelector('input[type="radio"], input[type="checkbox"]');
+              if (input) {
+                var rc = document.createElement('div'); rc.className = 'radio-cell';
+                while (cells[j].firstChild) rc.appendChild(cells[j].firstChild);
+                cells[j].appendChild(rc);
               }
             }
-          });
-        }
-
-        table._uiTransformed = true;
-      } catch (err) {
-        console.warn('transformRubricTable error', err);
-      }
-    }
-
-    document.addEventListener('DOMContentLoaded', function () {
-      Array.from(document.querySelectorAll('table')).forEach(function (t) { transformRubricTable(t); });
-    });
-
-    var mo = new MutationObserver(function (mutations) {
-      mutations.forEach(function (m) {
-        Array.from(m.addedNodes || []).forEach(function (node) {
-          if (!node || node.nodeType !== 1) return;
-          if (node.tagName === 'TABLE') transformRubricTable(node);
-          else Array.from(node.querySelectorAll ? node.querySelectorAll('table') : []).forEach(transformRubricTable);
+          }
         });
+      }
+
+      table._uiTransformed = true;
+    } catch (err) {
+      console.warn('transformRubricTable error', err);
+    }
+  }
+
+  // run on existing tables right away
+  document.addEventListener('DOMContentLoaded', function(){
+    Array.from(document.querySelectorAll('table')).forEach(function(t){ transformRubricTable(t); });
+  });
+
+  // observe for dynamically added tables
+  var mo = new MutationObserver(function(mutations){
+    mutations.forEach(function(m){
+      Array.from(m.addedNodes||[]).forEach(function(node){
+        if (!node || node.nodeType !== 1) return;
+        if (node.tagName === 'TABLE') transformRubricTable(node);
+        else Array.from(node.querySelectorAll ? node.querySelectorAll('table') : []).forEach(transformRubricTable);
       });
     });
-    mo.observe(document.body, { childList: true, subtree: true });
-  })();
+  });
+  mo.observe(document.body, { childList: true, subtree: true });
 
 })();
 
