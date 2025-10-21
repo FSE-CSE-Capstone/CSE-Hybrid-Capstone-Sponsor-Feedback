@@ -616,6 +616,25 @@
     }
   });
 
+  // Allow unchecking a selected radio button (toggle behavior)
+document.addEventListener('click', function (e) {
+  const target = e.target;
+  if (target.type === 'radio') {
+    // store the checked state in a custom attribute
+    if (target.hasAttribute('data-waschecked')) {
+      target.checked = false;
+      target.removeAttribute('data-waschecked');
+      target.dispatchEvent(new Event('change', { bubbles: true }));
+    } else {
+      // unmark all radios in this group
+      const group = document.getElementsByName(target.name);
+      group.forEach(r => r.removeAttribute('data-waschecked'));
+      target.setAttribute('data-waschecked', 'true');
+    }
+  }
+});
+
+
   // Boot
   showIdentityStage();
   tryFetchData();
