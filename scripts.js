@@ -1,5 +1,5 @@
 // Full corrected scripts.js (HYBRID site)
-// - multi-email parsing, reliable comment section creation, remove empty placeholder cards
+// - includes group row, per-student & group comments, draft save, and submission capture
 (function () {
   'use strict';
 
@@ -495,8 +495,8 @@
   }
 
   // -------------------------
-  // Replace your current matrix-builder with this safe, complete function.
-  // Assumes the same outer variables exist in your file: RUBRIC, stagedRatings, currentProject, matrixContainer
+  // Build matrix and inject group row
+  // -------------------------
   function loadProjectIntoMatrix(projectName, students) {
     // set current project
     currentProject = projectName || '';
@@ -595,6 +595,7 @@
       // tbody
       var tbody = document.createElement('tbody');
 
+      // student rows
       students.forEach(function (studentName, sIdx) {
         var tr = document.createElement('tr');
 
@@ -650,6 +651,64 @@
         tbody.appendChild(tr);
       });
 
+      // --- Add one final row for "Evaluating group as a whole" (radios for 1..7)
+      (function(){
+        var trGroup = document.createElement('tr');
+
+        // Label cell
+        var tdGroupName = document.createElement('td');
+        tdGroupName.textContent = 'Evaluating group as a whole';
+        tdGroupName.style.padding = '8px 10px';
+        tdGroupName.style.verticalAlign = 'middle';
+        tdGroupName.style.textAlign = 'left';
+        tdGroupName.style.fontStyle = 'italic';
+        trGroup.appendChild(tdGroupName);
+
+        // left descriptor cell (empty)
+        var tdGroupLeft = document.createElement('td');
+        tdGroupLeft.className = 'col-descriptor';
+        tdGroupLeft.style.padding = '8px';
+        trGroup.appendChild(tdGroupLeft);
+
+        // radio cells 1..7 for the group
+        for (var gscore = 1; gscore <= 7; gscore++) {
+          var tdG = document.createElement('td');
+          tdG.style.textAlign = 'center';
+          tdG.style.padding = '8px';
+
+          var inputG = document.createElement('input');
+          inputG.type = 'radio';
+          inputG.name = 'rating-' + cIdx + '-group';
+          inputG.value = String(gscore);
+          inputG.id = 'rating-' + cIdx + '-group-' + gscore;
+
+          // pre-check from stagedRatings if present
+          var stagedForProject = stagedRatings[currentProject] || {};
+          var stagedGroupRatings = stagedForProject._groupRatings || {};
+          if (stagedGroupRatings && String(stagedGroupRatings[cIdx]) === String(gscore)) {
+            inputG.checked = true;
+          }
+
+          var labelG = document.createElement('label');
+          labelG.setAttribute('for', inputG.id);
+          labelG.style.cursor = 'pointer';
+          labelG.style.display = 'inline-block';
+          labelG.style.padding = '2px';
+          labelG.appendChild(inputG);
+
+          tdG.appendChild(labelG);
+          trGroup.appendChild(tdG);
+        }
+
+        // right descriptor cell (empty)
+        var tdGroupRight = document.createElement('td');
+        tdGroupRight.className = 'col-descriptor';
+        tdGroupRight.style.padding = '8px';
+        trGroup.appendChild(tdGroupRight);
+
+        tbody.appendChild(trGroup);
+      })();
+
       table.appendChild(tbody);
       critWrap.appendChild(table);
       card.appendChild(critWrap);
@@ -702,6 +761,14 @@
       stagedRatings[currentProject]._studentComments[sName] = stagedRatings[currentProject]._studentComments[sName] || { public: '', private: '' };
       if (pubEl) stagedRatings[currentProject]._studentComments[sName].public = pubEl.value || '';
       if (privEl) stagedRatings[currentProject]._studentComments[sName].private = privEl.value || '';
+    }
+
+    // --- capture group ratings (one per criterion) ---
+    if (!stagedRatings[currentProject]._groupRatings) stagedRatings[currentProject]._groupRatings = {};
+    for (var gc = 0; gc < RUBRIC.length; gc++) {
+      var gsel = document.querySelector('input[name="rating-' + gc + '-group"]:checked');
+      if (gsel) stagedRatings[currentProject]._groupRatings[gc] = parseInt(gsel.value, 10);
+      else stagedRatings[currentProject]._groupRatings[gc] = stagedRatings[currentProject]._groupRatings[gc] || null;
     }
 
     // group comments
@@ -759,6 +826,17 @@
       if (gpPriv) groupComments.private = gpPriv.value || '';
     }
 
+    // include groupRatings
+    var groupRatings = {};
+    if (stagedRatings[currentProject] && stagedRatings[currentProject]._groupRatings) {
+      groupRatings = stagedRatings[currentProject]._groupRatings;
+    } else {
+      for (var gi = 0; gi < RUBRIC.length; gi++) {
+        var gsel2 = document.querySelector('input[name="rating-' + gi + '-group"]:checked');
+        groupRatings[gi] = gsel2 ? parseInt(gsel2.value, 10) : null;
+      }
+    }
+
     var payload = {
       sponsorName: currentName || (nameInput ? nameInput.value.trim() : ''),
       sponsorEmail: currentEmail || (emailInput ? emailInput.value.trim() : ''),
@@ -766,6 +844,7 @@
       rubric: RUBRIC.map(function (r) { return r.title; }),
       responses: rows,
       groupComments: groupComments,
+      groupRatings: groupRatings,
       timestamp: new Date().toISOString()
     };
 
@@ -1111,5 +1190,6 @@
   mo.observe(document.body, { childList: true, subtree: true });
 
 })();
+
 
 
