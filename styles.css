@@ -547,3 +547,50 @@ input:focus, select:focus, textarea:focus{
 
 /* Keep numeric columns compact but visible */
 .matrix-table thead th:nth-child(n+3):nth-child(-n+9) { text-align:center; }
+
+/* ---------- Force colgroup widths + make headers wrap safely ---------- */
+
+/* Make sure fixed table layout is active so colgroup widths are used */
+.matrix-table {
+  table-layout: fixed !important;
+  width: 100% !important;
+  box-sizing: border-box;
+}
+
+/* Ensure header descriptor cells wrap inside their column (no overflow, no single-letter stacks) */
+.matrix-table thead th.header-descriptor,
+.matrix-table thead th:nth-child(2),
+.matrix-table thead th:last-child {
+  white-space: normal !important;       /* allow multi-line wrapping */
+  overflow-wrap: break-word !important;
+  word-break: break-word !important;
+  text-overflow: clip !important;
+  box-sizing: border-box !important;
+  padding: 8px 12px !important;
+  line-height: 1.15 !important;
+  vertical-align: middle !important;
+}
+
+/* make sure the Student column remains left-aligned and uses the col width */
+.matrix-table thead th:first-child,
+.matrix-table tbody td:first-child {
+  text-align: left !important;
+  padding-left: 18px !important;
+  font-weight: 600 !important;
+  box-sizing: border-box !important;
+}
+
+/* numeric columns keep small but visible size */
+.matrix-table thead th:nth-child(n+3):nth-child(-n+9),
+.matrix-table tbody td:nth-child(n+3):nth-child(-n+9) {
+  text-align: center !important;
+  min-width: 36px !important;
+  box-sizing: border-box !important;
+}
+
+/* keep container scrollable on very narrow viewports */
+#matrix-container, .rubric-scrollwrap {
+  overflow-x: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+}
+
