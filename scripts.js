@@ -643,6 +643,52 @@ document.addEventListener('click', function (e) {
   window.__sponsorDebug = { sponsorData: sponsorData, stagedRatings: stagedRatings, completedProjects: completedProjects, reloadData: tryFetchData };
   window.__submitCurrentProject = submitCurrentProject;
 
+  // --- Radio toggle/uncheck support (robust) ---
+(function () {
+  // record previous checked state when mouse goes down (works when clicking label too)
+  document.addEventListener('mousedown', function (e) {
+    const radio = e.target.closest && e.target.closest('input[type="radio"]');
+    if (!radio) return;
+    // store boolean as string to be safe
+    radio.dataset.waschecked = radio.checked ? 'true' : 'false';
+  });
+
+  // also handle keyboard activation (spacebar) — use keydown to record the state
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== ' ' && e.key !== 'Spacebar') return;
+    const active = document.activeElement;
+    if (!active) return;
+    const radio = active.matches && active.matches('input[type="radio"]') ? active : null;
+    if (!radio) return;
+    radio.dataset.waschecked = radio.checked ? 'true' : 'false';
+  });
+
+  // on click, if it was already checked, uncheck it and fire change
+  document.addEventListener('click', function (e) {
+    const radio = e.target.closest && e.target.closest('input[type="radio"]');
+    if (!radio) return;
+
+    if (radio.dataset.waschecked === 'true') {
+      // prevent normal behavior (in case the browser toggles it)
+      e.preventDefault();
+      // uncheck and clean up marker
+      radio.checked = false;
+      radio.removeAttribute('data-waschecked');
+      // emit change so your saveDraftHandler or other logic runs
+      radio.dispatchEvent(new Event('change', { bubbles: true }));
+      return;
+    }
+
+    // otherwise mark this radio as the currently checked one for its group
+    // clear siblings' marker
+    const group = document.getElementsByName(radio.name);
+    Array.prototype.forEach.call(group, function (r) { r.removeAttribute('data-waschecked'); });
+    radio.setAttribute('data-waschecked', 'true');
+  });
+  
+})();
+
+
 })();
 
 
