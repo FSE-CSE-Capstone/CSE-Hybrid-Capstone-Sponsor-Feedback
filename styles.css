@@ -361,76 +361,71 @@ input:focus, select:focus, textarea:focus{
 .btn-mini { font-size: 0.85rem; padding: 6px 8px; }
 
 
-/* ---------- Descriptor no-wrap + student column widen (append) ---------- */
 
-/* Ensure the table uses fixed layout (you already have this in a few places; keep it) */
+/* ---------- Make descriptor titles fully visible (no ellipsis), responsive ---------- */
+
+/* Let browser auto-size columns to fit content (descriptor headers will get the space they need) */
 .matrix-table,
 .rubric-table {
-  table-layout: fixed !important;
+  table-layout: auto !important;
 }
 
-/* Make Student column wider and flexible but bounded */
-.matrix-table td:first-child,
-.rubric-table td:first-child,
+/* Make the Student column wider so names have space */
 .matrix-table thead th:first-child,
 .rubric-table thead th:first-child,
+.matrix-table td:first-child,
+.rubric-table td:first-child,
 .col-student {
-  width: 46% !important;        /* widen student column */
-  min-width: 220px !important;  /* make sure names are readable */
+  width: 42% !important;
+  min-width: 200px !important;
   text-align: left !important;
-  padding-left: 18px !important;
   font-weight: 600;
+  padding-left: 18px !important;
   overflow: hidden;
 }
 
-/* Descriptor header cells: do NOT wrap, but clip with ellipsis so they never spill out */
+/* Descriptor headers: keep single-line and fully visible (no ellipsis) */
+.header-descriptor,
 .matrix-table thead th:nth-child(2),
 .matrix-table thead th:last-child,
 .rubric-table thead th:nth-child(2),
-.rubric-table thead th:last-child,
-/* descriptor headers: keep on one line, always show full title, stay inside card */
-.header-descriptor {
-  white-space: nowrap !important;     /* single line */
-  overflow: hidden !important;        /* hide anything too large */
-  text-overflow: clip !important;     /* no ellipsis — text stays full */
-  max-width: 220px !important;        /* enough room to display full text */
-  min-width: 150px !important;        /* keep decent width for layout balance */
+.rubric-table thead th:last-child {
+  white-space: nowrap !important;   /* one-line */
+  overflow: visible !important;     /* allow the cell content to determine width */
+  text-overflow: clip !important;
+  padding: 8px 12px !important;
   text-align: center !important;
-  line-height: 1.2;
-  padding: 10px 12px !important;
+  line-height: 1.15;
 }
 
-
-/* Keep numeric score columns narrow and centered */
+/* Ensure numeric columns don't collapse too small (radios stay visible) */
 .matrix-table thead th:nth-child(n+3):nth-child(-n+9),
-.rubric-table thead th:nth-child(n+3):nth-child(-n+9) {
-  width: auto;
+.rubric-table thead th:nth-child(n+3):nth-child(-n+9),
+.matrix-table tbody td:nth-child(n+3):nth-child(-n+9) {
   min-width: 36px !important;
-  max-width: 48px !important;
+  padding: 8px 6px !important;
   text-align: center !important;
 }
 
-/* Keep table scroll on small screens instead of overflowing */
+/* Keep matrix container scrollable on small viewports */
 #matrix-container,
 .rubric-scrollwrap {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
 }
 
-/* small responsive tweak */
+/* Responsive adjustments */
 @media (max-width: 980px) {
-  .matrix-table td:first-child,
-  .col-student { width: 48% !important; min-width: 160px !important; }
-  .header-descriptor { max-width: 140px !important; }
+  .matrix-table thead th:first-child,
+  .col-student { width: 48% !important; min-width: 140px !important; }
+  .header-descriptor { font-size: 0.95rem; padding: 6px 8px !important; }
+  .matrix-table thead th:nth-child(n+3):nth-child(-n+9) { min-width: 30px !important; }
 }
 
 @media (max-width: 640px) {
-  #matrix-container {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-  .header-descriptor {
-    max-width: 180px !important; /* tighten slightly on mobile */
-    font-size: 0.85rem;
-  }
+  .matrix-table thead th:first-child,
+  .col-student { width: 60% !important; min-width: 140px !important; }
+  .header-descriptor { max-width: 160px !important; font-size: 0.9rem; }
+  .matrix-table th, .matrix-table td { padding: 6px 6px !important; }
 }
+
