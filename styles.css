@@ -364,61 +364,74 @@ input:focus, select:focus, textarea:focus{
 
 /* ---------- Make descriptor titles fully visible (no ellipsis), responsive ---------- */
 
-/* Let browser auto-size columns to fit content (descriptor headers will get the space they need) */
+/* ---------- Descriptor wrap + contained table (paste at end of styles.css) ---------- */
+
+/* Use fixed table layout so columns respect widths and descriptor cells can wrap */
 .matrix-table,
 .rubric-table {
-  table-layout: auto !important;
+  table-layout: fixed !important;
+  width: 100% !important;
+  border-collapse: collapse;
+  box-sizing: border-box;
 }
 
-/* Make the Student column wider so names have space */
+/* Wider student column but bounded so descriptors get room to wrap */
 .matrix-table thead th:first-child,
 .rubric-table thead th:first-child,
 .matrix-table td:first-child,
 .rubric-table td:first-child,
 .col-student {
-  width: 42% !important;
-  min-width: 200px !important;
+  width: 44% !important;
+  min-width: 180px !important;
+  max-width: 48% !important;
   text-align: left !important;
-  font-weight: 600;
   padding-left: 18px !important;
+  font-weight: 600;
+  box-sizing: border-box;
   overflow: hidden;
 }
 
-/* Descriptor headers: keep single-line and fully visible (no ellipsis) */
+/* Descriptor header cells: allow wrapping but keep content inside card */
 .header-descriptor,
 .matrix-table thead th:nth-child(2),
 .matrix-table thead th:last-child,
 .rubric-table thead th:nth-child(2),
 .rubric-table thead th:last-child {
-  white-space: nowrap !important;   /* one-line */
-  overflow: visible !important;     /* allow the cell content to determine width */
+  white-space: normal !important;        /* allow multi-line wrapping */
+  overflow-wrap: break-word !important;  /* break long tokens */
+  word-break: break-word !important;
   text-overflow: clip !important;
-  padding: 8px 12px !important;
+  max-width: 220px !important;           /* bound width so they don't push layout */
+  min-width: 100px !important;
+  padding: 10px 12px !important;
   text-align: center !important;
   line-height: 1.15;
+  box-sizing: border-box;
 }
 
-/* Ensure numeric columns don't collapse too small (radios stay visible) */
+/* Numeric score columns stay narrow and centered */
 .matrix-table thead th:nth-child(n+3):nth-child(-n+9),
 .rubric-table thead th:nth-child(n+3):nth-child(-n+9),
 .matrix-table tbody td:nth-child(n+3):nth-child(-n+9) {
   min-width: 36px !important;
+  max-width: 48px !important;
   padding: 8px 6px !important;
   text-align: center !important;
+  box-sizing: border-box;
 }
 
-/* Keep matrix container scrollable on small viewports */
+/* Ensure container scroll on small screens instead of content escaping the card */
 #matrix-container,
 .rubric-scrollwrap {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
 }
 
-/* Responsive adjustments */
+/* Slight responsive adjustments */
 @media (max-width: 980px) {
   .matrix-table thead th:first-child,
-  .col-student { width: 48% !important; min-width: 140px !important; }
-  .header-descriptor { font-size: 0.95rem; padding: 6px 8px !important; }
+  .col-student { width: 50% !important; min-width: 140px !important; }
+  .header-descriptor { max-width: 180px !important; font-size: 0.95rem; padding: 8px 10px !important; }
   .matrix-table thead th:nth-child(n+3):nth-child(-n+9) { min-width: 30px !important; }
 }
 
@@ -427,24 +440,4 @@ input:focus, select:focus, textarea:focus{
   .col-student { width: 60% !important; min-width: 140px !important; }
   .header-descriptor { max-width: 160px !important; font-size: 0.9rem; }
   .matrix-table th, .matrix-table td { padding: 6px 6px !important; }
-}
-
-/* ---------- Make survey (rubric) cards use full available width ---------- */
-.content-inner,
-.card,
-.matrix-card,
-.rubric-card {
-  max-width: 100% !important;
-  width: 100% !important;
-}
-
-#matrix-container {
-  max-width: 100% !important;
-  width: 100% !important;
-}
-
-/* Prevent the table from squishing too much */
-.matrix-table,
-.rubric-table {
-  width: 100% !important;
 }
