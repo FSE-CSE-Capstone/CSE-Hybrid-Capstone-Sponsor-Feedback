@@ -388,16 +388,18 @@ input:focus, select:focus, textarea:focus{
 .matrix-table thead th:last-child,
 .rubric-table thead th:nth-child(2),
 .rubric-table thead th:last-child,
+/* descriptor headers: keep on one line, always show full title, stay inside card */
 .header-descriptor {
-  white-space: nowrap !important;         /* keep on one line */
-  overflow: hidden !important;
-  text-overflow: ellipsis !important;    /* show '...' if too long */
-  max-width: 180px !important;           /* prevents them from taking too much space */
-  min-width: 80px !important;
-  padding: 10px 12px !important;
+  white-space: nowrap !important;     /* single line */
+  overflow: hidden !important;        /* hide anything too large */
+  text-overflow: clip !important;     /* no ellipsis — text stays full */
+  max-width: 220px !important;        /* enough room to display full text */
+  min-width: 150px !important;        /* keep decent width for layout balance */
   text-align: center !important;
-  line-height: 1.15;
+  line-height: 1.2;
+  padding: 10px 12px !important;
 }
+
 
 /* Keep numeric score columns narrow and centered */
 .matrix-table thead th:nth-child(n+3):nth-child(-n+9),
@@ -420,4 +422,15 @@ input:focus, select:focus, textarea:focus{
   .matrix-table td:first-child,
   .col-student { width: 48% !important; min-width: 160px !important; }
   .header-descriptor { max-width: 140px !important; }
+}
+
+@media (max-width: 640px) {
+  #matrix-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .header-descriptor {
+    max-width: 180px !important; /* tighten slightly on mobile */
+    font-size: 0.85rem;
+  }
 }
