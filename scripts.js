@@ -259,19 +259,19 @@
 var table = document.createElement('table');
 table.className = 'matrix-table';
 
-// INSERT THIS: explicit column widths via colgroup
+// INSERT / replace colgroup widths with these values (put this where your current colgroup code is)
 var colgroup = document.createElement('colgroup');
 
-// Student column (left)
-var colStudent = document.createElement('col'); colStudent.style.width = '38%'; colgroup.appendChild(colStudent);
+// Student column (left) — give more room for names
+var colStudent = document.createElement('col'); colStudent.style.width = '46%'; colgroup.appendChild(colStudent);
 
-// Left descriptor
-var colLeft = document.createElement('col'); colLeft.style.width = '10%'; colgroup.appendChild(colLeft);
+// Left descriptor — allow wrap but reserve space
+var colLeft = document.createElement('col'); colLeft.style.width = '12%'; colgroup.appendChild(colLeft);
 
-// Numeric columns 1..7
+// Numeric columns 1..7 — small fixed widths
 for (var i = 0; i < 7; i++) {
   var c = document.createElement('col');
-  c.style.width = '6%'; // adjust small numeric column width
+  c.style.width = '4%'; // 7 * 4% = 28% for numeric scale
   colgroup.appendChild(c);
 }
 
@@ -279,7 +279,7 @@ for (var i = 0; i < 7; i++) {
 var colRight = document.createElement('col'); colRight.style.width = '10%'; colgroup.appendChild(colRight);
 
 table.appendChild(colgroup);
-// end INSERT
+
 
 
       // thead
