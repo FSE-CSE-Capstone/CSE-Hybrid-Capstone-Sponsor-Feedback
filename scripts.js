@@ -263,32 +263,40 @@
       var thName = document.createElement('th'); thName.textContent = 'Student'; thName.style.textAlign = 'left'; thName.style.padding = '8px';
       trHead.appendChild(thName);
 
-      // left descriptor (no radios)
-     var thLeftDesc = document.createElement('th');
-thLeftDesc.className = 'header-descriptor'; // new class for precise CSS styling
-thLeftDesc.textContent = 'Far Below\nExpectations (Fail)';
-thLeftDesc.title = 'Far Below Expectations (Fail)'; // tooltip for full text
-thLeftDesc.style.padding = '8px';
-thLeftDesc.style.textAlign = 'center';
-trHead.appendChild(thLeftDesc);
-      
-      // numeric headers 1..7
-      for (var k = 1; k <= 7; k++) {
-        var th = document.createElement('th'); th.textContent = String(k); th.style.padding = '8px'; th.style.textAlign = 'center';
-        trHead.appendChild(th);
-      }
+      // ----------------------
+// REPLACE the existing header-building block with this:
+// ----------------------
 
-      // right descriptor
-     var thRightDesc = document.createElement('th');
+// left descriptor (no radios)
+var thLeftDesc = document.createElement('th');
+thLeftDesc.className = 'header-descriptor';
+/* Use innerHTML with a <div> so we can control wrapping visually.
+   The content will wrap naturally according to CSS max-width. */
+thLeftDesc.innerHTML = '<div class="hd-line">Far Below Expectations</div><div class="hd-sub">(Fail)</div>';
+thLeftDesc.style.textAlign = 'center';
+thLeftDesc.style.padding = '8px';
+trHead.appendChild(thLeftDesc);
+
+// numeric headers 1..7
+for (var k = 1; k <= 7; k++) {
+  var th = document.createElement('th');
+  th.textContent = String(k);
+  th.style.padding = '8px';
+  th.style.textAlign = 'center';
+  trHead.appendChild(th);
+}
+
+// right descriptor
+var thRightDesc = document.createElement('th');
 thRightDesc.className = 'header-descriptor';
-thRightDesc.textContent = 'Exceeds\nExpectations (A+)';
-thRightDesc.title = 'Exceeds Expectations (A+)';
-thRightDesc.style.padding = '8px';
+thRightDesc.innerHTML = '<div class="hd-line">Exceeds Expectations</div><div class="hd-sub">(A+)</div>';
 thRightDesc.style.textAlign = 'center';
+thRightDesc.style.padding = '8px';
 trHead.appendChild(thRightDesc);
 
 thead.appendChild(trHead);
 table.appendChild(thead);
+
 
       // tbody - student rows
       var tbody = document.createElement('tbody');
