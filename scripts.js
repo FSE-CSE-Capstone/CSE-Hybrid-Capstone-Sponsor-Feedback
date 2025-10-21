@@ -419,30 +419,241 @@ function loadProjectIntoMatrix(projectName, students) {
     while (tempContainer.firstChild) matrixContainer.appendChild(tempContainer.firstChild);
   }
 
-    // Create the comment section AFTER the matrix
-    var commentSec = document.createElement('div');
-    commentSec.className = 'section section-comment';
-    commentSec.style.marginTop = '12px';
-    commentSec.style.display = 'block'; // explicit display to avoid CSS hiding
+   // Create the detailed comment section AFTER the matrix (per-student public/private + group)
+(function(){
+  // remove old comment area if present
+  var oldComment = document.querySelector('.section.section-comment');
+  if (oldComment && oldComment.parentNode) oldComment.parentNode.removeChild(oldComment);
 
-    var commentWrap = document.createElement('div'); commentWrap.className = 'project-comment-wrap';
-    var commentLabel = document.createElement('label'); commentLabel.setAttribute('for', 'project-comment'); commentLabel.textContent = 'Optional project comment';
-    commentLabel.style.display = 'block'; commentLabel.style.marginBottom = '6px';
-    var commentTA = document.createElement('textarea'); commentTA.id = 'project-comment';
-    commentTA.placeholder = 'Any additional feedback for the students or instructor...';
-    commentTA.style.width = '100%'; commentTA.style.minHeight = '80px'; commentTA.style.padding = '8px'; commentTA.style.boxSizing = 'border-box';
+  // wrapper section
+  var commentSec = document.createElement('div');
+  commentSec.className = 'section section-comment';
+  commentSec.style.marginTop = '12px';
+  commentSec.style.display = 'block';
 
-    var stagedComment = stagedRatings[currentProject] && stagedRatings[currentProject]._comment;
-    if (stagedComment) commentTA.value = stagedComment;
+  // header
+  var h = document.createElement('h3');
+  h.textContent = 'Add your additional comments';
+  h.style.margin = '0 0 12px 0';
+  h.style.fontSize = '1rem';
+  h.style.fontWeight = '700';
+  commentSec.appendChild(h);
 
-    commentWrap.appendChild(commentLabel); commentWrap.appendChild(commentTA); commentSec.appendChild(commentWrap);
+  // helper to build a student comment panel
+  function buildStudentPanel(studentName, sIdx) {
+    var wrapper = document.createElement('div');
+    wrapper.className = 'student-comment-panel';
+    wrapper.style.border = '1px solid rgba(10,12,30,0.05)';
+    wrapper.style.borderRadius = '8px';
+    wrapper.style.padding = '10px';
+    wrapper.style.marginBottom = '10px';
+    wrapper.style.position = 'relative';
+    wrapper.style.background = '#fff';
 
-    if (matrixContainer && matrixContainer.parentNode) {
-      if (matrixContainer.nextSibling) matrixContainer.parentNode.insertBefore(commentSec, matrixContainer.nextSibling);
-      else matrixContainer.parentNode.appendChild(commentSec);
-    } else {
-      document.body.appendChild(commentSec);
+    // header row (name + toggle)
+    var headerRow = document.createElement('div');
+    headerRow.style.display = 'flex';
+    headerRow.style.justifyContent = 'space-between';
+    headerRow.style.alignItems = 'center';
+    headerRow.style.marginBottom = '8px';
+
+    var nameEl = document.createElement('div');
+    nameEl.textContent = studentName;
+    nameEl.style.fontWeight = '600';
+    headerRow.appendChild(nameEl);
+
+    var toggleBtn = document.createElement('button');
+    toggleBtn.type = 'button';
+    toggleBtn.className = 'btn btn-mini comment-toggle';
+    toggleBtn.textContent = '▾ Add comment';
+    toggleBtn.style.fontSize = '0.85rem';
+    toggleBtn.style.padding = '6px 8px';
+    toggleBtn.style.cursor = 'pointer';
+    toggleBtn.style.background = 'white';
+    toggleBtn.style.border = '1px solid rgba(10,12,30,0.06)';
+    toggleBtn.style.borderRadius = '6px';
+    toggleBtn.style.boxShadow = 'none';
+    headerRow.appendChild(toggleBtn);
+
+    wrapper.appendChild(headerRow);
+
+    // content (collapsed by default)
+    var content = document.createElement('div');
+    content.className = 'student-comment-content';
+    content.style.display = 'none';
+
+    // Public comment label + textarea
+    var lblPublic = document.createElement('div');
+    lblPublic.textContent = 'Comments to be SHARED WITH THE STUDENT';
+    lblPublic.style.fontSize = '0.9rem';
+    lblPublic.style.margin = '4px 0';
+    content.appendChild(lblPublic);
+
+    var taPublic = document.createElement('textarea');
+    taPublic.id = 'comment-public-' + sIdx;
+    taPublic.placeholder = 'Comments to share with student';
+    taPublic.style.width = '100%';
+    taPublic.style.minHeight = '60px';
+    taPublic.style.padding = '8px';
+    taPublic.style.boxSizing = 'border-box';
+    taPublic.style.marginBottom = '8px';
+    content.appendChild(taPublic);
+
+    // Private comment label + textarea
+    var lblPrivate = document.createElement('div');
+    lblPrivate.textContent = 'Comments to be SHARED ONLY WITH THE INSTRUCTOR';
+    lblPrivate.style.fontSize = '0.9rem';
+    lblPrivate.style.margin = '4px 0';
+    content.appendChild(lblPrivate);
+
+    var taPrivate = document.createElement('textarea');
+    taPrivate.id = 'comment-private-' + sIdx;
+    taPrivate.placeholder = 'Private comments for instructor';
+    taPrivate.style.width = '100%';
+    taPrivate.style.minHeight = '60px';
+    taPrivate.style.padding = '8px';
+    taPrivate.style.boxSizing = 'border-box';
+    content.appendChild(taPrivate);
+
+    wrapper.appendChild(content);
+
+    // toggle behavior
+    toggleBtn.addEventListener('click', function () {
+      if (content.style.display === 'none') {
+        content.style.display = 'block';
+        toggleBtn.textContent = '▴ Hide comment';
+      } else {
+        content.style.display = 'none';
+        toggleBtn.textContent = '▾ Add comment';
+      }
+    });
+
+    // pre-fill from stagedRatings if present
+    var staged = stagedRatings[currentProject] && stagedRatings[currentProject]._studentComments || {};
+    if (staged && staged[studentName]) {
+      if (staged[studentName].public) taPublic.value = staged[studentName].public;
+      if (staged[studentName].private) taPrivate.value = staged[studentName].private;
+      // if either exists, show expanded by default
+      if ((staged[studentName].public && staged[studentName].public.length) || (staged[studentName].private && staged[studentName].private.length)) {
+        content.style.display = 'block';
+        toggleBtn.textContent = '▴ Hide comment';
+      }
     }
+
+    return wrapper;
+  }
+
+  // create per-student panels
+  var studentsList = sponsorProjects[currentProject] || [];
+  for (var si = 0; si < studentsList.length; si++) {
+    // student name may be a string; ensure unique id index mapping
+    var studentName = studentsList[si];
+    var panel = buildStudentPanel(studentName, si);
+    commentSec.appendChild(panel);
+  }
+
+  // Group-level comment (public + private)
+  var groupWrap = document.createElement('div');
+  groupWrap.className = 'student-comment-panel';
+  groupWrap.style.border = '1px solid rgba(10,12,30,0.05)';
+  groupWrap.style.borderRadius = '8px';
+  groupWrap.style.padding = '10px';
+  groupWrap.style.marginBottom = '10px';
+  groupWrap.style.background = '#fff';
+
+  var groupHeader = document.createElement('div');
+  groupHeader.style.display = 'flex';
+  groupHeader.style.justifyContent = 'space-between';
+  groupHeader.style.alignItems = 'center';
+  groupHeader.style.marginBottom = '8px';
+
+  var groupTitle = document.createElement('div');
+  groupTitle.textContent = 'Comments for Evaluating group as a whole';
+  groupTitle.style.fontWeight = '600';
+  groupHeader.appendChild(groupTitle);
+
+  var groupToggle = document.createElement('button');
+  groupToggle.type = 'button';
+  groupToggle.className = 'btn btn-mini comment-toggle';
+  groupToggle.textContent = '▾ Add comment';
+  groupToggle.style.fontSize = '0.85rem';
+  groupToggle.style.padding = '6px 8px';
+  groupToggle.style.cursor = 'pointer';
+  groupToggle.style.background = 'white';
+  groupToggle.style.border = '1px solid rgba(10,12,30,0.06)';
+  groupToggle.style.borderRadius = '6px';
+  groupHeader.appendChild(groupToggle);
+
+  groupWrap.appendChild(groupHeader);
+
+  var groupContent = document.createElement('div');
+  groupContent.style.display = 'none';
+
+  var groupLbl = document.createElement('div');
+  groupLbl.textContent = 'Comments for Evaluating group as a whole (shared with student by default)';
+  groupLbl.style.margin = '4px 0';
+  groupContent.appendChild(groupLbl);
+
+  var taGroup = document.createElement('textarea');
+  taGroup.id = 'comment-group-public';
+  taGroup.placeholder = 'Comments for evaluating group as a whole';
+  taGroup.style.width = '100%';
+  taGroup.style.minHeight = '80px';
+  taGroup.style.padding = '8px';
+  taGroup.style.boxSizing = 'border-box';
+  groupContent.appendChild(taGroup);
+
+  // optional private group textarea
+  var groupLblPrivate = document.createElement('div');
+  groupLblPrivate.textContent = 'Private comments about the group (instructor only)';
+  groupLblPrivate.style.margin = '8px 0 4px 0';
+  groupContent.appendChild(groupLblPrivate);
+
+  var taGroupPrivate = document.createElement('textarea');
+  taGroupPrivate.id = 'comment-group-private';
+  taGroupPrivate.placeholder = 'Private comments for instructor about the group';
+  taGroupPrivate.style.width = '100%';
+  taGroupPrivate.style.minHeight = '60px';
+  taGroupPrivate.style.padding = '8px';
+  taGroupPrivate.style.boxSizing = 'border-box';
+  groupContent.appendChild(taGroupPrivate);
+
+  groupWrap.appendChild(groupContent);
+
+  groupToggle.addEventListener('click', function () {
+    if (groupContent.style.display === 'none') {
+      groupContent.style.display = 'block';
+      groupToggle.textContent = '▴ Hide comment';
+    } else {
+      groupContent.style.display = 'none';
+      groupToggle.textContent = '▾ Add comment';
+    }
+  });
+
+  // prefill group comments if staged
+  var stagedGroup = stagedRatings[currentProject] && stagedRatings[currentProject]._groupComments || {};
+  if (stagedGroup) {
+    if (stagedGroup.public) taGroup.value = stagedGroup.public;
+    if (stagedGroup.private) taGroupPrivate.value = stagedGroup.private;
+    if ((stagedGroup.public && stagedGroup.public.length) || (stagedGroup.private && stagedGroup.private.length)) {
+      groupContent.style.display = 'block';
+      groupToggle.textContent = '▴ Hide comment';
+    }
+  }
+
+  commentSec.appendChild(groupWrap);
+
+  // attach to DOM right after matrixContainer
+  if (matrixContainer && matrixContainer.parentNode) {
+    if (matrixContainer.nextSibling) matrixContainer.parentNode.insertBefore(commentSec, matrixContainer.nextSibling);
+    else matrixContainer.parentNode.appendChild(commentSec);
+  } else {
+    document.body.appendChild(commentSec);
+  }
+
+  // expose for save handler discovery
+  window.__lastCommentSectionForProject = { project: currentProject, el: commentSec };
+})();
 
     // tidy up remaining placeholders
     removeEmptyPlaceholderCards();
@@ -465,23 +676,42 @@ function loadProjectIntoMatrix(projectName, students) {
   // -------------------------
   // Draft saving handler
   // -------------------------
-  function saveDraftHandler() {
-    if (!currentProject) return;
-    if (!stagedRatings[currentProject]) stagedRatings[currentProject] = {};
+function saveDraftHandler() {
+  if (!currentProject) return;
+  if (!stagedRatings[currentProject]) stagedRatings[currentProject] = {};
 
-    var students = sponsorProjects[currentProject] || [];
-    for (var s = 0; s < students.length; s++) {
-      if (!stagedRatings[currentProject][s]) stagedRatings[currentProject][s] = {};
-      for (var c = 0; c < RUBRIC.length; c++) {
-        var sel = document.querySelector('input[name="rating-' + c + '-' + s + '"]:checked');
-        if (sel) stagedRatings[currentProject][s][c] = parseInt(sel.value, 10);
-      }
+  var students = sponsorProjects[currentProject] || [];
+  for (var s = 0; s < students.length; s++) {
+    if (!stagedRatings[currentProject][s]) stagedRatings[currentProject][s] = {};
+    for (var c = 0; c < RUBRIC.length; c++) {
+      var sel = document.querySelector('input[name="rating-' + c + '-' + s + '"]:checked');
+      if (sel) stagedRatings[currentProject][s][c] = parseInt(sel.value, 10);
     }
-    var ta = document.getElementById('project-comment');
-    if (ta) stagedRatings[currentProject]._comment = ta.value || '';
 
-    saveProgress();
+    // per-student comments
+    var sName = students[s];
+    var pubEl = document.getElementById('comment-public-' + s);
+    var privEl = document.getElementById('comment-private-' + s);
+    if (!stagedRatings[currentProject]._studentComments) stagedRatings[currentProject]._studentComments = stagedRatings[currentProject]._studentComments || {};
+    stagedRatings[currentProject]._studentComments[sName] = stagedRatings[currentProject]._studentComments[sName] || { public: '', private: '' };
+    if (pubEl) stagedRatings[currentProject]._studentComments[sName].public = pubEl.value || '';
+    if (privEl) stagedRatings[currentProject]._studentComments[sName].private = privEl.value || '';
   }
+
+  // group comments
+  var gpPub = document.getElementById('comment-group-public');
+  var gpPriv = document.getElementById('comment-group-private');
+  stagedRatings[currentProject]._groupComments = stagedRatings[currentProject]._groupComments || { public: '', private: '' };
+  if (gpPub) stagedRatings[currentProject]._groupComments.public = gpPub.value || '';
+  if (gpPriv) stagedRatings[currentProject]._groupComments.private = gpPriv.value || '';
+
+  // Save comment inside general _comment for backwards compatibility
+  var ta = document.getElementById('project-comment');
+  if (ta && ta.value) stagedRatings[currentProject]._comment = ta.value;
+
+  saveProgress();
+}
+
 
   // -------------------------
   // Submit current project (collect all criteria)
