@@ -345,7 +345,7 @@
     // Group panel
     var groupWrap = el('div', { class: 'student-comment-panel', style: { border: '1px solid rgba(10,12,30,0.05)', borderRadius: '8px', padding: '10px', marginBottom: '10px', background: '#fff' } });
     var groupHeader = el('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' } });
-    groupHeader.appendChild(el('div', { text: 'Comments for Evaluating group as a whole', style: { fontWeight: '600' } }));
+    groupHeader.appendChild(el('div', { text: 'Comments for team overall', style: { fontWeight: '600' } }));
     var groupToggle = el('button', { type: 'button', class: 'btn btn-mini comment-toggle', text: '▾ Add comment', style: { fontSize: '0.85rem', padding: '6px 8px', cursor: 'pointer', background: 'white', border: '1px solid rgba(10,12,30,0.06)', borderRadius: '6px' } });
     groupHeader.appendChild(groupToggle); groupWrap.appendChild(groupHeader);
     var groupContent = el('div', { style: { display: 'none' } });
