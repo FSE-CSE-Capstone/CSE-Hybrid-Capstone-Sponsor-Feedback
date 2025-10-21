@@ -271,7 +271,7 @@
 
       // team row
       var trTeam = el('tr');
-      trTeam.appendChild(el('td', { text: 'Evaluating group as a whole', style: { padding: '8px 10px', verticalAlign: 'middle', textAlign: 'left' } }));
+      trTeam.appendChild(el('td', { text: 'Team Overall', style: { padding: '8px 10px', verticalAlign: 'middle', textAlign: 'left' } }));
       trTeam.appendChild(el('td', { class: 'col-descriptor', style: { padding: '8px' } }));
       for (var sScore = 1; sScore <= 7; sScore++) {
         var tdT = el('td', { style: { textAlign: 'center', padding: '8px' } });
@@ -349,11 +349,11 @@
     var groupToggle = el('button', { type: 'button', class: 'btn btn-mini comment-toggle', text: '▾ Add comment', style: { fontSize: '0.85rem', padding: '6px 8px', cursor: 'pointer', background: 'white', border: '1px solid rgba(10,12,30,0.06)', borderRadius: '6px' } });
     groupHeader.appendChild(groupToggle); groupWrap.appendChild(groupHeader);
     var groupContent = el('div', { style: { display: 'none' } });
-    groupContent.appendChild(el('div', { text: 'Comments for Evaluating group as a whole (shared with student by default)', style: { margin: '4px 0' } }));
-    var taGroup = el('textarea', { id: 'comment-group-public', placeholder: 'Comments for evaluating group as a whole', style: { width: '100%', minHeight: '80px', padding: '8px', boxSizing: 'border-box' } });
+    groupContent.appendChild(el('div', { text: 'Comments for team overall (shared with student by default)', style: { margin: '4px 0' } }));
+    var taGroup = el('textarea', { id: 'comment-group-public', placeholder: 'Comments for team overall', style: { width: '100%', minHeight: '80px', padding: '8px', boxSizing: 'border-box' } });
     groupContent.appendChild(taGroup);
-    groupContent.appendChild(el('div', { text: 'Private comments about the group (instructor only)', style: { margin: '8px 0 4px 0' } }));
-    var taGroupPrivate = el('textarea', { id: 'comment-group-private', placeholder: 'Private comments for instructor about the group', style: { width: '100%', minHeight: '60px', padding: '8px', boxSizing: 'border-box' } });
+    groupContent.appendChild(el('div', { text: 'Private comments about the team (instructor only)', style: { margin: '8px 0 4px 0' } }));
+    var taGroupPrivate = el('textarea', { id: 'comment-group-private', placeholder: 'Private comments for instructor about the team', style: { width: '100%', minHeight: '60px', padding: '8px', boxSizing: 'border-box' } });
     groupContent.appendChild(taGroupPrivate);
 
     groupToggle.addEventListener('click', function () {
