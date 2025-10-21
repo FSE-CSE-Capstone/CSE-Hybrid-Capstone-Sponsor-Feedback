@@ -254,48 +254,35 @@
       critDesc.style.fontWeight = '400'; critDesc.style.fontSize = '14px'; critDesc.style.lineHeight = '1.3'; critDesc.style.margin = '0 0 12px 0';
       critWrap.appendChild(critDesc);
 
-      // table
-      // create table
+     
+// --- create table and explicit column widths (use these values) ---
 var table = document.createElement('table');
 table.className = 'matrix-table';
 
-// INSERT / replace colgroup widths with these values (put this where your current colgroup code is)
+// explicit colgroup: Student | Left descriptor | 7 numeric cols | Right descriptor
 var colgroup = document.createElement('colgroup');
 
-// Student column (left) — give more room for names
 var colStudent = document.createElement('col'); colStudent.style.width = '46%'; colgroup.appendChild(colStudent);
-
-// Left descriptor — allow wrap but reserve space
 var colLeft = document.createElement('col'); colLeft.style.width = '12%'; colgroup.appendChild(colLeft);
-
-// Numeric columns 1..7 — small fixed widths
-for (var i = 0; i < 7; i++) {
-  var c = document.createElement('col');
-  c.style.width = '4%'; // 7 * 4% = 28% for numeric scale
-  colgroup.appendChild(c);
-}
-
-// Right descriptor
-var colRight = document.createElement('col'); colRight.style.width = '10%'; colgroup.appendChild(colRight);
+for (var i = 0; i < 7; i++) { var c = document.createElement('col'); c.style.width = '4%'; colgroup.appendChild(c); }
+var colRight = document.createElement('col'); colRight.style.width = '12%'; colgroup.appendChild(colRight);
 
 table.appendChild(colgroup);
 
+// build thead
+var thead = document.createElement('thead');
+var trHead = document.createElement('tr');
 
+// Student header
+var thName = document.createElement('th');
+thName.textContent = 'Student';
+thName.style.textAlign = 'left';
+thName.style.padding = '8px';
+trHead.appendChild(thName);
 
-      // thead
-      var thead = document.createElement('thead'); var trHead = document.createElement('tr');
-      var thName = document.createElement('th'); thName.textContent = 'Student'; thName.style.textAlign = 'left'; thName.style.padding = '8px';
-      trHead.appendChild(thName);
-
-      // ----------------------
-// REPLACE the existing header-building block with this:
-// ----------------------
-
-// left descriptor (no radios)
+// Left descriptor header
 var thLeftDesc = document.createElement('th');
 thLeftDesc.className = 'header-descriptor';
-/* Use innerHTML with a <div> so we can control wrapping visually.
-   The content will wrap naturally according to CSS max-width. */
 thLeftDesc.innerHTML = '<div class="hd-line">Far Below Expectations</div><div class="hd-sub">(Fail)</div>';
 thLeftDesc.style.textAlign = 'center';
 thLeftDesc.style.padding = '8px';
@@ -310,9 +297,9 @@ for (var k = 1; k <= 7; k++) {
   trHead.appendChild(th);
 }
 
-// right descriptor
+// Right descriptor header
 var thRightDesc = document.createElement('th');
-thRightDesc.className = 'header-descriptor';
+thRightDesc.className = 'header-descriptor header-descriptor-right';
 thRightDesc.innerHTML = '<div class="hd-line">Exceeds Expectations</div><div class="hd-sub">(A+)</div>';
 thRightDesc.style.textAlign = 'center';
 thRightDesc.style.padding = '8px';
@@ -320,7 +307,6 @@ trHead.appendChild(thRightDesc);
 
 thead.appendChild(trHead);
 table.appendChild(thead);
-
 
       // tbody - student rows
       var tbody = document.createElement('tbody');
