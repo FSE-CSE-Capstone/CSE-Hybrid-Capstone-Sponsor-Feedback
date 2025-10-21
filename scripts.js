@@ -255,175 +255,170 @@
     setStatus('');
   }
 
-  // -------------------------
-  // Render matrix for a project (stacked rubric; each criterion in its own card)
-  // This function builds into a temporary container, swaps children, then creates the comment section after the matrix.
-  // -------------------------
-  function loadProjectIntoMatrix(projectName, students) {
-    currentProject = projectName;
-    if (!matrixContainer) return;
+ // Replace your current matrix-builder with this safe, complete function.
+// Assumes the same outer variables exist in your file: RUBRIC, stagedRatings, currentProject, matrixContainer
+function loadProjectIntoMatrix(projectName, students) {
+  // remove any old comment section first (we'll re-create it)
+  var oldComment = document.querySelector('.section.section-comment');
+  if (oldComment && oldComment.parentNode) oldComment.parentNode.removeChild(oldComment);
 
-    // Remove any previously injected matrix-info to avoid duplicates
-    var oldInfo = document.getElementById('matrix-info');
-    if (oldInfo && oldInfo.parentNode) oldInfo.parentNode.removeChild(oldInfo);
+  // create matrix-info header and insert before matrixContainer if possible
+  var info = document.createElement('div');
+  info.id = 'matrix-info';
+  var hdr = document.createElement('div'); hdr.className = 'current-project-header'; hdr.textContent = projectName || '';
+  hdr.style.display = 'block'; hdr.style.marginBottom = '6px'; hdr.style.fontWeight = '600';
+  var topDesc = document.createElement('div'); topDesc.className = 'matrix-info-desc';
+  topDesc.textContent = 'Please evaluate the students using the rubric below (scale 1–7).';
+  topDesc.style.display = 'block'; topDesc.style.color = '#0b1228'; topDesc.style.fontWeight = '400';
+  topDesc.style.fontSize = '14px'; topDesc.style.marginBottom = '12px';
+  info.appendChild(hdr); info.appendChild(topDesc);
 
-    // Remove any old comment section first (we'll re-create it)
-    var oldComment = document.querySelector('.section.section-comment');
-    if (oldComment && oldComment.parentNode) oldComment.parentNode.removeChild(oldComment);
+  if (matrixContainer && matrixContainer.parentNode) matrixContainer.parentNode.insertBefore(info, matrixContainer);
+  else if (matrixContainer) document.body.insertBefore(info, matrixContainer);
 
-    // Create matrix-info header and insert before matrixContainer if possible
-    var info = document.createElement('div');
-    info.id = 'matrix-info';
-    var hdr = document.createElement('div'); hdr.className = 'current-project-header'; hdr.textContent = projectName || '';
-    hdr.style.display = 'block'; hdr.style.marginBottom = '6px'; hdr.style.fontWeight = '600';
-    var topDesc = document.createElement('div'); topDesc.className = 'matrix-info-desc';
-    topDesc.textContent = 'Please evaluate the students using the rubric below (scale 1–7).';
-    topDesc.style.display = 'block'; topDesc.style.color = '#0b1228'; topDesc.style.fontWeight = '400';
-    topDesc.style.fontSize = '14px'; topDesc.style.marginBottom = '12px';
-    info.appendChild(hdr); info.appendChild(topDesc);
+  if (!students || !students.length) {
+    if (matrixContainer) matrixContainer.textContent = 'No students found for this project.';
+    return;
+  }
 
-    if (matrixContainer.parentNode) matrixContainer.parentNode.insertBefore(info, matrixContainer);
-    else document.body.insertBefore(info, matrixContainer);
+  if (!stagedRatings[currentProject]) stagedRatings[currentProject] = {};
 
-    if (!students || !students.length) {
-      matrixContainer.textContent = 'No students found for this project.';
-      return;
+  var tempContainer = document.createElement('div');
+
+  // Build one card per rubric criterion
+  RUBRIC.forEach(function (crit, cIdx) {
+    var card = document.createElement('div');
+    card.className = 'card matrix-card';
+    card.style.marginBottom = '20px';
+    card.style.padding = card.style.padding || '18px';
+
+    var critWrap = document.createElement('div'); critWrap.className = 'matrix-criterion';
+
+    var critTitle = document.createElement('h4'); critTitle.className = 'matrix-criterion-title';
+    critTitle.textContent = (cIdx + 1) + '. ' + (crit.title || '');
+    critTitle.style.margin = '0 0 8px 0'; critTitle.style.fontWeight = '600';
+    critWrap.appendChild(critTitle);
+
+    var critDesc = document.createElement('div'); critDesc.className = 'matrix-criterion-desc';
+    critDesc.textContent = crit.description || ''; critDesc.style.display = 'block'; critDesc.style.color = '#0b1228';
+    critDesc.style.fontWeight = '400'; critDesc.style.fontSize = '14px'; critDesc.style.lineHeight = '1.3'; critDesc.style.margin = '0 0 12px 0';
+    critWrap.appendChild(critDesc);
+
+    // create table
+    var table = document.createElement('table');
+    table.className = 'matrix-table';
+    table.style.width = '100%';
+    table.style.borderCollapse = 'collapse';
+
+    // thead setup
+    var thead = document.createElement('thead');
+    var trHead = document.createElement('tr');
+
+    // Student header (leftmost)
+    var thName = document.createElement('th');
+    thName.textContent = 'Student';
+    thName.style.textAlign = 'left';
+    thName.style.padding = '8px';
+    trHead.appendChild(thName);
+
+    // LEFT descriptor header (Far Below Expectations)
+    var thLeftDesc = document.createElement('th');
+    thLeftDesc.textContent = 'Far Below\nExpectations\n(Fail)';
+    thLeftDesc.style.whiteSpace = 'normal';
+    thLeftDesc.style.padding = '8px';
+    thLeftDesc.style.textAlign = 'center';
+    trHead.appendChild(thLeftDesc);
+
+    // Numeric headers 1..7
+    for (var k = 1; k <= 7; k++) {
+      var th = document.createElement('th');
+      th.textContent = String(k);
+      th.style.padding = '8px';
+      th.style.textAlign = 'center';
+      trHead.appendChild(th);
     }
 
-    if (!stagedRatings[currentProject]) stagedRatings[currentProject] = {};
+    // RIGHT descriptor header (Exceeds Expectations)
+    var thRightDesc = document.createElement('th');
+    thRightDesc.textContent = 'Exceeds\nExpectations\n(A+)';
+    thRightDesc.style.whiteSpace = 'normal';
+    thRightDesc.style.padding = '8px';
+    thRightDesc.style.textAlign = 'center';
+    trHead.appendChild(thRightDesc);
 
-    var tempContainer = document.createElement('div');
+    thead.appendChild(trHead);
+    table.appendChild(thead);
 
-    RUBRIC.forEach(function (crit, cIdx) {
-      var card = document.createElement('div');
-      card.className = 'card matrix-card';
-      card.style.marginBottom = '20px';
-      card.style.padding = card.style.padding || '18px';
+    // tbody
+    var tbody = document.createElement('tbody');
 
-      var critWrap = document.createElement('div'); critWrap.className = 'matrix-criterion';
+    students.forEach(function (studentName, sIdx) {
+      var tr = document.createElement('tr');
 
-      var critTitle = document.createElement('h4'); critTitle.className = 'matrix-criterion-title';
-      critTitle.textContent = (cIdx + 1) + '. ' + (crit.title || ''); critTitle.style.margin = '0 0 8px 0'; critTitle.style.fontWeight = '600';
-      critWrap.appendChild(critTitle);
+      // Student name cell (left-justified)
+      var tdName = document.createElement('td');
+      tdName.textContent = studentName;
+      tdName.style.padding = '8px 10px';
+      tdName.style.verticalAlign = 'middle';
+      tdName.style.textAlign = 'left';
+      tr.appendChild(tdName);
 
-      var critDesc = document.createElement('div'); critDesc.className = 'matrix-criterion-desc';
-      critDesc.textContent = crit.description || ''; critDesc.style.display = 'block'; critDesc.style.color = '#0b1228';
-      critDesc.style.fontWeight = '400'; critDesc.style.fontSize = '14px'; critDesc.style.lineHeight = '1.3'; critDesc.style.margin = '0 0 12px 0';
-      critWrap.appendChild(critDesc);
+      // LEFT descriptor cell (no radio buttons)
+      var tdLeft = document.createElement('td');
+      tdLeft.className = 'col-descriptor';
+      tdLeft.style.padding = '8px';
+      tr.appendChild(tdLeft);
 
-           // create table
-      var table = document.createElement('table');
-      table.className = 'matrix-table';
-      table.style.width = '100%';
-      table.style.borderCollapse = 'collapse';
+      // Radio cells for scores 1..7 ONLY
+      for (var score = 1; score <= 7; score++) {
+        var td = document.createElement('td');
+        td.style.textAlign = 'center';
+        td.style.padding = '8px';
 
-      // thead
-      var thead = document.createElement('thead');
-      var trHead = document.createElement('tr');
+        var input = document.createElement('input');
+        input.type = 'radio';
+        input.name = 'rating-' + cIdx + '-' + sIdx;
+        input.value = String(score);
+        input.id = 'rating-' + cIdx + '-' + sIdx + '-' + score;
 
-      // Student header (leftmost)
-      var thName = document.createElement('th');
-      thName.textContent = 'Student';
-      thName.style.textAlign = 'left';
-      thName.style.padding = '8px';
-      trHead.appendChild(thName);
-
-      // LEFT descriptor header (Far Below Expectations)
-      var thLeftDesc = document.createElement('th');
-      thLeftDesc.textContent = 'Far Below\nExpectations\n(Fail)';
-      thLeftDesc.style.whiteSpace = 'normal';
-      thLeftDesc.style.padding = '8px';
-      thLeftDesc.style.textAlign = 'center';
-      trHead.appendChild(thLeftDesc);
-
-      // Numeric headers 1..7
-      for (var k = 1; k <= 7; k++) {
-        var th = document.createElement('th');
-        th.textContent = String(k);
-        th.style.padding = '8px';
-        th.style.textAlign = 'center';
-        trHead.appendChild(th);
-      }
-
-      // RIGHT descriptor header (Exceeds Expectations)
-      var thRightDesc = document.createElement('th');
-      thRightDesc.textContent = 'Exceeds\nExpectations\n(A+)';
-      thRightDesc.style.whiteSpace = 'normal';
-      thRightDesc.style.padding = '8px';
-      thRightDesc.style.textAlign = 'center';
-      trHead.appendChild(thRightDesc);
-
-      thead.appendChild(trHead);
-      table.appendChild(thead);
-
-      // tbody
-      var tbody = document.createElement('tbody');
-
-      students.forEach(function (studentName, sIdx) {
-        var tr = document.createElement('tr');
-
-        // Student name cell (left-justified)
-        var tdName = document.createElement('td');
-        tdName.textContent = studentName;
-        tdName.style.padding = '8px 10px';
-        tdName.style.verticalAlign = 'middle';
-        tdName.style.textAlign = 'left';
-        tr.appendChild(tdName);
-
-        // LEFT descriptor cell (no radio buttons)
-        var tdLeft = document.createElement('td');
-        tdLeft.className = 'col-descriptor'; // styling hook
-        tdLeft.style.padding = '8px';
-        tr.appendChild(tdLeft);
-
-        // Radio cells for scores 1..7 ONLY
-        for (var score = 1; score <= 7; score++) {
-          var td = document.createElement('td');
-          td.style.textAlign = 'center';
-          td.style.padding = '8px';
-
-          var input = document.createElement('input');
-          input.type = 'radio';
-          input.name = 'rating-' + cIdx + '-' + sIdx;
-          input.value = String(score);
-          input.id = 'rating-' + cIdx + '-' + sIdx + '-' + score;
-
-          var stagedForProject = stagedRatings[currentProject] || {};
-          var stagedForStudent = stagedForProject[sIdx] || {};
-          if (stagedForStudent[cIdx] && String(stagedForStudent[cIdx]) === String(score)) {
-            input.checked = true;
-          }
-
-          var label = document.createElement('label');
-          label.setAttribute('for', input.id);
-          label.style.cursor = 'pointer';
-          label.style.display = 'inline-block';
-          label.style.padding = '2px';
-          label.appendChild(input);
-
-          td.appendChild(label);
-          tr.appendChild(td);
+        var stagedForProject = stagedRatings[currentProject] || {};
+        var stagedForStudent = stagedForProject[sIdx] || {};
+        if (stagedForStudent[cIdx] && String(stagedForStudent[cIdx]) === String(score)) {
+          input.checked = true;
         }
 
-        // RIGHT descriptor cell (no radio buttons)
-        var tdRight = document.createElement('td');
-        tdRight.className = 'col-descriptor'; // styling hook
-        tdRight.style.padding = '8px';
-        tr.appendChild(tdRight);
+        var label = document.createElement('label');
+        label.setAttribute('for', input.id);
+        label.style.cursor = 'pointer';
+        label.style.display = 'inline-block';
+        label.style.padding = '2px';
+        label.appendChild(input);
 
-        tbody.appendChild(tr);
-      });
+        td.appendChild(label);
+        tr.appendChild(td);
+      }
 
-      table.appendChild(tbody);
-      critWrap.appendChild(table);
-      card.appendChild(critWrap);
-      tempContainer.appendChild(card);
+      // RIGHT descriptor cell (no radio buttons)
+      var tdRight = document.createElement('td');
+      tdRight.className = 'col-descriptor';
+      tdRight.style.padding = '8px';
+      tr.appendChild(tdRight);
 
+      tbody.appendChild(tr);
+    });
 
-   
-    // Replace matrixContainer children with built content
+    table.appendChild(tbody);
+    critWrap.appendChild(table);
+    card.appendChild(critWrap);
+    tempContainer.appendChild(card);
+  });
+
+  // Replace matrixContainer children with built content
+  if (matrixContainer) {
     while (matrixContainer.firstChild) matrixContainer.removeChild(matrixContainer.firstChild);
     while (tempContainer.firstChild) matrixContainer.appendChild(tempContainer.firstChild);
+  }
+}
 
     // Create the comment section AFTER the matrix
     var commentSec = document.createElement('div');
