@@ -1,27 +1,23 @@
-// scripts.js - updated
-// - renders rubric matrix with an extra "Evaluating group as a whole" row
-// - per-student and group comments
-// - builds payload shape expected by the Cloudflare worker (commentShared/commentInstructor/isTeam)
-// - saves drafts to localStorage
+// scripts.js - full replacement
+// Sponsor hybrid site script (ready to drop in).
 (function () {
   'use strict';
 
-  // --- Configuration (Cloudflare Workers endpoints) ---
-  var ENDPOINT_URL = 'https://csehybridsponsors.sbecerr7.workers.dev/';  // POST submissions here
-  var DATA_LOADER_URL = 'https://data-loader.sbecerr7.workers.dev/';    // HYBRID worker URL (reads hybrid sheet)
+  // CONFIG
+  var ENDPOINT_URL = 'https://csehybridsponsors.sbecerr7.workers.dev/';
+  var DATA_LOADER_URL = 'https://data-loader.sbecerr7.workers.dev/';
   var STORAGE_KEY = 'sponsor_progress_v1';
-  var DATA_SOURCE = ''; // blank for hybrid
 
-  // --- RUBRIC (5 items) ---
+  // Rubric titles & descriptions (used to build matrix)
   var RUBRIC = [
-    { title: "Student has contributed an appropriate amount of development effort towards this project", description: "Development effort should be balanced between all team members; student should commit to a fair amount of development effort on each sprint." },
-    { title: "Student's level of contribution and participation in meetings", description: "Students are expected to be proactive. Contributions and participation in meetings help ensure the student is aware of project goals." },
-    { title: "Student's understanding of your project/problem", description: "Students are expected to understand important details of the project and be able to explain it from different stakeholder perspectives." },
-    { title: "Quality of student's work product", description: "Students should complete assigned work to a high quality: correct, documented, and self-explanatory where appropriate." },
-    { title: "Quality and frequency of student's communications", description: "Students are expected to be in regular communication and maintain professionalism when interacting with the sponsor." }
+    { title: "Effort", description: "Development effort should be balanced between all team members; student should commit to a fair amount of development effort on each sprint." },
+    { title: "Meetings", description: "Students are expected to be proactive. Contributions and participation in meetings help ensure the student is aware of project goals." },
+    { title: "Understanding", description: "Students are expected to understand important details of the project and be able to explain it from different stakeholder perspectives." },
+    { title: "Quality", description: "Students should complete assigned work to a high quality: correct, documented, and self-explanatory where appropriate." },
+    { title: "Communication", description: "Students are expected to be in regular communication and maintain professionalism when interacting with the sponsor." }
   ];
 
-  // --- DOM nodes ---
+  // DOM references (expected to exist in your HTML)
   var stageIdentity = document.getElementById('stage-identity');
   var stageProjects = document.getElementById('stage-projects');
   var stageThankyou = document.getElementById('stage-thankyou');
@@ -37,33 +33,31 @@
   var welcomeBlock = document.getElementById('welcome-block');
   var underTitle = document.getElementById('under-title');
 
-  // --- State ---
+  // State
   var sponsorData = {};
   var sponsorProjects = {};
   var currentEmail = '';
   var currentName = '';
   var currentProject = '';
   var completedProjects = {};
-  var stagedRatings = {}; // will hold stagedRatings[currentProject][studentIndex][criterionIndex] and _studentComments & _groupComments
+  var stagedRatings = {};
 
-  // --- Helpers ---
+  // Helpers
   function setStatus(msg, color) {
     if (!formStatus) return;
     formStatus.textContent = msg || '';
     formStatus.style.color = color || '';
   }
-
   function escapeHtml(s) {
     var map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
     return String(s || '').replace(/[&<>"']/g, function (m) { return map[m]; });
   }
 
-  // --- remove empty placeholder cards that cause the "empty card" gap ---
+  // Remove empty placeholder cards (defensive)
   function removeEmptyPlaceholderCards() {
     if (!projectListEl) return;
     var container = projectListEl.parentNode;
     if (!container) return;
-
     var cards = Array.prototype.slice.call(container.querySelectorAll('.card'));
     cards.forEach(function (c) {
       var hasControls = c.querySelector('input, textarea, select, button, table, label');
@@ -76,46 +70,29 @@
     });
   }
 
-  // -------------------------
-  // Robust mapping from data-loader rows to sponsorData
-  // -------------------------
+  // Build sponsor map from data-loader rows (robust)
   function buildSponsorMap(rows) {
     var map = {};
     if (!Array.isArray(rows) || rows.length === 0) return map;
-
     var emailRegex = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
-
     function cleanToken(tok) {
       if (!tok) return '';
       tok = tok.replace(/^[\s"'`([{]+|[\s"'`)\]}.,:;]+$/g, '').replace(/\u00A0/g, ' ').trim();
-      if (tok.indexOf('@') !== -1 && tok.indexOf(' ') !== -1) {
-        tok = tok.split(' ').join('');
-      }
+      if (tok.indexOf('@') !== -1 && tok.indexOf(' ') !== -1) tok = tok.split(' ').join('');
       return tok;
     }
-
     rows.forEach(function (rawRow) {
-      var project = '';
-      var student = '';
-      var sponsorCell = '';
-
+      var project = '', student = '', sponsorCell = '';
       Object.keys(rawRow || {}).forEach(function (rawKey) {
         var keyNorm = String(rawKey || '').trim().toLowerCase();
         var rawVal = (rawRow[rawKey] || '').toString();
         var val = rawVal.replace(/\u00A0/g, ' ').trim();
-
-        if (!project && (keyNorm === 'project' || keyNorm === 'project name' || keyNorm === 'project_title' || keyNorm === 'group_name' || keyNorm === 'projectname')) {
-          project = val;
-        } else if (!student && (keyNorm === 'student' || keyNorm === 'student name' || keyNorm === 'students' || keyNorm === 'name' || keyNorm === 'student_name')) {
-          student = val;
-        } else if (!sponsorCell && (keyNorm === 'sponsoremail' || keyNorm === 'sponsor email' || keyNorm === 'sponsor' || keyNorm === 'email' || keyNorm === 'login_id' || keyNorm === 'sponsor_email')) {
-          sponsorCell = val;
-        }
+        if (!project && (keyNorm === 'project' || keyNorm === 'project name' || keyNorm === 'project_title' || keyNorm === 'group_name' || keyNorm === 'projectname')) project = val;
+        else if (!student && (keyNorm === 'student' || keyNorm === 'student name' || keyNorm === 'students' || keyNorm === 'name' || keyNorm === 'student_name')) student = val;
+        else if (!sponsorCell && (keyNorm === 'sponsoremail' || keyNorm === 'sponsor email' || keyNorm === 'sponsor' || keyNorm === 'email' || keyNorm === 'login_id' || keyNorm === 'sponsor_email')) sponsorCell = val;
       });
-
       project = (project || '').trim();
       student = (student || '').trim();
-
       if (!sponsorCell) {
         var fallbackEmails = [];
         Object.keys(rawRow || {}).forEach(function (k) {
@@ -125,34 +102,22 @@
         });
         if (fallbackEmails.length) sponsorCell = fallbackEmails.join(', ');
       }
-
       if (!sponsorCell || !project || !student) return;
-
-      // Split on common separators first
       var tokens = sponsorCell.split(/[,;\/|]+/);
       var foundEmails = [];
-
       tokens.forEach(function (t) {
         var cleaned = cleanToken(t);
         if (!cleaned) return;
         var m = cleaned.match(emailRegex);
-        if (m && m.length) {
-          m.forEach(function (em) { foundEmails.push(em.toLowerCase().trim()); });
-          return;
-        }
+        if (m && m.length) { m.forEach(function (em) { foundEmails.push(em.toLowerCase().trim()); }); return; }
         var m2 = t.match(emailRegex);
-        if (m2 && m2.length) {
-          m2.forEach(function (em) { foundEmails.push(em.toLowerCase().trim()); });
-          return;
-        }
+        if (m2 && m2.length) { m2.forEach(function (em) { foundEmails.push(em.toLowerCase().trim()); }); return; }
         if (t.indexOf('@') !== -1) {
           var nospace = t.replace(/\s+/g, '');
           var m3 = nospace.match(emailRegex);
           if (m3 && m3.length) m3.forEach(function (em) { foundEmails.push(em.toLowerCase().trim()); });
         }
       });
-
-      // dedupe & sanity-check
       var uniqueEmails = [];
       foundEmails.forEach(function (em) {
         var e = (em || '').toLowerCase().trim();
@@ -162,29 +127,21 @@
         if (parts.length !== 2 || parts[1].indexOf('.') === -1) return;
         if (uniqueEmails.indexOf(e) === -1) uniqueEmails.push(e);
       });
-
       if (!uniqueEmails.length) return;
-
       uniqueEmails.forEach(function (email) {
         if (!map[email]) map[email] = { projects: {} };
         if (!map[email].projects[project]) map[email].projects[project] = [];
-        if (map[email].projects[project].indexOf(student) === -1) {
-          map[email].projects[project].push(student);
-        }
+        if (map[email].projects[project].indexOf(student) === -1) map[email].projects[project].push(student);
       });
     });
-
     return map;
   }
 
-  // -------------------------
   // Save / load progress
-  // -------------------------
   function saveProgress() {
     var payload = { name: currentName, email: currentEmail, completedProjects: completedProjects, stagedRatings: stagedRatings };
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(payload)); } catch (e) { console.warn('Could not save progress', e); }
   }
-
   function loadProgress() {
     try {
       var raw = localStorage.getItem(STORAGE_KEY);
@@ -197,14 +154,11 @@
         stagedRatings = obj.stagedRatings || {};
         if (nameInput) nameInput.value = currentName;
         if (emailInput) emailInput.value = currentEmail;
-        console.info('loadProgress: restored', currentEmail || '(none)');
       }
     } catch (e) { console.warn('Could not load progress', e); }
   }
 
-  // -------------------------
-  // Project list builder
-  // -------------------------
+  // Populate list of projects for the sponsor email
   function populateProjectListFor(email) {
     if (!projectListEl) return;
     projectListEl.innerHTML = '';
@@ -217,49 +171,49 @@
       var cb = completedProjects[b] ? 1 : 0;
       return ca - cb;
     });
-
     allProjects.forEach(function (p) {
       var li = document.createElement('li');
       li.className = 'project-item';
       li.tabIndex = 0;
       li.setAttribute('data-project', p);
-
       if (completedProjects[p]) {
         li.className += ' completed';
         li.innerHTML = '<strong>' + escapeHtml(p) + '</strong> <span class="meta">(completed)</span>';
       } else {
         li.innerHTML = '<strong>' + escapeHtml(p) + '</strong>';
       }
-
       li.addEventListener('click', function () {
         if (completedProjects[p]) { setStatus('This project is already completed.', 'red'); return; }
         var act = projectListEl.querySelectorAll('.project-item.active');
         for (var ai = 0; ai < act.length; ai++) act[ai].classList.remove('active');
         li.classList.add('active');
+        currentProject = p;
         loadProjectIntoMatrix(p, entry.projects[p]);
         setStatus('');
       });
-
       projectListEl.appendChild(li);
       sponsorProjects[p] = entry.projects[p].slice();
     });
-
     removeEmptyPlaceholderCards();
     setStatus('');
   }
 
-  // -------------------------
-  // Matrix + comment rendering
-  // -------------------------
+  // Build matrix + comments for a project
   function loadProjectIntoMatrix(projectName, students) {
     if (!projectName) return;
-    currentProject = projectName; // important so saveDraftHandler and submit know which project is active
+    currentProject = projectName;
 
-    // remove any old comment section first (we'll re-create it)
+    // remove previous matrix-info/header if present
+    var existingInfo = document.getElementById('matrix-info');
+    if (existingInfo && existingInfo.parentNode) existingInfo.parentNode.removeChild(existingInfo);
+    var oldHdrs = Array.prototype.slice.call(document.querySelectorAll('.current-project-header'));
+    oldHdrs.forEach(function (h) { if (h && h.parentNode) h.parentNode.removeChild(h); });
+
+    // remove any old comment section first
     var oldComment = document.querySelector('.section.section-comment');
     if (oldComment && oldComment.parentNode) oldComment.parentNode.removeChild(oldComment);
 
-    // create matrix-info header and insert before matrixContainer if possible
+    // header/info above matrix
     var info = document.createElement('div');
     info.id = 'matrix-info';
     var hdr = document.createElement('div'); hdr.className = 'current-project-header'; hdr.textContent = projectName || '';
@@ -269,7 +223,6 @@
     topDesc.style.display = 'block'; topDesc.style.color = '#0b1228'; topDesc.style.fontWeight = '400';
     topDesc.style.fontSize = '14px'; topDesc.style.marginBottom = '12px';
     info.appendChild(hdr); info.appendChild(topDesc);
-
     if (matrixContainer && matrixContainer.parentNode) matrixContainer.parentNode.insertBefore(info, matrixContainer);
     else if (matrixContainer) document.body.insertBefore(info, matrixContainer);
 
@@ -278,11 +231,11 @@
       return;
     }
 
+    // prepare stagedRatings for this project
     if (!stagedRatings[currentProject]) stagedRatings[currentProject] = {};
 
+    // build matrix cards
     var tempContainer = document.createElement('div');
-
-    // Build one card per rubric criterion
     RUBRIC.forEach(function (crit, cIdx) {
       var card = document.createElement('div');
       card.className = 'card matrix-card';
@@ -301,576 +254,277 @@
       critDesc.style.fontWeight = '400'; critDesc.style.fontSize = '14px'; critDesc.style.lineHeight = '1.3'; critDesc.style.margin = '0 0 12px 0';
       critWrap.appendChild(critDesc);
 
-      // create table
-      var table = document.createElement('table');
-      table.className = 'matrix-table';
-      table.style.width = '100%';
-      table.style.borderCollapse = 'collapse';
+      // table
+      var table = document.createElement('table'); table.className = 'matrix-table';
+      table.style.width = '100%'; table.style.borderCollapse = 'collapse';
 
-      // thead setup
-      var thead = document.createElement('thead');
-      var trHead = document.createElement('tr');
-
-      // Student header (leftmost)
-      var thName = document.createElement('th');
-      thName.textContent = 'Student';
-      thName.style.textAlign = 'left';
-      thName.style.padding = '8px';
+      // thead
+      var thead = document.createElement('thead'); var trHead = document.createElement('tr');
+      var thName = document.createElement('th'); thName.textContent = 'Student'; thName.style.textAlign = 'left'; thName.style.padding = '8px';
       trHead.appendChild(thName);
 
-      // LEFT descriptor header (Far Below Expectations)
-      var thLeftDesc = document.createElement('th');
-      thLeftDesc.textContent = 'Far Below\nExpectations\n(Fail)';
-      thLeftDesc.style.whiteSpace = 'normal';
-      thLeftDesc.style.padding = '8px';
-      thLeftDesc.style.textAlign = 'center';
+      // left descriptor (no radios)
+      var thLeftDesc = document.createElement('th'); thLeftDesc.textContent = 'Far Below\nExpectations\n(Fail)';
+      thLeftDesc.style.whiteSpace = 'normal'; thLeftDesc.style.padding = '8px'; thLeftDesc.style.textAlign = 'center';
       trHead.appendChild(thLeftDesc);
 
-      // Numeric headers 1..7
+      // numeric headers 1..7
       for (var k = 1; k <= 7; k++) {
-        var th = document.createElement('th');
-        th.textContent = String(k);
-        th.style.padding = '8px';
-        th.style.textAlign = 'center';
+        var th = document.createElement('th'); th.textContent = String(k); th.style.padding = '8px'; th.style.textAlign = 'center';
         trHead.appendChild(th);
       }
 
-      // RIGHT descriptor header (Exceeds Expectations)
-      var thRightDesc = document.createElement('th');
-      thRightDesc.textContent = 'Exceeds\nExpectations\n(A+)';
-      thRightDesc.style.whiteSpace = 'normal';
-      thRightDesc.style.padding = '8px';
-      thRightDesc.style.textAlign = 'center';
+      // right descriptor
+      var thRightDesc = document.createElement('th'); thRightDesc.textContent = 'Exceeds\nExpectations\n(A+)';
+      thRightDesc.style.whiteSpace = 'normal'; thRightDesc.style.padding = '8px'; thRightDesc.style.textAlign = 'center';
       trHead.appendChild(thRightDesc);
 
-      thead.appendChild(trHead);
-      table.appendChild(thead);
+      thead.appendChild(trHead); table.appendChild(thead);
 
-      // tbody
+      // tbody - student rows
       var tbody = document.createElement('tbody');
-
-      // student rows
       students.forEach(function (studentName, sIdx) {
         var tr = document.createElement('tr');
-
-        // Student name cell (left-justified)
-        var tdName = document.createElement('td');
-        tdName.textContent = studentName;
-        tdName.style.padding = '8px 10px';
-        tdName.style.verticalAlign = 'middle';
-        tdName.style.textAlign = 'left';
+        var tdName = document.createElement('td'); tdName.textContent = studentName; tdName.style.padding = '8px 10px'; tdName.style.verticalAlign = 'middle'; tdName.style.textAlign = 'left';
         tr.appendChild(tdName);
 
-        // LEFT descriptor cell (no radio buttons)
-        var tdLeft = document.createElement('td');
-        tdLeft.className = 'col-descriptor';
-        tdLeft.style.padding = '8px';
+        // left descriptor cell (empty; no radios)
+        var tdLeft = document.createElement('td'); tdLeft.className = 'col-descriptor'; tdLeft.style.padding = '8px';
         tr.appendChild(tdLeft);
 
-        // Radio cells for scores 1..7 ONLY
+        // radio cells (1..7)
         for (var score = 1; score <= 7; score++) {
-          var td = document.createElement('td');
-          td.style.textAlign = 'center';
-          td.style.padding = '8px';
-
-          var input = document.createElement('input');
-          input.type = 'radio';
-          input.name = 'rating-' + cIdx + '-' + sIdx;
-          input.value = String(score);
+          var td = document.createElement('td'); td.style.textAlign = 'center'; td.style.padding = '8px';
+          var input = document.createElement('input'); input.type = 'radio';
+          input.name = 'rating-' + cIdx + '-' + sIdx; input.value = String(score);
           input.id = 'rating-' + cIdx + '-' + sIdx + '-' + score;
-
           var stagedForProject = stagedRatings[currentProject] || {};
           var stagedForStudent = stagedForProject[sIdx] || {};
-          if (stagedForStudent[cIdx] && String(stagedForStudent[cIdx]) === String(score)) {
-            input.checked = true;
-          }
-
-          var label = document.createElement('label');
-          label.setAttribute('for', input.id);
-          label.style.cursor = 'pointer';
-          label.style.display = 'inline-block';
-          label.style.padding = '2px';
-          label.appendChild(input);
-
-          td.appendChild(label);
-          tr.appendChild(td);
+          if (stagedForStudent[cIdx] && String(stagedForStudent[cIdx]) === String(score)) input.checked = true;
+          var label = document.createElement('label'); label.setAttribute('for', input.id); label.style.cursor = 'pointer'; label.style.display = 'inline-block'; label.style.padding = '2px';
+          label.appendChild(input); td.appendChild(label); tr.appendChild(td);
         }
 
-        // RIGHT descriptor cell (no radio buttons)
-        var tdRight = document.createElement('td');
-        tdRight.className = 'col-descriptor';
-        tdRight.style.padding = '8px';
-        tr.appendChild(tdRight);
-
+        var tdRight = document.createElement('td'); tdRight.className = 'col-descriptor'; tdRight.style.padding = '8px'; tr.appendChild(tdRight);
         tbody.appendChild(tr);
       });
 
-      // Add team row (Evaluating group as a whole) with index = students.length
-      var teamIdx = students.length;
+      // Add final 'Evaluating group as a whole' row (team evaluation row)
       var trTeam = document.createElement('tr');
-
-      var tdTeamName = document.createElement('td');
-      tdTeamName.textContent = 'Evaluating group as a whole';
-      tdTeamName.style.padding = '8px 10px';
-      tdTeamName.style.verticalAlign = 'middle';
-      tdTeamName.style.textAlign = 'left';
-      tdTeamName.style.fontStyle = 'italic';
+      var tdTeamName = document.createElement('td'); tdTeamName.textContent = 'Evaluating group as a whole'; tdTeamName.style.padding = '8px 10px'; tdTeamName.style.verticalAlign = 'middle'; tdTeamName.style.textAlign = 'left';
       trTeam.appendChild(tdTeamName);
-
-      var tdTeamLeft = document.createElement('td');
-      tdTeamLeft.className = 'col-descriptor';
-      tdTeamLeft.style.padding = '8px';
-      trTeam.appendChild(tdTeamLeft);
-
-      for (var score2 = 1; score2 <= 7; score2++) {
-        var tdT = document.createElement('td');
-        tdT.style.textAlign = 'center';
-        tdT.style.padding = '8px';
-
-        var inputT = document.createElement('input');
-        inputT.type = 'radio';
-        inputT.name = 'rating-' + cIdx + '-' + teamIdx;
-        inputT.value = String(score2);
-        inputT.id = 'rating-' + cIdx + '-' + teamIdx + '-' + score2;
-
-        // restore staged group ratings if present
-        var stagedProject = stagedRatings[currentProject] || {};
-        var stagedGroup = stagedProject._groupRatings || {};
-        if (stagedGroup && typeof stagedGroup[cIdx] !== 'undefined' && String(stagedGroup[cIdx]) === String(score2)) {
-          inputT.checked = true;
-        }
-
-        var labelT = document.createElement('label');
-        labelT.setAttribute('for', inputT.id);
-        labelT.style.cursor = 'pointer';
-        labelT.style.display = 'inline-block';
-        labelT.style.padding = '2px';
-        labelT.appendChild(inputT);
-
-        tdT.appendChild(labelT);
-        trTeam.appendChild(tdT);
+      var tdTeamLeft = document.createElement('td'); tdTeamLeft.className = 'col-descriptor'; tdTeamLeft.style.padding = '8px'; trTeam.appendChild(tdTeamLeft);
+      for (var sScore = 1; sScore <= 7; sScore++) {
+        var tdT = document.createElement('td'); tdT.style.textAlign = 'center'; tdT.style.padding = '8px';
+        var inputT = document.createElement('input'); inputT.type = 'radio';
+        // name uses 'team' sentinel so saveDraftHandler can read from it
+        inputT.name = 'rating-' + cIdx + '-team'; inputT.value = String(sScore);
+        inputT.id = 'rating-' + cIdx + '-team-' + sScore;
+        // restore staged if present
+        var stagedTeam = (stagedRatings[currentProject] && stagedRatings[currentProject].team) || {};
+        if (stagedTeam[cIdx] && String(stagedTeam[cIdx]) === String(sScore)) inputT.checked = true;
+        var lblT = document.createElement('label'); lblT.setAttribute('for', inputT.id); lblT.style.cursor = 'pointer'; lblT.style.display = 'inline-block'; lblT.style.padding = '2px';
+        lblT.appendChild(inputT); tdT.appendChild(lblT); trTeam.appendChild(tdT);
       }
-
-      var tdTeamRight = document.createElement('td');
-      tdTeamRight.className = 'col-descriptor';
-      tdTeamRight.style.padding = '8px';
-      trTeam.appendChild(tdTeamRight);
-
+      var tdTeamRight = document.createElement('td'); tdTeamRight.className = 'col-descriptor'; tdTeamRight.style.padding = '8px'; trTeam.appendChild(tdTeamRight);
       tbody.appendChild(trTeam);
 
-      table.appendChild(tbody);
-      critWrap.appendChild(table);
-      card.appendChild(critWrap);
-      tempContainer.appendChild(card);
+      table.appendChild(tbody); critWrap.appendChild(table); card.appendChild(critWrap); tempContainer.appendChild(card);
     });
 
-    // Replace matrixContainer children with built content
+    // Replace existing matrix content
     if (matrixContainer) {
       while (matrixContainer.firstChild) matrixContainer.removeChild(matrixContainer.firstChild);
       while (tempContainer.firstChild) matrixContainer.appendChild(tempContainer.firstChild);
     }
 
-    // Render per-student + group comment section under matrix
+    // Render per-student + group comment panels (below matrix)
     renderCommentSection(projectName, students);
 
-    // tidy up remaining placeholders
-    removeEmptyPlaceholderCards();
-
-    // Attach event listeners (avoid duplicates)
-    try {
-      matrixContainer.removeEventListener && matrixContainer.removeEventListener('change', saveDraftHandler);
-      matrixContainer.removeEventListener && matrixContainer.removeEventListener('input', saveDraftHandler);
-    } catch (e) {}
-    if (matrixContainer) {
-      matrixContainer.addEventListener('change', saveDraftHandler);
-      matrixContainer.addEventListener('input', saveDraftHandler);
-    }
-
-    // ensure comment textareas save
-    // those event listeners are wired inside renderCommentSection (below) when elements are created
-
-    if (typeof updateSectionVisibility === 'function') updateSectionVisibility && updateSectionVisibility();
-    if (typeof removeEmptySections === 'function') removeEmptySections && removeEmptySections();
+    // Attach change/input handlers once
+    attachMatrixListeners();
   }
 
-  // Create the detailed comment section (per-student public/private + group)
+  // Render comment UI (per-student public/private and group)
   function renderCommentSection(projectName, students) {
-    // remove old comment area if present
+    // remove old comment area
     var oldComment = document.querySelector('.section.section-comment');
     if (oldComment && oldComment.parentNode) oldComment.parentNode.removeChild(oldComment);
 
-    // wrapper section
-    var commentSec = document.createElement('div');
-    commentSec.className = 'section section-comment';
-    commentSec.style.marginTop = '12px';
-    commentSec.style.display = 'block';
-
-    // header
-    var h = document.createElement('h3');
-    h.textContent = 'Add your additional comments';
-    h.style.margin = '0 0 12px 0';
-    h.style.fontSize = '1rem';
-    h.style.fontWeight = '700';
+    // wrapper
+    var commentSec = document.createElement('div'); commentSec.className = 'section section-comment'; commentSec.style.marginTop = '12px'; commentSec.style.display = 'block';
+    var h = document.createElement('h3'); h.textContent = 'Add your additional comments'; h.style.margin = '0 0 12px 0'; h.style.fontSize = '1rem'; h.style.fontWeight = '700';
     commentSec.appendChild(h);
 
-    // helper to build a student comment panel
-    function buildStudentPanel(studentName, sIdx) {
-      var wrapper = document.createElement('div');
-      wrapper.className = 'student-comment-panel';
-      wrapper.style.border = '1px solid rgba(10,12,30,0.05)';
-      wrapper.style.borderRadius = '8px';
-      wrapper.style.padding = '10px';
-      wrapper.style.marginBottom = '10px';
-      wrapper.style.position = 'relative';
-      wrapper.style.background = '#fff';
-
-      // header row (name + toggle)
-      var headerRow = document.createElement('div');
-      headerRow.style.display = 'flex';
-      headerRow.style.justifyContent = 'space-between';
-      headerRow.style.alignItems = 'center';
-      headerRow.style.marginBottom = '8px';
-
-      var nameEl = document.createElement('div');
-      nameEl.textContent = studentName;
-      nameEl.style.fontWeight = '600';
-      headerRow.appendChild(nameEl);
-
-      var toggleBtn = document.createElement('button');
-      toggleBtn.type = 'button';
-      toggleBtn.className = 'btn btn-mini comment-toggle';
-      toggleBtn.textContent = '▾ Add comment';
-      toggleBtn.style.fontSize = '0.85rem';
-      toggleBtn.style.padding = '6px 8px';
-      toggleBtn.style.cursor = 'pointer';
-      toggleBtn.style.background = 'white';
-      toggleBtn.style.border = '1px solid rgba(10,12,30,0.06)';
-      toggleBtn.style.borderRadius = '6px';
-      toggleBtn.style.boxShadow = 'none';
-      headerRow.appendChild(toggleBtn);
-
+    // staged existing comments
+    var staged = (stagedRatings[projectName] && stagedRatings[projectName]._studentComments) || {};
+    // per-student panels
+    (students || []).forEach(function (studentName, sIdx) {
+      var wrapper = document.createElement('div'); wrapper.className = 'student-comment-panel'; wrapper.style.border = '1px solid rgba(10,12,30,0.05)'; wrapper.style.borderRadius = '8px'; wrapper.style.padding = '10px'; wrapper.style.marginBottom = '10px'; wrapper.style.background = '#fff';
+      var headerRow = document.createElement('div'); headerRow.style.display = 'flex'; headerRow.style.justifyContent = 'space-between'; headerRow.style.alignItems = 'center'; headerRow.style.marginBottom = '8px';
+      var nameEl = document.createElement('div'); nameEl.textContent = studentName; nameEl.style.fontWeight = '600'; headerRow.appendChild(nameEl);
+      var toggleBtn = document.createElement('button'); toggleBtn.type = 'button'; toggleBtn.className = 'btn btn-mini comment-toggle'; toggleBtn.textContent = '▾ Add comment'; toggleBtn.style.fontSize = '0.85rem'; toggleBtn.style.padding = '6px 8px'; toggleBtn.style.cursor = 'pointer'; toggleBtn.style.background = 'white'; toggleBtn.style.border = '1px solid rgba(10,12,30,0.06)'; toggleBtn.style.borderRadius = '6px'; headerRow.appendChild(toggleBtn);
       wrapper.appendChild(headerRow);
-
-      // content (collapsed by default)
-      var content = document.createElement('div');
-      content.className = 'student-comment-content';
-      content.style.display = 'none';
-
-      // Public comment label + textarea
-      var lblPublic = document.createElement('div');
-      lblPublic.textContent = 'Comments to be SHARED WITH THE STUDENT';
-      lblPublic.style.fontSize = '0.9rem';
-      lblPublic.style.margin = '4px 0';
-      content.appendChild(lblPublic);
-
-      var taPublic = document.createElement('textarea');
-      taPublic.id = 'comment-public-' + sIdx;
-      taPublic.placeholder = 'Comments to share with student';
-      taPublic.style.width = '100%';
-      taPublic.style.minHeight = '60px';
-      taPublic.style.padding = '8px';
-      taPublic.style.boxSizing = 'border-box';
-      taPublic.style.marginBottom = '8px';
-      content.appendChild(taPublic);
-
-      // Private comment label + textarea
-      var lblPrivate = document.createElement('div');
-      lblPrivate.textContent = 'Comments to be SHARED ONLY WITH THE INSTRUCTOR';
-      lblPrivate.style.fontSize = '0.9rem';
-      lblPrivate.style.margin = '4px 0';
-      content.appendChild(lblPrivate);
-
-      var taPrivate = document.createElement('textarea');
-      taPrivate.id = 'comment-private-' + sIdx;
-      taPrivate.placeholder = 'Private comments for instructor';
-      taPrivate.style.width = '100%';
-      taPrivate.style.minHeight = '60px';
-      taPrivate.style.padding = '8px';
-      taPrivate.style.boxSizing = 'border-box';
-      content.appendChild(taPrivate);
-
-      wrapper.appendChild(content);
-
-      // toggle behavior
+      var content = document.createElement('div'); content.className = 'student-comment-content'; content.style.display = 'none';
+      var lblPublic = document.createElement('div'); lblPublic.textContent = 'Comments to be SHARED WITH THE STUDENT'; lblPublic.style.fontSize = '0.9rem'; lblPublic.style.margin = '4px 0'; content.appendChild(lblPublic);
+      var taPublic = document.createElement('textarea'); taPublic.id = 'comment-public-' + sIdx; taPublic.placeholder = 'Comments to share with student'; taPublic.style.width = '100%'; taPublic.style.minHeight = '60px'; taPublic.style.padding = '8px'; taPublic.style.boxSizing = 'border-box'; taPublic.style.marginBottom = '8px'; content.appendChild(taPublic);
+      var lblPrivate = document.createElement('div'); lblPrivate.textContent = 'Comments to be SHARED ONLY WITH THE INSTRUCTOR'; lblPrivate.style.fontSize = '0.9rem'; lblPrivate.style.margin = '4px 0'; content.appendChild(lblPrivate);
+      var taPrivate = document.createElement('textarea'); taPrivate.id = 'comment-private-' + sIdx; taPrivate.placeholder = 'Private comments for instructor'; taPrivate.style.width = '100%'; taPrivate.style.minHeight = '60px'; taPrivate.style.padding = '8px'; taPrivate.style.boxSizing = 'border-box'; content.appendChild(taPrivate);
       toggleBtn.addEventListener('click', function () {
-        if (content.style.display === 'none') {
-          content.style.display = 'block';
-          toggleBtn.textContent = '▴ Hide comment';
-        } else {
-          content.style.display = 'none';
-          toggleBtn.textContent = '▾ Add comment';
-        }
+        if (content.style.display === 'none') { content.style.display = 'block'; toggleBtn.textContent = '▴ Hide comment'; } else { content.style.display = 'none'; toggleBtn.textContent = '▾ Add comment'; }
       });
-
-      // pre-fill from stagedRatings if present
-      var staged = (stagedRatings[projectName] && stagedRatings[projectName]._studentComments) || {};
-      if (staged && staged[studentName]) {
-        if (staged[studentName].public) taPublic.value = staged[studentName].public;
-        if (staged[studentName].private) taPrivate.value = staged[studentName].private;
-        if ((staged[studentName].public && staged[studentName].public.length) || (staged[studentName].private && staged[studentName].private.length)) {
-          content.style.display = 'block';
-          toggleBtn.textContent = '▴ Hide comment';
+      // prefill staged
+      var st = staged && staged[studentName];
+      if (st) {
+        if (st.public) taPublic.value = st.public;
+        if (st.private) taPrivate.value = st.private;
+        if ((st.public && st.public.length) || (st.private && st.private.length)) {
+          content.style.display = 'block'; toggleBtn.textContent = '▴ Hide comment';
         }
       }
-
-      // wire save events
-      taPublic.addEventListener('input', saveDraftHandler);
-      taPrivate.addEventListener('input', saveDraftHandler);
-
-      return wrapper;
-    }
-
-    // create per-student panels
-    for (var si = 0; si < (students || []).length; si++) {
-      var studentName = students[si];
-      var panel = buildStudentPanel(studentName, si);
-      commentSec.appendChild(panel);
-    }
-
-    // Group-level comment panel
-    var groupWrap = document.createElement('div');
-    groupWrap.className = 'student-comment-panel';
-    groupWrap.style.border = '1px solid rgba(10,12,30,0.05)';
-    groupWrap.style.borderRadius = '8px';
-    groupWrap.style.padding = '10px';
-    groupWrap.style.marginBottom = '10px';
-    groupWrap.style.background = '#fff';
-
-    var groupHeader = document.createElement('div');
-    groupHeader.style.display = 'flex';
-    groupHeader.style.justifyContent = 'space-between';
-    groupHeader.style.alignItems = 'center';
-    groupHeader.style.marginBottom = '8px';
-
-    var groupTitle = document.createElement('div');
-    groupTitle.textContent = 'Comments for Evaluating group as a whole';
-    groupTitle.style.fontWeight = '600';
-    groupHeader.appendChild(groupTitle);
-
-    var groupToggle = document.createElement('button');
-    groupToggle.type = 'button';
-    groupToggle.className = 'btn btn-mini comment-toggle';
-    groupToggle.textContent = '▾ Add comment';
-    groupToggle.style.fontSize = '0.85rem';
-    groupToggle.style.padding = '6px 8px';
-    groupToggle.style.cursor = 'pointer';
-    groupToggle.style.background = 'white';
-    groupToggle.style.border = '1px solid rgba(10,12,30,0.06)';
-    groupToggle.style.borderRadius = '6px';
-    groupHeader.appendChild(groupToggle);
-    groupWrap.appendChild(groupHeader);
-
-    var groupContent = document.createElement('div');
-    groupContent.style.display = 'none';
-
-    var groupLbl = document.createElement('div');
-    groupLbl.textContent = 'Comments for Evaluating group as a whole (shared with student by default)';
-    groupLbl.style.margin = '4px 0';
-    groupContent.appendChild(groupLbl);
-
-    var taGroup = document.createElement('textarea');
-    taGroup.id = 'comment-group-public';
-    taGroup.placeholder = 'Comments for evaluating group as a whole';
-    taGroup.style.width = '100%';
-    taGroup.style.minHeight = '80px';
-    taGroup.style.padding = '8px';
-    taGroup.style.boxSizing = 'border-box';
-    groupContent.appendChild(taGroup);
-
-    var groupLblPrivate = document.createElement('div');
-    groupLblPrivate.textContent = 'Private comments about the group (instructor only)';
-    groupLblPrivate.style.margin = '8px 0 4px 0';
-    groupContent.appendChild(groupLblPrivate);
-
-    var taGroupPrivate = document.createElement('textarea');
-    taGroupPrivate.id = 'comment-group-private';
-    taGroupPrivate.placeholder = 'Private comments for instructor about the group';
-    taGroupPrivate.style.width = '100%';
-    taGroupPrivate.style.minHeight = '60px';
-    taGroupPrivate.style.padding = '8px';
-    taGroupPrivate.style.boxSizing = 'border-box';
-    groupContent.appendChild(taGroupPrivate);
-
-    groupWrap.appendChild(groupContent);
-    groupToggle.addEventListener('click', function () {
-      if (groupContent.style.display === 'none') {
-        groupContent.style.display = 'block';
-        groupToggle.textContent = '▴ Hide comment';
-      } else {
-        groupContent.style.display = 'none';
-        groupToggle.textContent = '▾ Add comment';
-      }
+      wrapper.appendChild(content);
+      commentSec.appendChild(wrapper);
     });
 
-    // wire save for group comment textareas
-    taGroup.addEventListener('input', saveDraftHandler);
-    taGroupPrivate.addEventListener('input', saveDraftHandler);
-
-    // pre-fill group comments from stagedRatings if present
+    // Group-level panel
+    var groupWrap = document.createElement('div'); groupWrap.className = 'student-comment-panel'; groupWrap.style.border = '1px solid rgba(10,12,30,0.05)'; groupWrap.style.borderRadius = '8px'; groupWrap.style.padding = '10px'; groupWrap.style.marginBottom = '10px'; groupWrap.style.background = '#fff';
+    var groupHeader = document.createElement('div'); groupHeader.style.display = 'flex'; groupHeader.style.justifyContent = 'space-between'; groupHeader.style.alignItems = 'center'; groupHeader.style.marginBottom = '8px';
+    var groupTitle = document.createElement('div'); groupTitle.textContent = 'Comments for Evaluating group as a whole'; groupTitle.style.fontWeight = '600'; groupHeader.appendChild(groupTitle);
+    var groupToggle = document.createElement('button'); groupToggle.type = 'button'; groupToggle.className = 'btn btn-mini comment-toggle'; groupToggle.textContent = '▾ Add comment'; groupToggle.style.fontSize = '0.85rem'; groupToggle.style.padding = '6px 8px'; groupToggle.style.cursor = 'pointer'; groupToggle.style.background = 'white'; groupToggle.style.border = '1px solid rgba(10,12,30,0.06)'; groupToggle.style.borderRadius = '6px'; groupHeader.appendChild(groupToggle);
+    groupWrap.appendChild(groupHeader);
+    var groupContent = document.createElement('div'); groupContent.style.display = 'none';
+    var groupLbl = document.createElement('div'); groupLbl.textContent = 'Comments for Evaluating group as a whole (shared with student by default)'; groupLbl.style.margin = '4px 0'; groupContent.appendChild(groupLbl);
+    var taGroup = document.createElement('textarea'); taGroup.id = 'comment-group-public'; taGroup.placeholder = 'Comments for evaluating group as a whole'; taGroup.style.width = '100%'; taGroup.style.minHeight = '80px'; taGroup.style.padding = '8px'; taGroup.style.boxSizing = 'border-box'; groupContent.appendChild(taGroup);
+    var groupLblPrivate = document.createElement('div'); groupLblPrivate.textContent = 'Private comments about the group (instructor only)'; groupLblPrivate.style.margin = '8px 0 4px 0'; groupContent.appendChild(groupLblPrivate);
+    var taGroupPrivate = document.createElement('textarea'); taGroupPrivate.id = 'comment-group-private'; taGroupPrivate.placeholder = 'Private comments for instructor about the group'; taGroupPrivate.style.width = '100%'; taGroupPrivate.style.minHeight = '60px'; taGroupPrivate.style.padding = '8px'; taGroupPrivate.style.boxSizing = 'border-box'; groupContent.appendChild(taGroupPrivate);
+    groupToggle.addEventListener('click', function () {
+      if (groupContent.style.display === 'none') { groupContent.style.display = 'block'; groupToggle.textContent = '▴ Hide comment'; } else { groupContent.style.display = 'none'; groupToggle.textContent = '▾ Add comment'; }
+    });
+    // prefill staged group
     var stagedGroup = (stagedRatings[currentProject] && stagedRatings[currentProject]._groupComments) || {};
     if (stagedGroup) {
       if (stagedGroup.public) taGroup.value = stagedGroup.public;
       if (stagedGroup.private) taGroupPrivate.value = stagedGroup.private;
-      if ((stagedGroup.public && stagedGroup.public.length) || (stagedGroup.private && stagedGroup.private.length)) {
-        groupContent.style.display = 'block';
-        groupToggle.textContent = '▴ Hide comment';
-      }
+      if ((stagedGroup.public && stagedGroup.public.length) || (stagedGroup.private && stagedGroup.private.length)) { groupContent.style.display = 'block'; groupToggle.textContent = '▴ Hide comment'; }
     }
-
+    groupWrap.appendChild(groupContent);
     commentSec.appendChild(groupWrap);
 
     // attach below matrixContainer
     if (matrixContainer && matrixContainer.parentNode) {
       if (matrixContainer.nextSibling) matrixContainer.parentNode.insertBefore(commentSec, matrixContainer.nextSibling);
       else matrixContainer.parentNode.appendChild(commentSec);
-    } else {
-      document.body.appendChild(commentSec);
+    } else document.body.appendChild(commentSec);
+  }
+
+  // Attach handlers for matrix changes (save draft)
+  function attachMatrixListeners() {
+    // remove existing to avoid duplicates
+    try {
+      if (matrixContainer) { matrixContainer.removeEventListener && matrixContainer.removeEventListener('change', saveDraftHandler); matrixContainer.removeEventListener && matrixContainer.removeEventListener('input', saveDraftHandler); }
+    } catch (e) { /* ignore */ }
+    if (matrixContainer) { matrixContainer.addEventListener('change', saveDraftHandler); matrixContainer.addEventListener('input', saveDraftHandler); }
+
+    // textareas inside comments section
+    var commentSec = document.querySelector('.section.section-comment');
+    if (commentSec) {
+      Array.from(commentSec.querySelectorAll('textarea')).forEach(function (ta) {
+        try { ta.removeEventListener && ta.removeEventListener('input', saveDraftHandler); } catch (e) {}
+        ta.addEventListener('input', saveDraftHandler);
+      });
     }
   }
 
-  // -------------------------
-  // Draft saving handler
-  // -------------------------
+  // Save draft: ratings + per-student comments + group comments + team ratings
   function saveDraftHandler() {
     if (!currentProject) return;
     if (!stagedRatings[currentProject]) stagedRatings[currentProject] = {};
 
     var students = sponsorProjects[currentProject] || [];
-    var teamIdx = students.length;
-
-    // save per-student ratings
+    // student ratings
     for (var s = 0; s < students.length; s++) {
       if (!stagedRatings[currentProject][s]) stagedRatings[currentProject][s] = {};
       for (var c = 0; c < RUBRIC.length; c++) {
         var sel = document.querySelector('input[name="rating-' + c + '-' + s + '"]:checked');
         if (sel) stagedRatings[currentProject][s][c] = parseInt(sel.value, 10);
+        else if (stagedRatings[currentProject][s] && stagedRatings[currentProject][s][c] !== undefined) {
+          // leave existing if no selection (do not delete)
+        } else stagedRatings[currentProject][s][c] = null;
       }
+    }
 
-      // per-student comments
-      var sName = students[s];
-      var pubEl = document.getElementById('comment-public-' + s);
-      var privEl = document.getElementById('comment-private-' + s);
-      if (!stagedRatings[currentProject]._studentComments) stagedRatings[currentProject]._studentComments = stagedRatings[currentProject]._studentComments || {};
+    // team ratings (if any)
+    stagedRatings[currentProject].team = stagedRatings[currentProject].team || {};
+    for (var ct = 0; ct < RUBRIC.length; ct++) {
+      var selT = document.querySelector('input[name="rating-' + ct + '-team"]:checked');
+      if (selT) stagedRatings[currentProject].team[ct] = parseInt(selT.value, 10);
+      else if (stagedRatings[currentProject].team && stagedRatings[currentProject].team[ct] !== undefined) { /* keep */ }
+      else stagedRatings[currentProject].team[ct] = null;
+    }
+
+    // per-student comments
+    if (!stagedRatings[currentProject]._studentComments) stagedRatings[currentProject]._studentComments = {};
+    for (var i = 0; i < students.length; i++) {
+      var sName = students[i];
+      var pubEl = document.getElementById('comment-public-' + i);
+      var privEl = document.getElementById('comment-private-' + i);
       stagedRatings[currentProject]._studentComments[sName] = stagedRatings[currentProject]._studentComments[sName] || { public: '', private: '' };
       if (pubEl) stagedRatings[currentProject]._studentComments[sName].public = pubEl.value || '';
       if (privEl) stagedRatings[currentProject]._studentComments[sName].private = privEl.value || '';
     }
 
-    // save group-level ratings (per-criterion)
-    if (!stagedRatings[currentProject]._groupRatings) stagedRatings[currentProject]._groupRatings = {};
-    for (var gc = 0; gc < RUBRIC.length; gc++) {
-      var gsel = document.querySelector('input[name="rating-' + gc + '-' + teamIdx + '"]:checked');
-      if (gsel) stagedRatings[currentProject]._groupRatings[gc] = parseInt(gsel.value, 10);
-    }
-
     // group comments
+    stagedRatings[currentProject]._groupComments = stagedRatings[currentProject]._groupComments || { public: '', private: '' };
     var gpPub = document.getElementById('comment-group-public');
     var gpPriv = document.getElementById('comment-group-private');
-    stagedRatings[currentProject]._groupComments = stagedRatings[currentProject]._groupComments || { public: '', private: '' };
     if (gpPub) stagedRatings[currentProject]._groupComments.public = gpPub.value || '';
     if (gpPriv) stagedRatings[currentProject]._groupComments.private = gpPriv.value || '';
 
-    // Save comment inside general _comment for backwards compatibility (if you still use project-comment textarea)
-    var ta = document.getElementById('project-comment');
-    if (ta && ta.value) stagedRatings[currentProject]._comment = ta.value;
+    // Backwards-compat: store generic _comment too if present in UI (legacy)
+    var legacyTa = document.getElementById('project-comment');
+    if (legacyTa && legacyTa.value) stagedRatings[currentProject]._comment = legacyTa.value;
 
     saveProgress();
   }
 
-  // -------------------------
-  // Submit current project (collect all criteria)
-  // -------------------------
+  // Collect and submit current project
   function submitCurrentProject() {
     if (!currentProject) { setStatus('No project is loaded.', 'red'); return; }
     var students = sponsorProjects[currentProject] || [];
     if (!students.length) { setStatus('No students to submit.', 'red'); return; }
 
+    // Build responses array expected by worker: each response = { student, ratings, commentShared, commentInstructor, isTeam }
     var responses = [];
-    var anyStudentRated = false;
-    var anyGroupRating = false;
 
-    // Build per-student rows
+    // per-student responses
     for (var s = 0; s < students.length; s++) {
       var ratingsObj = {};
-      var anyThisStudent = false;
       for (var c = 0; c < RUBRIC.length; c++) {
         var sel = document.querySelector('input[name="rating-' + c + '-' + s + '"]:checked');
-        if (sel) {
-          ratingsObj[RUBRIC[c].title] = parseInt(sel.value, 10);
-          anyThisStudent = true;
-        } else {
-          ratingsObj[RUBRIC[c].title] = null;
-        }
+        ratingsObj[RUBRIC[c].title || ('C' + c)] = sel ? parseInt(sel.value, 10) : null;
       }
-      if (anyThisStudent) anyStudentRated = true;
-
-      // per-student comments from stagedRatings (if available) or from textareas
-      var stagedStuComments = (stagedRatings[currentProject] && stagedRatings[currentProject]._studentComments) || {};
-      var sName = students[s];
-      var publicComment = '';
-      var privateComment = '';
-      if (stagedStuComments && stagedStuComments[sName]) {
-        publicComment = stagedStuComments[sName].public || '';
-        privateComment = stagedStuComments[sName].private || '';
-      } else {
-        var pubEl = document.getElementById('comment-public-' + s);
-        var privEl = document.getElementById('comment-private-' + s);
-        if (pubEl) publicComment = pubEl.value || '';
-        if (privEl) privateComment = privEl.value || '';
-      }
-
-      responses.push({
-        student: sName,
-        ratings: ratingsObj,
-        commentShared: publicComment || '',
-        commentInstructor: privateComment || '',
-        isTeam: false
-      });
+      var commentShared = (document.getElementById('comment-public-' + s) || {}).value || '';
+      var commentInstructor = (document.getElementById('comment-private-' + s) || {}).value || '';
+      responses.push({ student: students[s], ratings: ratingsObj, commentShared: commentShared, commentInstructor: commentInstructor, isTeam: false });
     }
 
-    // collect group ratings and comments (team row index is students.length)
-    var teamIdx = students.length;
-    var groupRatings = {};
-    for (var gc2 = 0; gc2 < RUBRIC.length; gc2++) {
-      var gsel2 = document.querySelector('input[name="rating-' + gc2 + '-' + teamIdx + '"]:checked');
-      if (gsel2) {
-        groupRatings[RUBRIC[gc2].title] = parseInt(gsel2.value, 10);
-        anyGroupRating = true;
-      } else {
-        groupRatings[RUBRIC[gc2].title] = null;
-      }
+    // Team response (if any team ratings chosen OR group comment exists)
+    var teamRatingsChosen = false;
+    var teamRatingsObj = {};
+    for (var tc = 0; tc < RUBRIC.length; tc++) {
+      var teamSel = document.querySelector('input[name="rating-' + tc + '-team"]:checked');
+      teamRatingsObj[RUBRIC[tc].title || ('C' + tc)] = teamSel ? parseInt(teamSel.value, 10) : null;
+      if (teamSel) teamRatingsChosen = true;
     }
-    var stagedGroup = (stagedRatings[currentProject] && stagedRatings[currentProject]._groupComments) || {};
-    var groupPublic = stagedGroup && stagedGroup.public ? stagedGroup.public : (document.getElementById('comment-group-public') ? document.getElementById('comment-group-public').value || '' : '');
-    var groupPrivate = stagedGroup && stagedGroup.private ? stagedGroup.private : (document.getElementById('comment-group-private') ? document.getElementById('comment-group-private').value || '' : '');
-
-    // Determine if sponsor only supplied group info (no student ratings)
-    var hasOnlyGroup = (!anyStudentRated) && (anyGroupRating || (groupPublic && groupPublic.length) || (groupPrivate && groupPrivate.length));
-
-    // If only group is present, replace responses with single group row shaped for worker
-    if (hasOnlyGroup) {
-      responses = [{
-        student: 'Evaluating group as a whole',
-        ratings: groupRatings,
-        commentShared: groupPublic || '',
-        commentInstructor: groupPrivate || '',
-        isTeam: true
-      }];
-    } else {
-      // if both students and group have values, include group row as well (appended)
-      var includeGroupRow = (anyGroupRating || (groupPublic && groupPublic.length) || (groupPrivate && groupPrivate.length));
-      if (includeGroupRow) {
-        responses.push({
-          student: 'Evaluating group as a whole',
-          ratings: groupRatings,
-          commentShared: groupPublic || '',
-          commentInstructor: groupPrivate || '',
-          isTeam: true
-        });
-      }
+    var groupCommentShared = (document.getElementById('comment-group-public') || {}).value || '';
+    var groupCommentInstructor = (document.getElementById('comment-group-private') || {}).value || '';
+    if (teamRatingsChosen || groupCommentShared || groupCommentInstructor) {
+      responses.push({ student: 'Evaluating group as a whole', ratings: teamRatingsObj, commentShared: groupCommentShared, commentInstructor: groupCommentInstructor, isTeam: true });
     }
 
-    // Build payload
+    // If responses array empty (shouldn't be) block
+    if (!responses.length) { setStatus('Nothing to submit.', 'red'); return; }
+
     var payload = {
       sponsorName: currentName || (nameInput ? nameInput.value.trim() : ''),
       sponsorEmail: currentEmail || (emailInput ? emailInput.value.trim() : ''),
@@ -879,12 +533,6 @@
       responses: responses,
       timestamp: new Date().toISOString()
     };
-
-    // Validate payload.responses
-    if (!Array.isArray(payload.responses) || payload.responses.length === 0) {
-      setStatus('No ratings or comments to submit.', 'red');
-      return;
-    }
 
     setStatus('Submitting...', 'black');
     if (submitProjectBtn) submitProjectBtn.disabled = true;
@@ -899,10 +547,8 @@
       }
       return resp.json().catch(function () { return {}; });
     }).then(function (data) {
-      console.log('Saved', data);
       setStatus('Submission saved. Thank you!', 'green');
 
-      // mark as completed and remove staged
       completedProjects[currentProject] = true;
       if (stagedRatings && stagedRatings[currentProject]) delete stagedRatings[currentProject];
       saveProgress();
@@ -911,33 +557,25 @@
         var selector = 'li[data-project="' + CSS.escape(currentProject) + '"]';
         var li = projectListEl.querySelector(selector);
         if (li) {
-          li.classList.add('completed');
-          li.classList.remove('active');
+          li.classList.add('completed'); li.classList.remove('active');
           li.innerHTML = '<strong>' + escapeHtml(currentProject) + '</strong> <span class="meta">(completed)</span>';
         }
       }
 
+      // remove matrix and comment blocks and header
       if (matrixContainer) matrixContainer.innerHTML = '';
       var commentSection = document.querySelector('.section.section-comment');
       if (commentSection) commentSection.parentNode.removeChild(commentSection);
-
       var headerEl = document.querySelector('.current-project-header');
       if (headerEl && headerEl.parentNode) headerEl.parentNode.removeChild(headerEl);
-
       var matrixInfoBlock = document.getElementById('matrix-info');
       if (matrixInfoBlock) matrixInfoBlock.style.display = 'none';
-
       currentProject = '';
-      if (typeof updateSectionVisibility === 'function') updateSectionVisibility();
-      if (typeof removeEmptySections === 'function') removeEmptySections();
-
       if (hasCompletedAllProjects()) showThankyouStage();
     }).catch(function (err) {
       console.error('Submission failed', err);
       setStatus('Submission failed. See console.', 'red');
-    }).finally(function () {
-      if (submitProjectBtn) submitProjectBtn.disabled = false;
-    });
+    }).finally(function () { if (submitProjectBtn) submitProjectBtn.disabled = false; });
   }
 
   function hasCompletedAllProjects() {
@@ -947,56 +585,37 @@
     return true;
   }
 
-  // -------------------------
   // Event wiring
-  // -------------------------
   function onIdentitySubmit() {
     var name = nameInput ? nameInput.value.trim() : '';
     var email = emailInput ? (emailInput.value || '').toLowerCase().trim() : '';
     if (!name) { setStatus('Please enter your name.', 'red'); return; }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setStatus('Please enter a valid email.', 'red'); return; }
 
-    currentName = name;
-    currentEmail = email;
-    saveProgress();
-
+    currentName = name; currentEmail = email; saveProgress();
     if (!sponsorData || Object.keys(sponsorData).length === 0) {
       setStatus('Loading project data, please wait...', 'black');
       tryFetchData(function () {
-        if (!sponsorData || !sponsorData[currentEmail]) {
-          setStatus('No projects found for that email.', 'red');
-          return;
-        }
-        showProjectsStage();
-        populateProjectListFor(currentEmail);
+        if (!sponsorData || !sponsorData[currentEmail]) { setStatus('No projects found for that email.', 'red'); return; }
+        showProjectsStage(); populateProjectListFor(currentEmail);
       });
     } else {
-      if (!sponsorData[currentEmail]) {
-        setStatus('No projects found for that email.', 'red');
-        return;
-      }
-      showProjectsStage();
-      populateProjectListFor(currentEmail);
+      if (!sponsorData[currentEmail]) { setStatus('No projects found for that email.', 'red'); return; }
+      showProjectsStage(); populateProjectListFor(currentEmail);
     }
   }
 
   if (identitySubmit) identitySubmit.addEventListener('click', onIdentitySubmit);
   if (backToIdentity) backToIdentity.addEventListener('click', function () { showIdentityStage(); });
-  if (submitProjectBtn) submitProjectBtn.addEventListener('click', function () { submitCurrentProject(); });
+  if (submitProjectBtn) submitProjectBtn.addEventListener('click', submitCurrentProject);
   if (finishStartOverBtn) finishStartOverBtn.addEventListener('click', function () {
-    completedProjects = {};
-    stagedRatings = {};
-    saveProgress();
-    currentProject = '';
+    completedProjects = {}; stagedRatings = {}; saveProgress(); currentProject = '';
     if (matrixContainer) matrixContainer.innerHTML = '';
-    var commentSection = document.querySelector('.section.section-comment');
-    if (commentSection) commentSection.parentNode.removeChild(commentSection);
+    var commentSection = document.querySelector('.section.section-comment'); if (commentSection) commentSection.parentNode.removeChild(commentSection);
     showIdentityStage();
   });
 
-  // -------------------------
   // Stage display helpers
-  // -------------------------
   function showIdentityStage() {
     if (stageIdentity) stageIdentity.style.display = '';
     if (stageProjects) stageProjects.style.display = 'none';
@@ -1020,33 +639,20 @@
     if (underTitle) underTitle.style.display = 'none';
   }
 
-  // -------------------------
-  // Secure data fetch (replaces CSV)
-  // -------------------------
+  // Fetch sponsor data from worker
   function tryFetchData(callback) {
     var loaderUrl = DATA_LOADER_URL;
-    if (DATA_SOURCE) {
-      loaderUrl += (loaderUrl.indexOf('?') === -1 ? '?source=' + encodeURIComponent(DATA_SOURCE) : '&source=' + encodeURIComponent(DATA_SOURCE));
-    }
     console.info('tryFetchData: requesting', loaderUrl);
-
     fetch(loaderUrl, { cache: 'no-store' })
       .then(function (r) {
-        console.info('tryFetchData: response status', r.status, r.statusText);
         if (!r.ok) throw new Error('Data loader returned ' + r.status);
         return r.json();
       })
       .then(function (rows) {
-        console.info('tryFetchData: rows received length=', Array.isArray(rows) ? rows.length : typeof rows);
         sponsorData = buildSponsorMap(rows || []);
-        window.__sponsorDebug && (window.__sponsorDebug.sponsorData = sponsorData);
-
         setStatus('Project data loaded securely.', 'green');
         loadProgress();
-        if (currentEmail && sponsorData[currentEmail]) {
-          showProjectsStage();
-          populateProjectListFor(currentEmail);
-        }
+        if (currentEmail && sponsorData[currentEmail]) { showProjectsStage(); populateProjectListFor(currentEmail); }
         if (typeof callback === 'function') callback();
       })
       .catch(function (err) {
@@ -1056,163 +662,27 @@
       });
   }
 
-  // -------------------------
-  // Boot
-  // -------------------------
-  showIdentityStage();
-  tryFetchData();
-
-  // Debug helper
-  window.__sponsorDebug = {
-    sponsorData: sponsorData,
-    stagedRatings: stagedRatings,
-    completedProjects: completedProjects,
-    reloadData: function (cb) { tryFetchData(cb); }
-  };
-
-  window.__submitCurrentProject = submitCurrentProject;
-})();
-
-// ---------- UI DOM tweaks: hide first-page submit, wrap project list, transform rubric tables ----------
-(function(){
-  // 1) Remove any auto-inserted site-footer-fixed (we will use the HTML footer)
-  var autoFooter = document.querySelector('.site-footer-fixed');
-  if (autoFooter) autoFooter.parentNode.removeChild(autoFooter);
-
-  // 2) Hide the "Submit ratings for project" button on the identity page only
+  // Hide auto footer and identity submit button on identity stage (UI tweaks)
   document.addEventListener('DOMContentLoaded', function () {
+    var autoFooter = document.querySelector('.site-footer-fixed');
+    if (autoFooter) autoFooter.parentNode.removeChild(autoFooter);
+    // hide "Submit ratings for project" inside identity stage (if generated by site)
     var identityStage = document.querySelector('[data-stage="identity"]') || document.getElementById('stage-identity');
     if (identityStage) {
       var btns = Array.from(identityStage.querySelectorAll('button'));
-      btns.forEach(function(b){
-        if (b.textContent && b.textContent.trim() === 'Submit ratings for project') {
-          b.style.display = 'none';
-        }
+      btns.forEach(function (b) {
+        if (b.textContent && b.textContent.trim() === 'Submit ratings for project') b.style.display = 'none';
       });
     }
   });
 
-  // 3) Wrap project list in .project-list-card if not already wrapped
-  document.addEventListener('DOMContentLoaded', function () {
-    var projectList = document.getElementById('project-list');
-    if (projectList && !projectList.closest('.project-list-card')) {
-      var wrapper = document.createElement('section');
-      wrapper.className = 'project-list-card';
-      var maybeHeading = projectList.previousElementSibling;
-      if (maybeHeading && maybeHeading.tagName === 'H2') wrapper.appendChild(maybeHeading);
-      projectList.parentNode.insertBefore(wrapper, projectList);
-      wrapper.appendChild(projectList);
-    }
-  });
+  // Boot
+  showIdentityStage();
+  tryFetchData();
 
-  // 4) Transform any generated rubric tables to ensure header order + apply classes
-  function transformRubricTable(table) {
-    if (!table || table._uiTransformed) return;
-    try {
-      var parent = table.parentElement;
-      if (!parent.classList.contains('rubric-card')) {
-        var wrapper = document.createElement('div');
-        wrapper.className = 'rubric-card rubric-scrollwrap';
-        parent.insertBefore(wrapper, table);
-        wrapper.appendChild(table);
-        parent = wrapper;
-      }
-
-      table.classList.add('rubric-table');
-
-      var thead = table.querySelector('thead');
-      if (!thead) {
-        var firstRow = table.querySelector('tr');
-        if (firstRow) {
-          var newThead = document.createElement('thead');
-          newThead.appendChild(firstRow.cloneNode(true));
-          table.insertBefore(newThead, table.firstChild);
-          thead = newThead;
-        } else return;
-      }
-
-      var headerRow = thead.querySelector('tr');
-      if (!headerRow) return;
-      var ths = Array.from(headerRow.children);
-
-      var idxStudent = ths.findIndex(function(th){ return /student/i.test(th.textContent); });
-      var idxFar = ths.findIndex(function(th){ return /far\s*below|fail/i.test(th.textContent); });
-      var idxEx = ths.findIndex(function(th){ return /exceed/i.test(th.textContent); });
-
-      if (idxStudent > 0) {
-        headerRow.insertBefore(ths[idxStudent], headerRow.firstChild);
-        ths = Array.from(headerRow.children);
-      }
-
-      idxFar = Array.from(headerRow.children).findIndex(function(th){ return /far\s*below|fail/i.test(th.textContent); });
-      if (idxFar > 1) {
-        var farTH = headerRow.children[idxFar];
-        headerRow.insertBefore(farTH, headerRow.children[1]);
-      } else if (idxFar === -1) {
-        var farH = document.createElement('th');
-        farH.textContent = 'Far Below\nExpectations\n(Fail)';
-        farH.className = 'col-descriptor';
-        headerRow.insertBefore(farH, headerRow.children[1] || null);
-      }
-
-      idxEx = Array.from(headerRow.children).findIndex(function(th){ return /exceed/i.test(th.textContent); });
-      if (idxEx !== -1 && idxEx !== headerRow.children.length - 1) {
-        var exTH = headerRow.children[idxEx];
-        headerRow.appendChild(exTH);
-      } else if (idxEx === -1) {
-        var exH = document.createElement('th');
-        exH.textContent = 'Exceeds\nExpectations\n(A+)';
-        exH.className = 'col-descriptor';
-        headerRow.appendChild(exH);
-      }
-
-      var newTHs = Array.from(headerRow.children);
-      if (newTHs[0]) newTHs[0].classList.add('col-student');
-      if (newTHs[1]) newTHs[1].classList.add('col-descriptor');
-      if (newTHs[newTHs.length - 1]) newTHs[newTHs.length - 1].classList.add('col-descriptor');
-      for (var i=2; i<newTHs.length-1; i++) newTHs[i].classList.add('col-scale');
-
-      var tbody = table.querySelector('tbody');
-      if (tbody) {
-        Array.from(tbody.querySelectorAll('tr')).forEach(function(row){
-          var cells = Array.from(row.children);
-          if (cells[0]) cells[0].classList.add('col-student');
-          if (cells[1]) cells[1].classList.add('col-descriptor');
-          if (cells[cells.length-1]) cells[cells.length-1].classList.add('col-descriptor');
-          for (var j=2;j<cells.length-1;j++){
-            if (cells[j]) cells[j].classList.add('col-scale');
-            if (cells[j] && !cells[j].querySelector('.radio-cell')) {
-              var input = cells[j].querySelector('input[type="radio"], input[type="checkbox"]');
-              if (input) {
-                var rc = document.createElement('div'); rc.className = 'radio-cell';
-                while (cells[j].firstChild) rc.appendChild(cells[j].firstChild);
-                cells[j].appendChild(rc);
-              }
-            }
-          }
-        });
-      }
-
-      table._uiTransformed = true;
-    } catch (err) {
-      console.warn('transformRubricTable error', err);
-    }
-  }
-
-  document.addEventListener('DOMContentLoaded', function(){
-    Array.from(document.querySelectorAll('table')).forEach(function(t){ transformRubricTable(t); });
-  });
-
-  var mo = new MutationObserver(function(mutations){
-    mutations.forEach(function(m){
-      Array.from(m.addedNodes||[]).forEach(function(node){
-        if (!node || node.nodeType !== 1) return;
-        if (node.tagName === 'TABLE') transformRubricTable(node);
-        else Array.from(node.querySelectorAll ? node.querySelectorAll('table') : []).forEach(transformRubricTable);
-      });
-    });
-  });
-  mo.observe(document.body, { childList: true, subtree: true });
+  // Debug helper (expose some state for console)
+  window.__sponsorDebug = { sponsorData: sponsorData, stagedRatings: stagedRatings, completedProjects: completedProjects, reloadData: tryFetchData };
+  window.__submitCurrentProject = submitCurrentProject;
 
 })();
 
